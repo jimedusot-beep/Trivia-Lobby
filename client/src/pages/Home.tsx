@@ -1,0 +1,135 @@
+import { Link } from "wouter";
+import { useDecks } from "@/hooks/use-decks";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2 } from "lucide-react";
+import { useDeleteDeck } from "@/hooks/use-decks";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+export default function Home() {
+  const { data: decks, isLoading } = useDecks();
+  const deleteDeck = useDeleteDeck();
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+      {/* Hero Section */}
+      <div className="text-center space-y-6 py-12 md:py-20">
+        <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          Trivia Master
+        </h1>
+        <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
+          Create decks, study with flashcards, or host live trivia games with your friends!
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <Link href="/join">
+            <Button size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all">
+              <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
+            </Button>
+          </Link>
+          <Link href="/import">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">
+              <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Decks Grid */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold font-display text-foreground">Your Decks</h2>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-64 rounded-3xl" />
+            ))}
+          </div>
+        ) : decks?.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-border">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No decks yet</h3>
+            <p className="text-muted-foreground mb-6">Import your first deck to get started!</p>
+            <Link href="/import">
+              <Button>Create Deck</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {decks?.map((deck) => (
+              <Card key={deck.id} className="group hover:shadow-xl hover:border-primary/50 transition-all duration-300 rounded-3xl overflow-hidden border-2 bg-card">
+                <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-4">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="font-display text-2xl truncate pr-2" title={deck.title}>
+                      {deck.title}
+                    </CardTitle>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete deck?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{deck.title}" and all its cards.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deleteDeck.mutate(deck.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  <CardDescription className="line-clamp-2 min-h-[2.5rem]">
+                    {deck.description || "No description provided."}
+                  </CardDescription>
+                  <div className="flex gap-2 mt-2">
+                    <span className="px-3 py-1 bg-secondary/20 text-secondary-foreground text-xs font-bold rounded-full uppercase tracking-wider">
+                      {deck.category}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6 grid grid-cols-2 gap-3">
+                  <Link href={`/study/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
+                      <Brain className="mr-2 h-4 w-4" /> Study
+                    </Button>
+                  </Link>
+                  <Link href={`/host/${deck.id}`}>
+                    <Button className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Users className="mr-2 h-4 w-4" /> Host
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
