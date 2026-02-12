@@ -1,0 +1,35 @@
+Act as an EdTech product + engineering team. Produce a full blueprint and implementation plan for a FAMILY-ONLY learning platform that is fun like Kahoot/Trivia Crack and supports large amounts of content like Duolingo/Coursera/Khan Academy—without copying proprietary designs.
+
+Must include:
+- A full “platform blueprint checklist”
+- Team roster: specific job titles + responsibilities + deliverables
+- Degree/training inspiration: majors/minors and typical course topics for each role
+- Open/free learning materials: ONLY resources accessible without paywalls if possible; label anything needing an account
+- A phased build plan that a solo builder can follow
+- A recommended tech stack + repo structure + data model + real-time protocol outline
+- Citations for best practices and technical claims
+
+Reliability rules (treat as required):
+- ES Modules end-to-end on the client
+- Hash routing for static hosting
+- WebSocket URL derived from location.protocol and location.host (no hardcoding)
+- Heartbeat + dead socket cleanup
+- Reconnect + rejoin using persistent playerId in localStorage
+- Server-authoritative timers/scoring; idempotent answer submission per (playerId, questionInstanceId)
+- CSV parsing via Papa Parse (not split), with detailed import report (row numbers + reasons)
+- Service worker OFF by default in dev; if on, use cache versioning + old cache cleanup
+- If discussing Replit-like hosting: bind server 0.0.0.0 and use env PORT
+
+Allowed sources (prefer and cite):
+MDN, freeCodeCamp, The Odin Project, W3Schools, GeeksforGeeks, Stack Overflow (public), GitHub (public), DevDocs, CSS-Tricks, Smashing Magazine, TutorialsPoint, Khan Academy, Refactoring.Guru, MIT OpenCourseWare, CS50 Harvard OpenCourseWare (cs50.harvard.edu), Open Yale Courses, OpenStax.
+
+Output format:
+1) Blueprint checklist
+2) Team roster table (Role | Outputs | Responsibilities | Degree inspiration)
+3) Degree map (Degree/minor -> key courses -> what it enables)
+4) Open/free learning map (Skill -> resources)
+5) MVP scope for family-only use
+6) Technical architecture (components, data model, protocol)
+7) Build phases with test checklists
+
+Start immediately.

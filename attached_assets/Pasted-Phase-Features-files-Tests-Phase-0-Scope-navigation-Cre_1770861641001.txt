@@ -1,0 +1,18 @@
+Phase
+Features & files
+Tests
+Phase 0: Scope & navigation
+Create index.html, app.js, router.js and minimal pages (home, flashcards, import, host).  Define sample deck in data/decks/sample.json.
+Navigating to /#/flashcards, /#/import, /#/host loads correct page; unknown routes redirect to home; page refresh keeps location thanks to hash routing .
+Phase 1: Flashcards mode
+Implement flashcards.js to load a deck and display cards.  Add store.js and persistence.js to save progress in localStorage.  Provide buttons for correct/incorrect; implement redo loop until all cards answered correctly.
+Marking a card wrong places it back in the queue; marking correct removes it.  Refreshing page preserves progress across sessions .
+Phase 2: CSV importer
+Build import.js page with file input and text area.  Use csvImport.js to read file via FileReader.readAsText() and parse with PapaParse (handle quoted commas and newlines ).  Validate required columns.  Generate row‑level error report; show summary counts.  On success, write deck JSON.
+Upload file with quoted fields—should parse correctly.  Paste CSV text—should parse identically.  Error report lists row numbers and reasons.
+Phase 3: Multiplayer trivia
+Create socket.js for WebSocket connection derived from location.protocol and location.host (use wss on HTTPS ; avoid mixed content ).  Add host.js, join.js, lobby.js, question.js, results.js to implement host/join, lobby updates, question display with server start times, answer submission, scoreboard.  Implement server modules (server.js, roomManager.js, roomStateMachine.js, scoring.js).  Send periodic pings and handle pongs .
+Multiple clients join same room; leaderboard updates after each question.  Background the tab and return—client reconnects via rejoin_room using stored playerId and receives sync_snapshot.  Duplicate answer submissions do not double score.  Mixed content errors do not occur when using wss on HTTPS .
+Phase 4: Polish & backups (optional)
+Add export of decks and progress; optional SQLite persistence on server (sqliteStore.js).  Implement simple analytics (accuracy per deck, streaks).  Integrate a service worker for offline caching, with versioned caches and cleanup during activate .  Add visual polish (animations, confetti) and sound toggle.
+Exporting/importing deck files retains all fields.  Service worker caching does not serve stale versions (verify old caches are deleted on activate).  Offline mode loads previously visited pages and decks correctly.

@@ -1,0 +1,22 @@
+Skill/Area
+Open resources (no paywall unless noted)
+HTML/CSS/JS foundations
+MDN Web Docs – comprehensive references for HTML, CSS, JavaScript modules and APIs .  freeCodeCamp – free curriculum covering responsive web design and JavaScript.  W3Schools – quick tutorials and examples.
+Modern JavaScript & modules
+The Odin Project (Full Stack JavaScript path) – project‑based learning for web apps.  MDN JavaScript modules – explains ES module syntax and benefits .
+Real‑time communication
+MDN WebSockets API guide – shows how to open WebSocket connections and emphasises using wss for secure pages and warns against mixed content .  ws library docs – guidance on ping/pong heartbeat patterns .
+CSV parsing & file handling
+PapaParse docs – usage examples and error reporting.  RFC 4180 – describes CSV format rules (quoted fields, escaped quotes) .  MDN FileReader.readAsText() – explains how to read file contents as text .
+Timing & background behaviour
+MDN Page Visibility API – describes how browsers throttle timers in background tabs ; emphasises that WebSocket connections remain alive during page visibility changes.
+Service workers & caching
+MDN Service Worker guide – details activate event and cleaning up old caches .
+Open courseware / university‑level learning
+MIT OpenCourseWare – free lecture notes, exams and videos with no registration .  MIT OCW Introductory Programming collection – curated list of introductory CS courses.  Open Yale Courses – provides free, open access to recorded Yale courses; registration not required .  OpenStax – free peer‑reviewed digital textbooks; the site emphasises being the world’s largest publisher of open educational resources and a global nonprofit at Rice University.
+Coding patterns & design principles
+Refactoring.Guru – explanations of design patterns with visuals.  CSS‑Tricks – articles on responsive design and CSS tips.  Smashing Magazine – in‑depth articles on front‑end development.
+Data structures & algorithms
+Khan Academy Computer Science – free interactive modules.  OpenStax Introduction to Computer Science – free textbook covering fundamental CS concepts.
+Optional deeper topics
+CS50x (Harvard) – a comprehensive introductory CS course; auditing is free but requires edX registration (clearly labelled “free/audit” option 

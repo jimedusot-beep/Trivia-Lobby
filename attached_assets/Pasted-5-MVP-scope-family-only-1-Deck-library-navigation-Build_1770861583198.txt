@@ -1,0 +1,38 @@
+5. MVP scope (family‑only)
+	1.	Deck library & navigation: Build a simple home page listing decks; choose between Flashcards and Trivia for each deck.
+	2.	Flashcards mode: Load a JSON deck; display front/back; allow marking correct/incorrect; store progress in localStorage ￼; revisit missed cards until all are correct.
+	3.	CSV importer: Provide file upload and text‑paste interface; use FileReader.readAsText() ￼ and PapaParse to parse; validate required columns; show row‑level import report (row number + error reason); save as new deck (JSON file or server database).
+	4.	Trivia mode (local multiplayer): Host generates room code; players enter name and join via WebSocket; implement lobby, server‑authoritative question start times, scoring, answer submission; reconnect and rejoin using stored playerId ￼; display leaderboard and final podium.
+	5.	Omit for MVP: user accounts/passwords, payments, AI personalisation, global hosting, advanced analytics; these can be phased in later.
+
+6. Technical architecture (components, data model, protocol)
+
+Recommended stack
+
+Use plain HTML/CSS/JavaScript with ES Modules on the client and Node.js with the ws library on the server.  This choice keeps tooling light, matches the reliability constraints from your deep‑research rationale, and avoids the complexity of a large framework while still supporting real‑time communication.
+
+Components
+	•	Client folder structure (suggested):
+	•	index.html – entry point; loads app.js as ES module.
+	•	js/ – modules for routing (router.js), each page (home.js, flashcards.js, host.js, join.js, lobby.js, question.js, results.js, import.js), components (buttons, modals, leaderboard, timer bar), state management (store.js, persistence.js), networking (socket.js, protocol.js), CSV import (csvImport.js), and utilities (id.js, time.js).
+	•	data/decks/ – JSON deck files; sample deck for testing.
+	•	styles/ – global CSS.
+	•	sw.js – optional service worker (disabled in dev; uses cache versioning and cleans old caches in activate ￼).
+	•	Server folder structure:
+	•	server.js – creates HTTP server and upgrades WebSocket connections; binds to 0.0.0.0 and uses PORT environment variable (for Replit‑like hosts).
+	•	rooms/roomManager.js – manages active rooms and players.
+	•	rooms/roomStateMachine.js – finite state machine for trivia (Lobby → InGame → Results).
+	•	rooms/scoring.js – calculates scores, streaks and podium ranking.
+	•	protocol/messages.js – defines message types and payload shapes.
+	•	protocol/validators.js – validate incoming messages.
+	•	persistence/memoryStore.js – in‑memory storage for decks and sessions; optional sqliteStore.js for persistence across server restarts.
+
+Data model
+	•	Deck: { deckId, title, tags, questions[], cards[] }
+	•	Question: { id, prompt, choices[], correctLetter, explanation }
+	•	Card: { id, front, back }
+	•	Session/Room: { roomCode, deckId, players[], state, currentQuestionIndex, startTs, leaderboard[] }
+	•	Player: { playerId, name, score, connected }
+	•	Progress (client): { [deckId]: { correctIds: [], incorrectIds: [], lastSeenTs } }
+
+Real‑time protocol outline (WebSocket messages)
