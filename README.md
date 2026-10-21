@@ -49,6 +49,8 @@ Imported deck/card records persist **only as long as the connected PostgreSQL da
 
 These are **research references only**. No third-party code, proprietary assets, AI agents, or reverse-engineering packages are installed by these documents; proposed game modes are not yet implemented.
 
+- [AI reconstruction expansion: five research and testing tracks](docs/research/AI_RECONSTRUCTION_TRACKS.md) — evidence-linked specifications, host/player automation, original UI prototypes, replay QA, and case studies. [Structured inventory](docs/research/ai-reconstruction-candidates.json) (`node --test tests/research-manifest.test.mjs`). [Implementation issue #6](https://github.com/jimedusot-beep/Trivia-Lobby/issues/6).
+
 ## Product direction
 
 1. **Study library:** permanent original PDF/DOCX/PPTX/TXT/CSV uploads, private accounts, folders, searchable notes, and source-linked cards.
