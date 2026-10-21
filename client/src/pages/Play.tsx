@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { useGameSocket, type SavedPlayerSession } from "@/hooks/use-game-socket";
 import { WS_EVENTS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Clock } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export default function Play() {
@@ -12,7 +11,6 @@ export default function Play() {
   const { connected, gameState, emit } = useGameSocket();
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
-  const { toast } = useToast();
 
   // Initial Join Logic
   useEffect(() => {
@@ -39,15 +37,6 @@ export default function Play() {
     }
   }, [gameState.lastAnswerResult, selectedAnswer]);
 
-  // Reset selection on new question
-  useEffect(() => {
-    if (gameState.currentQuestion) {
-        // Only reset if it's a NEW question ID, simplified here by watching object
-        // Ideally compare IDs
-        // Resetting blindly might flicker if re-renders occur, but acceptable for MVP
-    }
-  }, [gameState.currentQuestion]);
-  
   // Watch for question changes to clear selection specifically when server timestamp changes
   useEffect(() => {
       setSelectedAnswer(null);
@@ -57,10 +46,7 @@ export default function Play() {
     if (selectedAnswer) return; // Prevent multi-submit
     setSelectedAnswer(letter);
     
-    const stored = localStorage.getItem('trivia_player');
-    const { roomCode } = stored ? JSON.parse(stored) : { roomCode: '' };
-    
-    emit(WS_EVENTS.SUBMIT_ANSWER, { roomCode, answer: letter });
+    emit(WS_EVENTS.SUBMIT_ANSWER, { answer: letter });
   };
 
   if (!connected) return <div className="h-screen bg-primary flex items-center justify-center text-white font-bold">Connecting...</div>;
@@ -95,7 +81,7 @@ export default function Play() {
       <div className="flex justify-between items-center mb-6">
          <div className="font-bold text-slate-500">{gameState.roomCode}</div>
          <div className="font-bold text-xl text-primary">
-            {gameState.players.find(p => p.playerId === JSON.parse(localStorage.getItem('trivia_player') || '{}').playerId)?.score || 0} pts
+            {gameState.players.find(p => p.playerId === gameState.playerId)?.score || 0} pts
          </div>
       </div>
 
