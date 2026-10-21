@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { useDeleteDeck } from "@/hooks/use-decks";
 import {
@@ -22,6 +23,14 @@ import {
 export default function Home() {
   const { data: decks, isLoading } = useDecks();
   const deleteDeck = useDeleteDeck();
+  const queryClient = useQueryClient();
+  const logout = async () => {
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    if (response.ok) {
+      queryClient.clear();
+      queryClient.setQueryData(["/api/auth/me"], null);
+    }
+  };
   const [search, setSearch] = useState("");
   const matchingDecks = (decks ?? []).filter(deck =>
     [deck.title, deck.category, deck.description].some(value =>
@@ -31,6 +40,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+      <div className="flex justify-end"><Button variant="outline" onClick={logout}>Sign out</Button></div>
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-20">
         <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
