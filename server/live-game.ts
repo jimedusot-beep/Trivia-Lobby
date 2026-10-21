@@ -132,10 +132,11 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
   const cleanup = setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
-      if (now - room.touchedAt > ROOM_TTL_MS && (!room.hostConnected || room.state === "finished")) {
+      if (now - room.touchedAt > ROOM_TTL_MS) {
         if (room.timer) clearTimeout(room.timer);
         rooms.delete(code);
-        for (const p of room.players.values()) p.ws.close(1001, "Room expired");
+        if (isOpen(room.hostWs)) room.hostWs.close(1001, "Room expired");
+        for (const p of room.players.values()) if (isOpen(p.ws)) p.ws.close(1001, "Room expired");
       }
     }
     for (const [ip, limit] of createLimits) if (limit.resetAt < now) createLimits.delete(ip);
