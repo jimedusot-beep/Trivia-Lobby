@@ -22,7 +22,7 @@ export function buildPracticeQuestions(
   cards: Pick<Card, "id" | "front" | "back" | "type" | "options" | "correctOption">[],
   random: () => number = Math.random,
 ): PracticeQuestion[] {
-  const backs = [...new Set(cards.map(card => card.back.trim()).filter(Boolean))];
+  const backs = Array.from(new Set(cards.map(card => card.back.trim()).filter(Boolean)));
   return shuffle(cards, random).map(card => {
     const options = Array.isArray(card.options)
       ? card.options.filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
