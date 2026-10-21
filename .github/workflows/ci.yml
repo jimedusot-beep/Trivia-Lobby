@@ -7,6 +7,23 @@ on:
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: trivia_ci
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U trivia -d trivia_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trivia:trivia_ci_only@localhost:5432/trivia_ci
+      TEST_DATABASE_URL: postgresql://trivia:trivia_ci_only@localhost:5432/trivia_ci
+      PRIVATE_STORAGE_DIR: /tmp/trivia-ci-private-sources
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,3 +34,9 @@ jobs:
       - run: npm run check
       - run: npm run test
       - run: npm run build
+      - name: Create fresh test schema
+        run: npm run db:push
+      - name: Verify additive Phase 3 migration
+        run: npm run db:migrate:phase3
+      - name: Verify private HTTP boundaries with PostgreSQL
+        run: npm run test:integration

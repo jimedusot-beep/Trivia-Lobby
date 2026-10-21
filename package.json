@@ -9,7 +9,9 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "test": "tsx --test client/src/lib/*.test.ts server/library-parse.test.ts",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "test:integration": "tsx --test tests/private-library.integration.test.ts",
+    "db:migrate:phase3": "tsx script/migrate-phase3.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
