@@ -23,7 +23,7 @@ export default function LibraryGate({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  async function login(event: React.FormEvent) {
+  async function login(event: FormEvent) {
     event.preventDefault();
     if (!password || working) return;
     setWorking(true); setError("");
