@@ -63,6 +63,20 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.decks.import.path, async (req, res) => {
+    try {
+      const input = api.decks.import.input.parse(req.body);
+      const deck = await storage.importDeck(input.deck, input.cards);
+      res.status(201).json(deck);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.message });
+      }
+      console.error("Deck import failed:", err);
+      res.status(500).json({ message: "Import failed; no partial deck was saved." });
+    }
+  });
+
   app.post(api.cards.create.path, async (req, res) => {
     try {
       const deckId = Number(req.params.id);
