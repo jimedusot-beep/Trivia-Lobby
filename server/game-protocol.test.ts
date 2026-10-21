@@ -55,10 +55,11 @@ test("answer scoring is server authoritative and streak-based", () => {
 });
 
 test("leaderboard only serializes safe public fields", () => {
-  const results = safeLeaderboard([
+  const privatePlayers = [
     { id: "a", name: "One", score: 25, lastPoints: 25, connected: true, tokenHash: "private", ws: "private" },
     { id: "b", name: "Two", score: 100, lastPoints: 100, connected: false, tokenHash: "private" }
-  ]);
+  ];
+  const results = safeLeaderboard(privatePlayers);
   assert.equal(results[0].playerId, "b");
   assert.equal(JSON.stringify(results).includes("tokenHash"), false);
   assert.equal(JSON.stringify(results).includes("ws"), false);
