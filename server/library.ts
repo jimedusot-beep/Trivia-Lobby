@@ -144,6 +144,7 @@ export function registerLibraryRoutes(app: Express): void {
 
   app.patch("/api/library/files/:id", requireUser, async (req, res, next) => {
     try {
+      if (!libraryId.safeParse(String(req.params.id)).success) { res.status(404).json({ message: "File not found" }); return; }
       const input = fileDetails.parse(req.body);
       const [file] = await db.update(libraryFiles).set(input)
         .where(and(eq(libraryFiles.id, String(req.params.id)), eq(libraryFiles.ownerId, req.studyUser!.id))).returning();
@@ -154,6 +155,7 @@ export function registerLibraryRoutes(app: Express): void {
 
   app.delete("/api/library/files/:id", requireUser, async (req, res, next) => {
     try {
+      if (!libraryId.safeParse(String(req.params.id)).success) { res.status(404).json({ message: "File not found" }); return; }
       const [deleted] = await db.delete(libraryFiles)
         .where(and(eq(libraryFiles.id, String(req.params.id)), eq(libraryFiles.ownerId, req.studyUser!.id))).returning();
       if (!deleted) { res.status(404).json({ message: "File not found" }); return; }

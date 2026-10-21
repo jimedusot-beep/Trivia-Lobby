@@ -15,6 +15,7 @@ const decoder = new TextDecoder("utf-8", { fatal: true });
 export function safeFilename(name: string): string {
   if (!name || name.length > 180 || /[/\\\x00-\x1f]/.test(name) || name === "." || name === "..")
     throw new Error("Invalid filename");
+  if (!name.trim()) throw new Error("Invalid filename");
   return name.trim();
 }
 function readText(bytes: Buffer): string {
