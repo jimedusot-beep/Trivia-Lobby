@@ -8,6 +8,8 @@ import Home from "@/pages/Home";
 import ImportDeck from "@/pages/ImportDeck";
 import Study from "@/pages/Study";
 import Practice from "@/pages/Practice";
+import Learning, { AdaptiveReview } from "@/pages/Learning";
+import LearningSources from "@/pages/LearningSources";
 import Host from "@/pages/Host";
 import Join from "@/pages/Join";
 import Play from "@/pages/Play";
@@ -20,6 +22,9 @@ function Router() {
       <Route path="/import" component={ImportDeck} />
       <Route path="/study/:id" component={Study} />
       <Route path="/practice/:id" component={Practice} />
+      <Route path="/learning/review/:deckId" component={AdaptiveReview} />
+      <Route path="/learning/sources" component={LearningSources} />
+      <Route path="/learning" component={Learning} />
       <Route path="/host/:deckId" component={Host} />
       <Route path="/join" component={Join} />
       <Route path="/play" component={Play} />
