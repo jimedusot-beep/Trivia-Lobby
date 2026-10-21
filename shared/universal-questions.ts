@@ -134,7 +134,7 @@ export function gradeUniversalAnswer(question: UniversalQuestion, response: unkn
 }
 /** Player-facing projection only; does not expose answer keys, matches or text answers. */
 export function withoutAnswerKeys(question: UniversalQuestion) {
-  const { answer, ...base } = question;
+  const { answer, explanation: _hiddenExplanation, ...base } = question;
   switch (answer.kind) {
     case "multiple_choice": case "multiple_select":
       return { ...base, answer: { kind: answer.kind, options: answer.options } };
