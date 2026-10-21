@@ -16,11 +16,22 @@ export default function Host() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  // Auto-create room on mount
+  // Only authenticated deck owners can mint a short-lived, single-use host ticket.
   useEffect(() => {
-    if (connected && deckId && !gameState.roomCode) {
-      emit(WS_EVENTS.CREATE_ROOM, { deckId: parseInt(deckId) });
-    }
+    if (!connected || !deckId || gameState.roomCode) return;
+    let cancelled = false;
+    fetch("/api/game/host-ticket", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deckId: Number(deckId) })
+    }).then(async response => {
+      const value = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(value.message || "Unable to host game");
+      if (!cancelled) emit(WS_EVENTS.CREATE_ROOM, { deckId: Number(deckId), hostToken: value.hostToken });
+    }).catch(error => {
+      if (!cancelled) toast({ title: "Cannot host game", description: error.message, variant: "destructive" });
+    });
+    return () => { cancelled = true; };
   }, [connected, deckId, gameState.roomCode, emit]);
 
   const copyCode = () => {
