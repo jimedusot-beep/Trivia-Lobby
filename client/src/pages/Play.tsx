@@ -126,6 +126,7 @@ export default function Play() {
                    <button
                      key={letter}
                      disabled={!!selectedAnswer || !!gameState.answeredCurrentQuestion}
+                     aria-label={`Answer ${letter}: ${gameState.currentQuestion?.choices[i] ?? ""}`}
                      onClick={() => submitAnswer(letter)}
                      className={`rounded-2xl shadow-lg border-b-8 transition-all active:border-b-0 active:translate-y-2 flex flex-col items-center justify-center gap-2 ${getButtonColor(letter, i)}`}
                    >
