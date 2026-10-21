@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { registerStudyRoutes } from "./study-routes";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
@@ -37,6 +38,8 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  registerStudyRoutes(app);
+
   // === HTTP API ROUTES ===
 
   app.get(api.decks.list.path, async (req, res) => {
