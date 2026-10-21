@@ -5,7 +5,7 @@ import { WS_EVENTS } from "./schema";
 export const PROTOCOL_VERSION = 1 as const;
 export const roomCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
 const action = z.object({ roomCode: roomCodeSchema.optional() }).strict();
-const envelope = <T extends z.ZodTypeAny>(type: string, payload: T) =>
+const envelope = <K extends string, T extends z.ZodTypeAny>(type: K, payload: T) =>
   z.object({ v: z.literal(PROTOCOL_VERSION), type: z.literal(type), payload }).strict();
 
 export const clientMessageSchema = z.discriminatedUnion("type", [
