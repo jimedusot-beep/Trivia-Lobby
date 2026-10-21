@@ -153,7 +153,7 @@ export function registerStudyRoutes(app: Express) {
       const [previous] = await tx.select().from(studySchedule)
         .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.cardId, input.cardId))).limit(1);
       const now = new Date();
-      const computed = calculateReview(previous?.fsrsState ?? null, input.rating, now);
+      const computed = calculateReview(previous?.fsrsState ?? null, input.rating as 1 | 2 | 3 | 4, now);
       const updated = {
         fsrsState: computed.after,
         dueAt: computed.after.due,
@@ -221,14 +221,14 @@ export function registerStudyRoutes(app: Express) {
       if (stat) { stat.attempts++; if (event.correct) stat.correct++; }
     }
     const activeDays = new Set(events.map(x => x.reviewedAt.toISOString().slice(0, 10)));
-    const daily = [...activeDays].sort().reverse();
+    const daily = Array.from(activeDays).sort().reverse();
     // Streaks reward studying without deleting earned achievements after an absence.
     let streak = 0;
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     if (!activeDays.has(start.toISOString().slice(0, 10))) start.setUTCDate(start.getUTCDate() - 1);
     while (activeDays.has(start.toISOString().slice(0, 10))) { streak++; start.setUTCDate(start.getUTCDate() - 1); }
     const correct = events.filter(e => e.correct).length;
-    const totalDue = [...stats.values()].reduce((n, x) => n + x.due, 0);
+    const totalDue = Array.from(stats.values()).reduce((n, x) => n + x.due, 0);
     res.json({
       attempts: events.length, correct, accuracy: events.length ? Math.round(100 * correct / events.length) : 0,
       sessions: activeDays.size, dueReviews: totalDue, studyStreak: streak, xp: events.length + correct * 4,
@@ -237,7 +237,7 @@ export function registerStudyRoutes(app: Express) {
         ...(events.length >= 25 ? ["25 reviews"] : []),
         ...(correct >= 50 ? ["50 recalled"] : []),
       ],
-      decks: [...stats.values()].map(x => ({ ...x, accuracy: x.attempts ? Math.round(100 * x.correct / x.attempts) : null })),
+      decks: Array.from(stats.values()).map(x => ({ ...x, accuracy: x.attempts ? Math.round(100 * x.correct / x.attempts) : null })),
       historyLimited: events.length === 10000, calendar: daily.slice(0, 365),
     });
   }));
