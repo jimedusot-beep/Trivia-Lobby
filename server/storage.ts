@@ -51,8 +51,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDeck(id: number): Promise<void> {
-    await db.delete(cards).where(eq(cards.deckId, id));
-    await db.delete(decks).where(eq(decks.id, id));
+    await db.transaction(async (tx) => {
+      await tx.delete(cards).where(eq(cards.deckId, id));
+      await tx.delete(decks).where(eq(decks.id, id));
+    });
   }
 
   async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]> {
