@@ -9,7 +9,7 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
   process.env.DATABASE_URL = process.env.STUDY_TEST_DATABASE_URL;
   const { default: express } = await import("express");
   const { registerStudyRoutes } = await import("./study-routes");
-  const { db } = await import("./db");
+  const { db, pool } = await import("./db");
   const { decks, cards, studyAccounts } = await import("@shared/schema");
   const { eq } = await import("drizzle-orm");
   const app = express();
@@ -74,5 +74,6 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
     if (cardId > 0) await db.delete(cards).where(eq(cards.id, cardId));
     if (deckId > 0) await db.delete(decks).where(eq(decks.id, deckId));
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+    await pool.end();
   }
 });
