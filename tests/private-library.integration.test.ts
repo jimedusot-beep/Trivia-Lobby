@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import express from "express";
 import { pool } from "../server/db";
 import { registerRoutes } from "../server/routes";
+import { exportDeckJson, parseDeckContent } from "../client/src/lib/deck-io";
 
 const enabled = process.env.TEST_DATABASE_URL && process.env.DATABASE_URL === process.env.TEST_DATABASE_URL;
 describe("private library HTTP integration (dedicated disposable database required)", { skip: !enabled }, () => {
@@ -70,6 +71,16 @@ describe("private library HTTP integration (dedicated disposable database requir
       const linked = await request("GET", "/api/decks/" + linkedDeckId, c1);
       assert.equal(linked.data.cards.length, 2);
       assert.equal((await request("GET", "/api/decks/" + linkedDeckId, c2)).res.status, 404);
+
+      // Restore a portable card-deck backup while retaining the original source separately.
+      const cardBackup = exportDeckJson(linked.data);
+      const parsedBackup = parseDeckContent(cardBackup, "restored.json");
+      const restoredDeck = await request("POST", "/api/decks/import", c1, {
+        deck: { title: parsedBackup.title, description: parsedBackup.description, category: parsedBackup.category },
+        cards: parsedBackup.cards,
+      });
+      assert.equal(restoredDeck.res.status, 201);
+      assert.equal((await request("GET", "/api/decks/" + restoredDeck.data.id, c1)).data.cards.length, 2);
 
       const download = await fetch(base + "/api/library/files/" + id + "/original", { headers: { Cookie: c1 } });
       assert.equal(download.status, 200);
