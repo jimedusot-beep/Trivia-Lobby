@@ -15,6 +15,7 @@ export default function Host() {
   const { connected, gameState, emit } = useGameSocket();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [hostError, setHostError] = useState<string | null>(null);
 
   // Only authenticated deck owners can mint a short-lived, single-use host ticket.
   useEffect(() => {
@@ -29,7 +30,10 @@ export default function Host() {
       if (!response.ok) throw new Error(value.message || "Unable to host game");
       if (!cancelled) emit(WS_EVENTS.CREATE_ROOM, { deckId: Number(deckId), hostToken: value.hostToken });
     }).catch(error => {
-      if (!cancelled) toast({ title: "Cannot host game", description: error.message, variant: "destructive" });
+      if (!cancelled) {
+        setHostError(error.message);
+        toast({ title: "Cannot host game", description: error.message, variant: "destructive" });
+      }
     });
     return () => { cancelled = true; };
   }, [connected, deckId, gameState.roomCode, emit]);
@@ -55,6 +59,7 @@ export default function Host() {
     emit(WS_EVENTS.NEXT_QUESTION, { roomCode: gameState.roomCode });
   };
 
+  if (hostError) return <main className="min-h-screen grid place-items-center p-8 text-center"><div><h2 className="text-2xl font-bold">Unable to host this deck</h2><p className="my-4">{hostError}</p><Link href="/"><Button>Return to library</Button></Link></div></main>;
   if (!connected) return (
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="animate-pulse text-2xl font-bold text-primary">Connecting to server...</div>
@@ -85,12 +90,13 @@ export default function Host() {
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
             <div className="space-y-4">
               <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
-              <div 
+              <button type="button"
                 onClick={copyCode}
-                className="text-8xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
+                aria-label="Copy room code to clipboard"
+                className="text-4xl sm:text-6xl lg:text-8xl font-black font-mono tracking-tight cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
               >
                 {gameState.roomCode || "..."}
-              </div>
+              </button>
               <Button variant="ghost" size="sm" onClick={copyCode} className="text-slate-400 hover:text-white">
                 {copied ? "Copied!" : <><Copy className="w-4 h-4 mr-2" /> Click to Copy</>}
               </Button>
