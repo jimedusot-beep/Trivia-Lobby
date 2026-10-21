@@ -35,7 +35,7 @@ export function TimerBar({ durationMs, serverStartTs, onExpire }: TimerBarProps)
       <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-muted-foreground">
         <span>Time Remaining</span>
       </div>
-      <Progress value={progress} className="h-4 rounded-full bg-slate-200" indicatorClassName="bg-primary transition-all duration-100 ease-linear" />
+      <Progress value={progress} className="h-4 rounded-full bg-slate-200" />
     </div>
   );
 }
