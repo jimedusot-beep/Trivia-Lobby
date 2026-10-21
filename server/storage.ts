@@ -7,27 +7,27 @@ import {
   type Deck,
   type Card
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export interface IStorage {
   // Decks
-  getDecks(): Promise<Deck[]>;
-  getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined>;
-  createDeck(deck: InsertDeck): Promise<Deck>;
-  importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck>;
-  deleteDeck(id: number): Promise<boolean>;
+  getDecks(ownerId: string): Promise<Deck[]>;
+  getDeck(id: number, ownerId: string): Promise<(Deck & { cards: Card[] }) | undefined>;
+  createDeck(deck: InsertDeck, ownerId: string): Promise<Deck>;
+  importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[], ownerId: string): Promise<Deck>;
+  deleteDeck(id: number, ownerId: string): Promise<boolean>;
   
   // Cards
-  createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]>;
+  createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[], ownerId: string): Promise<Card[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getDecks(): Promise<Deck[]> {
-    return await db.select().from(decks).orderBy(decks.createdAt);
+  async getDecks(ownerId: string): Promise<Deck[]> {
+    return await db.select().from(decks).where(eq(decks.ownerId, ownerId)).orderBy(decks.createdAt);
   }
 
-  async getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined> {
-    const deck = await db.select().from(decks).where(eq(decks.id, id));
+  async getDeck(id: number, ownerId: string): Promise<(Deck & { cards: Card[] }) | undefined> {
+    const deck = await db.select().from(decks).where(and(eq(decks.id, id), eq(decks.ownerId, ownerId)));
     if (deck.length === 0) return undefined;
 
     const deckCards = await db.select().from(cards).where(eq(cards.deckId, id));
@@ -35,34 +35,37 @@ export class DatabaseStorage implements IStorage {
     return { ...deck[0], cards: deckCards };
   }
 
-  async createDeck(deck: InsertDeck): Promise<Deck> {
-    const [newDeck] = await db.insert(decks).values(deck).returning();
+  async createDeck(deck: InsertDeck, ownerId: string): Promise<Deck> {
+    const [newDeck] = await db.insert(decks).values({ ...deck, ownerId }).returning();
     return newDeck;
   }
 
   // Save deck and every card in a single transaction. Roll back on any failure.
-  async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck> {
+  async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[], ownerId: string): Promise<Deck> {
     if (cardsList.length === 0) throw new Error('Cannot import an empty deck');
     return db.transaction(async (tx) => {
-      const [created] = await tx.insert(decks).values(deck).returning();
+      const [created] = await tx.insert(decks).values({ ...deck, ownerId }).returning();
       await tx.insert(cards).values(cardsList.map(card => ({ ...card, deckId: created.id })));
       return created;
     });
   }
 
-  async deleteDeck(id: number): Promise<boolean> {
+  async deleteDeck(id: number, ownerId: string): Promise<boolean> {
     return db.transaction(async (tx) => {
       // The database FK cascades card deletions atomically with the deck.
-      const deleted = await tx.delete(decks).where(eq(decks.id, id)).returning({ id: decks.id });
+      const deleted = await tx.delete(decks).where(and(eq(decks.id, id), eq(decks.ownerId, ownerId))).returning({ id: decks.id });
       return deleted.length > 0;
     });
   }
 
-  async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]> {
+  async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[], ownerId: string): Promise<Card[]> {
     if (cardsList.length === 0) return [];
-    
-    const cardsWithDeckId = cardsList.map(c => ({ ...c, deckId }));
-    return await db.insert(cards).values(cardsWithDeckId).returning();
+    return db.transaction(async (tx) => {
+      const [owned] = await tx.select({ id: decks.id }).from(decks)
+        .where(and(eq(decks.id, deckId), eq(decks.ownerId, ownerId)));
+      if (!owned) throw new Error("Deck not found");
+      return tx.insert(cards).values(cardsList.map(c => ({ ...c, deckId }))).returning();
+    });
   }
 }
 
