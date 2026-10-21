@@ -23,7 +23,7 @@ export default function Join() {
   // But we need to emit JOIN_ROOM first.
 
   const handleJoin = () => {
-    if (!name || !code) return;
+    if (!name.trim() || !/^[A-HJ-NP-Z2-9]{8}$/.test(code)) return;
     
     if (!connected) {
       toast({ title: "Connecting...", description: "Please wait for server connection." });
@@ -58,7 +58,9 @@ export default function Join() {
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               maxLength={8}
+              aria-describedby="room-code-help"
             />
+            <p id="room-code-help" className="text-xs text-muted-foreground">Enter the eight-character code shown by your host.</p>
           </div>
           <div className="space-y-2">
             <Label className="text-lg">Your Name</Label>
@@ -73,7 +75,7 @@ export default function Join() {
           <Button 
             className="w-full h-14 text-xl font-bold rounded-xl shadow-lg shadow-primary/20 btn-bouncy"
             onClick={handleJoin}
-            disabled={!name || !code || isJoining}
+            disabled={!name.trim() || !/^[A-HJ-NP-Z2-9]{8}$/.test(code) || isJoining}
           >
             {isJoining ? <Loader2 className="animate-spin" /> : "Enter Game"}
           </Button>
