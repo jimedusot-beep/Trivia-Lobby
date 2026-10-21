@@ -156,7 +156,7 @@ export default function VisualPractice() {
                   aria-label={`Select region ${i+1}`} aria-pressed={targetId===t.id}
                   onClick={()=>setTargetId(t.id)}
                   className={`absolute rounded-full border-2 border-white focus-visible:outline outline-4 outline-primary ${targetId===t.id?"bg-blue-700":"bg-red-600"}`}
-                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:Math.max(20,t.radius*100)+"%",height:Math.max(20,t.radius*100)+"%",transform:"translate(-50%,-50%)"}}/>)}
+                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"28px",height:"28px",transform:"translate(-50%,-50%)"}}/>)}
               </div>:<p role="note">The source image is unavailable; ask the author to add an HTTPS image URL.</p>}
               {answer.kind!=="drag_drop_labels"&&<fieldset className="flex flex-wrap gap-2">
                 <legend className="mb-2">Keyboard-accessible region choices</legend>
