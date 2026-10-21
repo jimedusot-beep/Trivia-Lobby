@@ -80,10 +80,11 @@ test("PostgreSQL ownership, session cookies, transactional data and real WebSock
       email: `integration-${label}-${Date.now()}@example.test`,
       password: "a-very-long-test-password-12345"
     });
-    assert.equal(response.status, 201, await response.text().catch(() => ""));
+    const payload = await response.json();
+    assert.equal(response.status, 201, JSON.stringify(payload));
     const cookie = response.headers.get("set-cookie")?.split(";")[0];
     assert.ok(cookie, "Session cookie must be issued");
-    return { cookie, user: await response.json() };
+    return { cookie, user: payload };
   }
 
   try {
