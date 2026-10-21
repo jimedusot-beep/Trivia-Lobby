@@ -8,7 +8,7 @@
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "test": "tsx --test client/src/lib/*.test.ts server/*.test.ts",
+    "test": "tsx --test client/src/lib/*.test.ts server/*.test.ts tests/universal-questions.test.ts && node --test tests/research-manifest.test.mjs",
     "test:integration": "tsx --test tests/postgres.integration.test.ts",
     "db:push": "drizzle-kit push"
   },
