@@ -35,7 +35,7 @@ export function restoreCard(snapshot: unknown, now: Date): Card {
     learning_steps: num("learning_steps"),
     reps: num("reps"),
     lapses: num("lapses"),
-    state,
+    state: state as Card["state"],
   };
 }
 
