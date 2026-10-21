@@ -11,8 +11,11 @@ This is the **single active codebase**: [jimedusot-beep/Trivia-Lobby](https://gi
 - Flashcard decks and study view
 - Host/join live trivia games with WebSockets
 - Database-backed decks and cards with PostgreSQL
-- CSV paste import with preview
-- New: select a local CSV or TSV file, preview, then import deck and cards in **one database transaction**
+- CSV/TSV paste or file selection, preview and validation, with an **all-or-nothing PostgreSQL import transaction**
+- New: versioned Trivia Lobby JSON backup restore plus CSV/JSON backup downloads from each deck's study screen
+- New: searchable deck library and solo multiple-choice practice; small decks use reveal-and-rate instead of made-up distractors
+- New: review missed flashcards within the same study session (fixed queue behavior)
+- TypeScript, regression tests and production build in GitHub Actions
 
 ## Getting started
 
@@ -29,7 +32,7 @@ The `DATABASE_URL` must point at a **persistent** PostgreSQL instance. Never com
 
 ## Import file format
 
-Create a UTF-8 `.csv` or `.tsv` file with header names as below, then select it on **Create Deck** and preview before saving.
+Create a UTF-8 `.csv` or `.tsv` file (or restore a previously exported `.json` deck backup) with header names as below, then select it on **Create Deck** and preview before saving.
 
 ```csv
 Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
@@ -37,7 +40,7 @@ Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
 "What does DNA stand for?","Deoxyribonucleic acid","flashcard",,,,,
 ```
 
-Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The current application does not support users, private deck access, or permanent document storage.
+Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The current application does not support users, private deck access, permanent original-document storage, or cross-device review progress. Save your own JSON backup regularly; downloaded backups contain **cards only**, not original uploaded files. Do not upload confidential student materials to an accessible public deployment.
 
 ## Engineering research library (October 2026)
 
@@ -54,7 +57,7 @@ These are **research references only**. No third-party code, proprietary assets,
 4. **Content creation:** bulk importing, document-to-card suggestions with human review, editing, duplicates, and exports.
 5. **Reliability:** backups, private files, restoration tests, import limits, audit logs, and clear retention policy.
 
-See [Import & storage plan](docs/IMPORT_AND_STORAGE.md) for security, data retention, and hosting considerations.
+See [Import & storage plan](docs/IMPORT_AND_STORAGE.md) for security, data retention, and hosting considerations. See also the [28-project reference audit and integration blueprint](docs/research/INTEGRATION_BLUEPRINT.md).
 
 ## Deployment note
 

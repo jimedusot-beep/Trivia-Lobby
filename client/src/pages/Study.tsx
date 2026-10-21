@@ -3,10 +3,11 @@ import { Link, useParams } from "wouter";
 import confetti from "canvas-confetti";
 import { useDeck } from "@/hooks/use-decks";
 import { AnimatedCard } from "@/components/AnimatedCard";
+import { downloadDeck } from "@/lib/deck-io";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, RotateCcw, ThumbsUp, ThumbsDown, Trophy } from "lucide-react";
+import { ArrowLeft, RotateCcw, ThumbsUp, ThumbsDown, Trophy, Download } from "lucide-react";
 
 export default function Study() {
   const { id } = useParams();
@@ -20,6 +21,9 @@ export default function Study() {
   useEffect(() => {
     if (deck?.cards) {
       setQueue([...deck.cards]);
+      setCurrentIndex(0);
+      setCompleted(false);
+      setIsFlipped(false);
     }
   }, [deck]);
 
@@ -27,23 +31,18 @@ export default function Study() {
   const progress = queue.length > 0 ? (currentIndex / queue.length) * 100 : 0;
 
   const handleNext = (correct: boolean) => {
+    if (!currentCard || completed) return;
+    // Missed cards are added to the back so they return before the session ends.
+    const nextQueue = correct ? queue : [...queue, currentCard];
+    const nextIndex = currentIndex + 1;
+    setQueue(nextQueue);
     setIsFlipped(false);
-    
-    setTimeout(() => {
-      if (!correct) {
-        // If wrong, push to end of queue for review
-        setQueue(prev => [...prev, currentCard]);
-      }
-      
-      if (currentIndex + 1 >= queue.length) {
-        if (correct) {
-           setCompleted(true);
-           confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        }
-      } else {
-        setCurrentIndex(prev => prev + 1);
-      }
-    }, 300); // Wait for flip back
+    if (nextIndex >= nextQueue.length) {
+      setCompleted(true);
+      confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+    } else {
+      setCurrentIndex(nextIndex);
+    }
   };
 
   const handleRestart = () => {
@@ -72,10 +71,13 @@ export default function Study() {
             <h2 className="font-bold text-lg">{deck.title}</h2>
             <p className="text-xs text-muted-foreground">{currentIndex + 1} / {queue.length} cards</p>
           </div>
-          <div className="w-20" /> {/* Spacer for centering */}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => downloadDeck(deck, "csv")}><Download className="mr-1 h-4 w-4" /> CSV</Button>
+            <Button size="sm" variant="outline" onClick={() => downloadDeck(deck, "json")}><Download className="mr-1 h-4 w-4" /> Backup</Button>
+          </div>
         </div>
 
-        <Progress value={completed ? 100 : progress} className="h-3 rounded-full" />
+        <Progress value={completed ? 100 : progress} className="h-3 rounded-full" aria-label="Study progress" />
 
         <div className="flex-1 flex flex-col justify-center">
           {completed ? (
@@ -84,7 +86,7 @@ export default function Study() {
                 <Trophy className="h-12 w-12" />
               </div>
               <h1 className="text-4xl font-display font-bold">Session Complete!</h1>
-              <p className="text-muted-foreground text-lg">You've reviewed all cards in this deck.</p>
+              <p className="text-muted-foreground text-lg">You've reviewed all cards in this deck. Session results are not yet saved to an account.</p>
               <Button onClick={handleRestart} size="lg" className="rounded-xl text-lg px-8">
                 <RotateCcw className="mr-2 h-5 w-5" /> Start Over
               </Button>

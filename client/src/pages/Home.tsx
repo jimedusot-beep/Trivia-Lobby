@@ -3,7 +3,9 @@ import { useDecks } from "@/hooks/use-decks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2 } from "lucide-react";
+import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search } from "lucide-react";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { useDeleteDeck } from "@/hooks/use-decks";
 import {
   AlertDialog,
@@ -20,6 +22,12 @@ import {
 export default function Home() {
   const { data: decks, isLoading } = useDecks();
   const deleteDeck = useDeleteDeck();
+  const [search, setSearch] = useState("");
+  const matchingDecks = (decks ?? []).filter(deck =>
+    [deck.title, deck.category, deck.description].some(value =>
+      (value ?? "").toLowerCase().includes(search.trim().toLowerCase())
+    )
+  );
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
@@ -52,26 +60,30 @@ export default function Home() {
           <h2 className="text-3xl font-bold font-display text-foreground">Your Decks</h2>
         </div>
 
+        <div className="relative max-w-xl">
+          <Search aria-hidden="true" className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+          <Input aria-label="Search saved decks" placeholder="Search saved decks by name, course or topic" className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-64 rounded-3xl" />
             ))}
           </div>
-        ) : decks?.length === 0 ? (
+        ) : matchingDecks.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-border">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
               <Upload className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-bold mb-2">No decks yet</h3>
-            <p className="text-muted-foreground mb-6">Import your first deck to get started!</p>
+            <h3 className="text-xl font-bold mb-2">{search ? "No matching decks" : "No decks yet"}</h3>
+            <p className="text-muted-foreground mb-6">{search ? "Try a different search term." : "Import your first deck to get started!"}</p>
             <Link href="/import">
               <Button>Create Deck</Button>
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {decks?.map((deck) => (
+            {matchingDecks.map((deck) => (
               <Card key={deck.id} className="group hover:shadow-xl hover:border-primary/50 transition-all duration-300 rounded-3xl overflow-hidden border-2 bg-card">
                 <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-4">
                   <div className="flex justify-between items-start">
@@ -113,10 +125,15 @@ export default function Home() {
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6 grid grid-cols-2 gap-3">
+                <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Link href={`/study/${deck.id}`}>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
                       <Brain className="mr-2 h-4 w-4" /> Study
+                    </Button>
+                  </Link>
+                  <Link href={`/practice/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                      <ClipboardList className="mr-2 h-4 w-4" /> Practice
                     </Button>
                   </Link>
                   <Link href={`/host/${deck.id}`}>
