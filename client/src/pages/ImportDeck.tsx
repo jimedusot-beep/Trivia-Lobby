@@ -173,7 +173,7 @@ export default function ImportDeck() {
                 <Button 
                   className="w-full rounded-xl" 
                   onClick={handleParse}
-                  disabled={!deckInfo.title || !csvContent}
+                  disabled={!csvContent || (!deckInfo.title && !selectedFilename?.toLowerCase().endsWith(".json"))}
                 >
                   Preview & Validate <Upload className="ml-2 h-4 w-4" />
                 </Button>
