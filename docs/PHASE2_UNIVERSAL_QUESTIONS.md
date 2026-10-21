@@ -8,7 +8,7 @@ Status: **implementation PR; not production/security ready until CI and database
 - Existing `decks` and `cards` tables, existing CSV/TSV/JSON import/export, flashcards, solo practice, and legacy WebSocket gameplay are preserved.
 - Additive `universal_questions` PostgreSQL table with deck FK and ON DELETE CASCADE, JSONB definitions, per-deck ordering, and a unique (deck ID, SHA-256 normalized prompt/type) fingerprint.
 - REST APIs for editing, listing, removing, ordering, viewing a key-free practice projection and **server-graded solo** answers.
-- Mobile-responsive Exam Builder for multiple choice, matching and image hotspot questions, including diagram URL/alt text, pointer placement with [0,1] coordinates, numerical position input for keyboard users, and question reorder buttons.
+- New blank exam deck form (`/new-exam`) followed by the mobile-responsive Exam Builder for multiple choice, matching and image hotspot questions, including diagram URL/alt text, pointer placement with [0,1] coordinates, numerical position input for keyboard users, and question reorder buttons.
 - Visual Practice and local 30-second Timed Test routes. Supports single/multiple selection, matching, region selection, textual answers, true/false, ordering, flashcards and labeling via keyboard-friendly choices. Study scores are session-only.
 
 **Defined and scored answer kinds (v1):** `text`, `flashcard`, `multiple_choice`, `multiple_select`, `true_false`, `short_answer`, `matching`, `ordering`, `drag_drop_labels`, `image_hotspot`, `diagram_identification`.
