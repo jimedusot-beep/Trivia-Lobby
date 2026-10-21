@@ -1,12 +1,20 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // === TABLE DEFINITIONS ===
 
+export const users = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const decks = pgTable("decks", {
   id: serial("id").primaryKey(),
+  ownerId: uuid("owner_id").references(() => users.id, { onDelete: "restrict" }),
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").default("General"),
@@ -39,12 +47,13 @@ export const cardsRelations = relations(cards, ({ one }) => ({
 
 // === BASE SCHEMAS ===
 
-export const insertDeckSchema = createInsertSchema(decks).omit({ id: true, createdAt: true });
+export const insertDeckSchema = createInsertSchema(decks).omit({ id: true, ownerId: true, createdAt: true });
 export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
 
 // === EXPLICIT API CONTRACT TYPES ===
 
 // Base types
+export type User = typeof users.$inferSelect;
 export type Deck = typeof decks.$inferSelect;
 export type InsertDeck = z.infer<typeof insertDeckSchema>;
 export type Card = typeof cards.$inferSelect;
