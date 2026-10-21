@@ -3,7 +3,7 @@
 ## Current status (verified in repository)
 
 - Decks and cards are stored in PostgreSQL via Drizzle ORM, requiring `DATABASE_URL`.
-- The current importer reads **CSV/TSV text** into cards and saves them as a deck. Imports use a database transaction after the feature branch is merged.
+- The current importer reads **CSV/TSV text** into cards and saves them as a deck. Imports use a database transaction so a failure rolls back the whole deck.
 - It does **not** retain the original uploaded file; file selection reads the CSV/TSV in the browser.
 - The app has no login/permission model: do not upload private class handouts, student data, or copyrighted course content you do not have rights to share on a publicly accessible deployment.
 - Game rooms are kept in **server memory** and disappear if the server restarts.
