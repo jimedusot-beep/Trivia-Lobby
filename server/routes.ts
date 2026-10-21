@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { registerUniversalQuestionRoutes } from "./universal-question-routes";
 
 // === GAME STATE TYPES ===
 type Player = {
@@ -38,6 +39,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   // === HTTP API ROUTES ===
+  registerUniversalQuestionRoutes(app);
 
   app.get(api.decks.list.path, async (req, res) => {
     const decks = await storage.getDecks();
