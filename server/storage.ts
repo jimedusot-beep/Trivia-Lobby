@@ -15,7 +15,7 @@ export interface IStorage {
   getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined>;
   createDeck(deck: InsertDeck): Promise<Deck>;
   importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck>;
-  deleteDeck(id: number): Promise<void>;
+  deleteDeck(id: number): Promise<boolean>;
   
   // Cards
   createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]>;
@@ -50,9 +50,12 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async deleteDeck(id: number): Promise<void> {
-    await db.delete(cards).where(eq(cards.deckId, id));
-    await db.delete(decks).where(eq(decks.id, id));
+  async deleteDeck(id: number): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      // The database FK cascades card deletions atomically with the deck.
+      const deleted = await tx.delete(decks).where(eq(decks.id, id)).returning({ id: decks.id });
+      return deleted.length > 0;
+    });
   }
 
   async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]> {
