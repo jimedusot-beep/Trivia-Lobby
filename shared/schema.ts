@@ -154,6 +154,7 @@ export const studyDrafts = pgTable("study_drafts", {
   sourceId: uuid("source_id").notNull().references(() => studySources.id, { onDelete: "cascade" }),
   front: text("front").notNull(),
   back: text("back").notNull(),
+  explanation: text("explanation"),
   evidence: text("evidence").notNull(),
   approved: boolean("approved").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
