@@ -108,7 +108,12 @@ export function parseDeckContent(content: string, filename: string): ParsedDeck 
     throw new Error("Missing Back or Answer header.");
   }
   const cards = parsed.data.map((row) => {
-    const options = [row.optiona, row.optionb, row.optionc, row.optiond].map(clean).filter(Boolean);
+    const slots = [row.optiona, row.optionb, row.optionc, row.optiond].map(clean);
+    const gap = slots.findIndex(option => !option);
+    if (gap !== -1 && slots.slice(gap + 1).some(Boolean)) {
+      throw new Error("Multiple-choice options must be contiguous from OptionA, without gaps.");
+    }
+    const options = slots.filter(Boolean);
     return {
       front: row.front || row.question,
       back: row.back || row.answer,
