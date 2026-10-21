@@ -7,6 +7,22 @@ on:
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia-ci-password
+          POSTGRES_DB: trivia_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U trivia -d trivia_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trivia:trivia-ci-password@127.0.0.1:5432/trivia_test
+      SESSION_SECRET: ci-only-32-plus-character-test-secret-please-replace
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,4 +32,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test
+      - run: npm run db:push
+      - run: npm run test:integration
       - run: npm run build
