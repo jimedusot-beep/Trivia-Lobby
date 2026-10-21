@@ -158,7 +158,7 @@ export default function Host() {
              )}
 
              {/* Result/Leaderboard Screen */}
-             {gameState.lastAnswerResult && (
+             {gameState.lastAnswerResult && gameState.currentQuestion && (
                <div className="text-center space-y-8 animate-in slide-in-from-right duration-500">
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
