@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import Papa from "papaparse";
+import { parseDeckContent, MAX_DECK_FILE_BYTES, type ImportableCard } from "@/lib/deck-io";
 import { useImportDeck } from "@/hooks/use-decks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,17 +18,17 @@ export default function ImportDeck() {
   const [deckInfo, setDeckInfo] = useState({ title: "", description: "", category: "General" });
   const [csvContent, setCsvContent] = useState("");
   const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
-  const [parsedCards, setParsedCards] = useState<any[]>([]);
+  const [parsedCards, setParsedCards] = useState<ImportableCard[]>([]);
 
   const importDeck = useImportDeck();
 
   const handleFile = async (file?: File) => {
     if (!file) return;
-    if (!/\.(csv|tsv)$/i.test(file.name)) {
-      toast({ title: "Unsupported file", description: "Choose a CSV or TSV file.", variant: "destructive" });
+    if (!/\.(csv|tsv|json)$/i.test(file.name)) {
+      toast({ title: "Unsupported file", description: "Choose CSV, TSV, or a Trivia Lobby JSON backup.", variant: "destructive" });
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_DECK_FILE_BYTES) {
       toast({ title: "File too large", description: "Limit imports to 2 MB per file.", variant: "destructive" });
       return;
     }
@@ -44,49 +44,34 @@ export default function ImportDeck() {
       setParsedCards([]);
       setStep(1);
     } catch {
-      toast({ title: "Could not read file", description: "Please choose a valid CSV or TSV file.", variant: "destructive" });
+      toast({ title: "Could not read file", description: "Please choose a readable CSV, TSV, or Trivia Lobby JSON backup.", variant: "destructive" });
     }
   };
 
   const handleParse = () => {
-    if (!csvContent.trim()) {
-      toast({ title: "Empty content", description: "Please paste CSV content first.", variant: "destructive" });
-      return;
-    }
-
-    Papa.parse(csvContent, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: "", // Auto-detect comma or tab separators.
-      complete: (results) => {
-        if (results.errors.length > 0) {
-          toast({ title: "CSV Error", description: "Failed to parse CSV.", variant: "destructive" });
-          return;
-        }
-
-        const validCards = results.data.map((row: any) => {
-            // Basic validation and transformation
-            return {
-                front: row.Front || row.Question || "",
-                back: row.Back || row.Answer || "",
-                type: row.Type?.toLowerCase() || "flashcard",
-                correctOption: row.CorrectOption || null,
-                options: [row.OptionA, row.OptionB, row.OptionC, row.OptionD].filter(Boolean),
-            };
-        }).filter(c => c.front && c.back);
-
-        if (validCards.length === 0) {
-            toast({ title: "No valid cards", description: "Could not find valid Front/Back columns.", variant: "destructive" });
-            return;
-        }
-
-        setParsedCards(validCards);
-        setStep(2);
+    try {
+      const sourceName = selectedFilename || (csvContent.includes("\t") ? "paste.tsv" : "paste.csv");
+      const parsed = parseDeckContent(csvContent, sourceName);
+      if (parsed.title) {
+        setDeckInfo(prev => ({
+          title: prev.title || parsed.title || "",
+          description: prev.description || parsed.description || "",
+          category: prev.category !== "General" ? prev.category : (parsed.category || "General"),
+        }));
       }
-    });
+      setParsedCards(parsed.cards);
+      setStep(2);
+    } catch (error) {
+      toast({
+        title: "Import validation failed",
+        description: error instanceof Error ? error.message : "Check your file format.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleImport = async () => {
+    if (isPending) return;
     try {
       await importDeck.mutateAsync({
         deck: {
@@ -100,7 +85,7 @@ export default function ImportDeck() {
       toast({ title: "Success!", description: "Deck imported successfully." });
       setLocation("/");
     } catch (err) {
-      toast({ title: "Import failed", description: "Something went wrong.", variant: "destructive" });
+      toast({ title: "Import failed", description: err instanceof Error ? err.message : "Something went wrong.", variant: "destructive" });
     }
   };
 
@@ -159,31 +144,31 @@ export default function ImportDeck() {
 
             <Card className="rounded-2xl border-none shadow-lg">
               <CardHeader>
-                <CardTitle>Upload study cards (CSV or TSV)</CardTitle>
+                <CardTitle>Import study cards or restore a backup</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
-                  <strong>Format:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption
+                  <strong>CSV/TSV headers:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption. Or use a Trivia Lobby JSON backup.
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="deck-file">Choose a file from your device</Label>
                   <Input
                     id="deck-file"
                     type="file"
-                    accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                    accept=".csv,.tsv,.json,text/csv,text/tab-separated-values,application/json"
                     onChange={e => void handleFile(e.target.files?.[0])}
                     aria-describedby="upload-help"
                   />
                   <p id="upload-help" className="text-xs text-muted-foreground">
-                    Up to 2 MB. {selectedFilename ? `Selected: ${selectedFilename}` : "Or paste CSV/TSV text below."}
+                    Up to 2 MB. CSV/TSV and Trivia Lobby JSON backups supported. {selectedFilename ? `Selected: ${selectedFilename}` : "Or paste CSV/TSV text below."}
                     The imported cards are saved to the configured PostgreSQL database. The original file is not yet archived.
                   </p>
                 </div>
                 <Textarea
                   className="min-h-[200px] font-mono text-sm"
-                  placeholder="Paste CSV content here..."
+                  placeholder="Paste CSV or TSV content here..."
                   value={csvContent}
-                  onChange={e => setCsvContent(e.target.value)}
+                  onChange={e => { setCsvContent(e.target.value); setSelectedFilename(null); }}
                 />
                 <Button 
                   className="w-full rounded-xl" 
