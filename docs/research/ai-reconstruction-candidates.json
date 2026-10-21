@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "updated": "2026-10-21",
+  "evidenceLabels": [
+    "reconstruction-tool",
+    "tool-lead-unverified",
+    "community-catalog",
+    "case-study-claim"
+  ],
+  "tracks": {
+    "rea": "REA and evidence-linked specifications",
+    "browser": "Browser automation and host/player tests",
+    "visual": "Original UI prototyping",
+    "replay": "Record and replay QA",
+    "cases": "Documented AI game/application reconstructions"
+  },
+  "entries": [
+    {
+      "track": "rea",
+      "name": "MaurizioCasciano/Reverse-Engineer-Anything",
+      "url": "https://github.com/MaurizioCasciano/Reverse-Engineer-Anything",
+      "evidence": "reconstruction-tool",
+      "application": "REA inspection and evidence collection",
+      "limitation": "Unverified against Trivia Lobby; feature and permissions must be checked"
+    },
+    {
+      "track": "rea",
+      "name": "ShadowSwaps/REA-Reconstruction-Companion",
+      "url": "https://github.com/ShadowSwaps/REA-Reconstruction-Companion",
+      "evidence": "tool-lead-unverified",
+      "application": "Turn evidence into specifications and traceable validation",
+      "limitation": "Existence/capabilities and license require independent verification"
+    },
+    {
+      "track": "browser",
+      "name": "browser-use/browser-use",
+      "url": "https://github.com/browser-use/browser-use",
+      "evidence": "reconstruction-tool",
+      "application": "Browser automation over authorized environments",
+      "limitation": "Do not record private accounts or tokens"
+    },
+    {
+      "track": "browser",
+      "name": "open-browser-use/open-browser-use",
+      "url": "https://github.com/open-browser-use/open-browser-use",
+      "evidence": "tool-lead-unverified",
+      "application": "Browser integration for local agents",
+      "limitation": "Verify status and project licensing"
+    },
+    {
+      "track": "visual",
+      "name": "abi/screenshot-to-code",
+      "url": "https://github.com/abi/screenshot-to-code",
+      "evidence": "reconstruction-tool",
+      "application": "Visual design prototyping",
+      "limitation": "Images alone cannot prove behavior"
+    },
+    {
+      "track": "visual",
+      "name": "maria-shimkovska/ui-screenshot-to-code-agent-agentspan",
+      "url": "https://github.com/maria-shimkovska/ui-screenshot-to-code-agent-agentspan",
+      "evidence": "tool-lead-unverified",
+      "application": "React component prototyping from authorized screenshots",
+      "limitation": "No copied brand visuals; verify repository"
+    },
+    {
+      "track": "replay",
+      "name": "hyperbrowserai/HyperAgent",
+      "url": "https://github.com/hyperbrowserai/HyperAgent",
+      "evidence": "tool-lead-unverified",
+      "application": "Record/replay web interactions",
+      "limitation": "Confirm replay feature from source before adoption"
+    },
+    {
+      "track": "replay",
+      "name": "bug0inc/qa-agent",
+      "url": "https://github.com/bug0inc/qa-agent",
+      "evidence": "tool-lead-unverified",
+      "application": "Natural-language end-to-end testing",
+      "limitation": "Check test determinism and dependency integrity"
+    },
+    {
+      "track": "cases",
+      "name": "AIshihzong/awesome-reverse-engineer-anything",
+      "url": "https://github.com/AIshihzong/awesome-reverse-engineer-anything",
+      "evidence": "community-catalog",
+      "application": "Find attributed REA case studies",
+      "limitation": "Community categorization is secondary evidence"
+    },
+    {
+      "track": "cases",
+      "name": "N0zoM1z0/dx-ball",
+      "url": "https://github.com/N0zoM1z0/dx-ball",
+      "evidence": "case-study-claim",
+      "application": "Function-level differential testing",
+      "limitation": "Do not generalize function parity to whole-game parity"
+    },
+    {
+      "track": "cases",
+      "name": "ucodia/desktop-games-nostalgia",
+      "url": "https://github.com/ucodia/desktop-games-nostalgia",
+      "evidence": "case-study-claim",
+      "application": "Desktop game/toy reconstruction",
+      "limitation": "Verify primary build log and method"
+    },
+    {
+      "track": "cases",
+      "name": "tuunanet/rea-ski-or-die-reconstruction",
+      "url": "https://github.com/tuunanet/rea-ski-or-die-reconstruction",
+      "evidence": "case-study-claim",
+      "application": "Legacy game reconstruction",
+      "limitation": "Inspect original rights, tests, and claims"
+    },
+    {
+      "track": "cases",
+      "name": "a-barzanti/ai-rebuilds",
+      "url": "https://github.com/a-barzanti/ai-rebuilds",
+      "evidence": "case-study-claim",
+      "application": "Specifications for AI rebuilt games",
+      "limitation": "Confirm case-by-case methods"
+    },
+    {
+      "track": "cases",
+      "name": "N0zoM1z0/th04",
+      "url": "https://github.com/N0zoM1z0/th04",
+      "evidence": "case-study-claim",
+      "application": "Legacy logic investigation",
+      "limitation": "No implied authorization to redistribute assets"
+    },
+    {
+      "track": "cases",
+      "name": "michaelshimeles/paper-rs",
+      "url": "https://github.com/michaelshimeles/paper-rs",
+      "evidence": "case-study-claim",
+      "application": "AI-assisted app reconstruction",
+      "limitation": "Check original developer notes"
+    },
+    {
+      "track": "cases",
+      "name": "michaelshimeles/rec-rs",
+      "url": "https://github.com/michaelshimeles/rec-rs",
+      "evidence": "case-study-claim",
+      "application": "Recorder-app reconstruction",
+      "limitation": "Check code provenance"
+    },
+    {
+      "track": "cases",
+      "name": "KarlssonChristoffer/DiskLens",
+      "url": "https://github.com/KarlssonChristoffer/DiskLens",
+      "evidence": "case-study-claim",
+      "application": "Desktop utility recreation",
+      "limitation": "Confirm REA usage and scope"
+    }
+  ]
+}
