@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Source = { id: string; title: string; body: string };
-type Draft = { id: string; sourceId: string; front: string; back: string; evidence: string; approved: boolean };
+type Draft = { id: string; sourceId: string; front: string; back: string; explanation: string | null; evidence: string; approved: boolean };
 const request = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   const result = await response.json().catch(() => ({}));
@@ -50,7 +50,7 @@ export default function LearningSources() {
   const update = async (draft: Draft) => {
     setBusy(true); setError("");
     try {
-      await request(`/api/study/drafts/${draft.id}`, "PATCH", { front: draft.front, back: draft.back, approved: !draft.approved });
+      await request(`/api/study/drafts/${draft.id}`, "PATCH", { front: draft.front, back: draft.back, explanation: draft.explanation, approved: !draft.approved });
       await refresh(); setNotice(draft.approved ? "Draft returned to pending." : "Draft approved privately.");
     } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   };
@@ -81,6 +81,8 @@ export default function LearningSources() {
             <Input id={`front-${d.id}`} value={d.front} maxLength={400} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, front: e.target.value } : x))} />
             <label htmlFor={`back-${d.id}`}>Answer</label>
             <Textarea id={`back-${d.id}`} rows={2} maxLength={1000} value={d.back} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, back: e.target.value } : x))} />
+            <label htmlFor={`explanation-${d.id}`}>Explanation (editable)</label>
+            <Textarea id={`explanation-${d.id}`} rows={3} maxLength={1500} value={d.explanation ?? ""} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, explanation: e.target.value } : x))} />
             <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">Evidence: “{d.evidence}”</blockquote>
             <Button disabled={busy} variant={d.approved ? "outline" : "default"} onClick={() => void update(d)}>{d.approved ? "Return to pending" : "Save edits and approve"}</Button>
             <span className="ml-3 text-sm">{d.approved ? "Approved (private)" : "Not approved"}</span>
