@@ -91,6 +91,20 @@ test("PostgreSQL ownership, session cookies, transactional data and real WebSock
     const alice = await account("alice");
     const bob = await account("bob");
     assert.equal((await request("/api/decks")).status, 401);
+    assert.equal((await request("/api/auth/login", "POST", undefined, {
+      email: alice.user.email, password: "incorrect-password"
+    })).status, 401);
+    const loginResponse = await request("/api/auth/login", "POST", undefined, {
+      email: alice.user.email, password: "a-very-long-test-password-12345"
+    });
+    assert.equal(loginResponse.status, 200);
+    assert.ok(loginResponse.headers.get("set-cookie")?.includes("trivia.sid="));
+    const crossSiteResponse = await fetch(httpUrl + "/api/decks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://attacker.example" },
+      body: JSON.stringify({ title: "CSRF deck" })
+    });
+    assert.equal(crossSiteResponse.status, 403);
     const create = await request("/api/decks", "POST", alice.cookie, {
       title: "Private E2E deck", description: "Owned only by Alice", category: "Private"
     });
@@ -186,6 +200,7 @@ test("PostgreSQL ownership, session cookies, transactional data and real WebSock
     const remainingCards = await db.select().from(cards).where(eq(cards.deckId, deck.id));
     assert.equal(remainingCards.length, 0);
     assert.equal((await request("/api/auth/logout", "POST", alice.cookie)).status, 204);
+    assert.equal((await request("/api/decks", "GET", alice.cookie)).status, 401);
   } finally {
     for (const client of connections) client.close();
     await new Promise<void>(resolve => server.close(() => resolve()));
