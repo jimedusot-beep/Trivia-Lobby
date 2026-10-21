@@ -84,22 +84,22 @@ function reveal(room: Room) {
     send(p.ws, WS_EVENTS.ANSWER_RESULT, resultFor(room, p.id));
   }
 }
-function startQuestion(room: Room) {
+function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.state = "playing";
   room.answers.clear();
   const card = room.questions[room.questionIndex];
   const now = Date.now();
-  room.deadlineTs = now + QUESTION_MS;
+  room.deadlineTs = now + durationMs;
   room.question = {
     questionIndex: room.questionIndex, prompt: card.front,
-    choices: card.options as string[], timeLimitMs: QUESTION_MS,
+    choices: card.options as string[], timeLimitMs: durationMs,
     serverStartTs: now, deadlineTs: room.deadlineTs,
   };
   broadcast(room, WS_EVENTS.QUESTION_START, room.question);
-  room.timer = setTimeout(() => reveal(room), QUESTION_MS);
+  room.timer = setTimeout(() => reveal(room), durationMs);
   room.timer.unref?.();
 }
-function next(room: Room) {
+function next(room: Room, durationMs: number) {
   if (room.state === "reveal") {
     room.state = "leaderboard";
     broadcast(room, WS_EVENTS.LEADERBOARD, { leaderboard: publicPlayers(room) });
@@ -109,7 +109,7 @@ function next(room: Room) {
       broadcast(room, WS_EVENTS.GAME_OVER, { leaderboard: publicPlayers(room) });
     } else {
       room.questionIndex++;
-      startQuestion(room);
+      startQuestion(room, durationMs);
     }
   }
 }
@@ -124,7 +124,8 @@ function eligible(card: Card) {
 }
 
 /** In-memory match authority: per-room state, deadline, single answer, credentials. */
-export function attachGameSocket(server: Server, storage: IStorage) {
+export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number } = {}) {
+  const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
   const createLimits = new Map<string, { count: number; resetAt: number }>();
   const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 4096, perMessageDeflate: false });
@@ -255,12 +256,12 @@ export function attachGameSocket(server: Server, storage: IStorage) {
           if (!room.players.size) { error("At least one player is required"); return; }
           room.questionIndex = 0;
           broadcast(room, WS_EVENTS.GAME_STARTED, {});
-          startQuestion(room);
+          startQuestion(room, durationMs);
         } else if (msg.type === WS_EVENTS.NEXT_QUESTION) {
           if (role !== "host" || room.hostWs !== ws || !["reveal", "leaderboard"].includes(room.state)) {
             error("Host can advance only after reveal"); return;
           }
-          next(room);
+          next(room, durationMs);
         } else if (msg.type === WS_EVENTS.SUBMIT_ANSWER) {
           if (role !== "player" || !playerId || room.players.get(playerId)?.ws !== ws) {
             error("Players only"); return;
