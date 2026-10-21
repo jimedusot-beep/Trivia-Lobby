@@ -15,7 +15,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   const derived = await scrypt(password, salt, 64) as Buffer;
   return timingSafeEqual(derived, Buffer.from(digest, "hex"));
 }
-export function getCookie(header: string | undefined, name = COOKIE): string | undefined {
+export function getCookie(header: string | undefined, name = "tl_session"): string | undefined {
   const value = header?.split(";").map(s => s.trim()).find(s => s.startsWith(name + "="));
   const token = value?.slice(name.length + 1);
   return token && /^[a-f0-9]{64}$/.test(token) ? token : undefined;
