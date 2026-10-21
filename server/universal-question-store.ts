@@ -66,7 +66,8 @@ export async function reorderUniversalQuestions(deckId: number, orderedIds: numb
     if (existing.length !== proposed.length || existing.some((id,i) => id !== proposed[i])) {
       throw new Error("Reorder must contain exactly the deck question IDs");
     }
-    for (const [position, id] of orderedIds.entries()) {
+    for (let position = 0; position < orderedIds.length; position++) {
+      const id = orderedIds[position];
       await tx.update(universalQuestions).set({ position })
         .where(and(eq(universalQuestions.deckId, deckId), eq(universalQuestions.id, id)));
     }
