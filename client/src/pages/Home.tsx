@@ -26,10 +26,10 @@ export default function Home() {
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-20">
         <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          Trivia Master
+          Trivia Lobby
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-          Create decks, study with flashcards, or host live trivia games with your friends!
+          Family game night meets serious studying. Build reusable decks, practice with flashcards, and host live quiz battles.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">

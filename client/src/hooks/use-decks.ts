@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type InsertDeck, type InsertCard } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
+import type { InsertDeck, InsertCard } from "@shared/schema";
 
 // List all decks
 export function useDecks() {
@@ -79,5 +80,24 @@ export function useDeleteDeck() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.decks.list.path] });
     },
+  });
+}
+
+// Atomically import a deck with all of its cards.
+export function useImportDeck() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { deck: InsertDeck; cards: Omit<InsertCard, "deckId">[] }) => {
+      const res = await fetch(api.decks.import.path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        throw new Error((await res.json().catch(() => ({}))).message || "Deck import failed");
+      }
+      return api.decks.import.responses[201].parse(await res.json());
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.decks.list.path] }),
   });
 }

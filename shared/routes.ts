@@ -46,6 +46,18 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    import: {
+      method: 'POST' as const,
+      path: '/api/decks/import' as const,
+      input: z.object({
+        deck: insertDeckSchema,
+        cards: z.array(insertCardSchema.omit({ deckId: true })).min(1).max(5000),
+      }),
+      responses: {
+        201: z.custom<typeof decks.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
     delete: {
       method: 'DELETE' as const,
       path: '/api/decks/:id' as const,
