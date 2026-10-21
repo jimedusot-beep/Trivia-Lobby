@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { Link, useParams } from "wouter";
 import { useDeck } from "@/hooks/use-decks";
+import { normalizedHotspotPoint } from "@/lib/hotspots";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,10 +80,9 @@ export default function ExamBuilder() {
   function addHotspot(event: MouseEvent<HTMLButtonElement>) {
     if (targets.length >= 40) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.detail === 0 ? 0.5 : Math.max(0, Math.min(1, (event.clientX-rect.left)/rect.width));
-    const y = event.detail === 0 ? 0.5 : Math.max(0, Math.min(1, (event.clientY-rect.top)/rect.height));
+    const {x,y} = event.detail === 0 ? {x:0.5,y:0.5} : normalizedHotspotPoint(event.clientX,event.clientY,rect);
     const id = crypto.randomUUID();
-    setTargets(existing => [...existing, { id, label: "New region", x: Number(x.toFixed(4)), y: Number(y.toFixed(4)), radius: 0.07 }]);
+    setTargets(existing => [...existing, { id, label: "New region", x, y, radius: 0.07 }]);
     setCorrectId(id);
   }
   async function save() {
