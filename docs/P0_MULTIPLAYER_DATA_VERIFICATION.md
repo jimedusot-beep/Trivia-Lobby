@@ -1,12 +1,12 @@
 # P0 multiplayer and data migration / verification
 
-This branch is a targeted security and multiplayer repair, **not** a claim that Trivia Lobby is safe for private student content yet. Authentication, ownership authorization, durable backups, and private file storage remain blockers to a public launch.
+This branch is a targeted security and multiplayer repair, **not** a claim that Trivia Lobby is safe for private student content yet. Account auth and deck ownership checks are implemented on the review branch; verified deployment, durable backups, and private original-file storage remain blockers to a public launch.
 
 ## Deploying the foreign-key change
 
 The schema now enforces `cards.deck_id -> decks.id ON DELETE CASCADE` and deck deletion uses a transaction. Before applying the schema to any populated PostgreSQL instance:
 
-1. Take and verify a database snapshot through the hosting provider.
+1. Take and verify a database snapshot through the hosting provider. Existing unowned decks will remain hidden until ownership is manually verified and assigned.
 2. Inspect existing orphaned cards:
    ```sql
    SELECT c.id, c.deck_id FROM cards AS c
@@ -14,7 +14,7 @@ The schema now enforces `cards.deck_id -> decks.id ON DELETE CASCADE` and deck d
    WHERE d.id IS NULL;
    ```
 3. Resolve any orphans **after review**, rather than silently deleting user content.
-4. Run `npm run db:push` in a controlled maintenance window and validate the FK.
+4. Run `npm run db:push` in a controlled maintenance window and validate the FK, users, owner_id, and session table.
 5. Rehearse restore from the snapshot in a separate database before rollout.
 
 Existing deployments must apply this schema change; editing the Drizzle model alone does not migrate a live database. DB snapshots and retention schedules must be configured in the actual deployment provider; this repository cannot certify backups by itself.
@@ -34,7 +34,7 @@ Existing deployments must apply this schema change; editing the Drizzle model al
 
 ## Security and operational limitations
 
-- **Critical:** HTTP deck read/create/import/card write/delete and hosting still require an account and ownership authorization layer. Do not serve confidential content until these are implemented.
+- Account registration/login use scrypt password hashes and PostgreSQL-backed HttpOnly sessions. Deck reads/writes and hosting are owner-scoped. Do not serve confidential content until these changes are merged, the owner migration is reviewed, and operational backups are verified.
 - Game rooms are in memory and do not survive backend restarts or scale across multiple processes. A shared datastore/pubsub strategy is required for horizontal scaling.
 - In-memory IP throttling is a single-process safeguard, not a distributed abuse control.
 - Tokens are persisted in browser localStorage for match recovery; they should be treated as bearer secrets and protected from XSS. Future authenticated sessions should prefer appropriately scoped HttpOnly cookies.
@@ -47,7 +47,18 @@ Existing deployments must apply this schema change; editing the Drizzle model al
 npm ci
 npm run check
 npm run test
+npm run db:push
+npm run test:integration
 npm run build
 ```
 
 Manual multi-browser acceptance: host room, join with two players, answer one round, confirm no answer key in `question_start`, confirm private correct/points, submit twice and verify rejection, disconnect and rejoin one player with rotated credentials, verify old token rejected, then finish and inspect sanitized leaderboard. Verify late submissions are rejected. Confirm a second unauthorized browser cannot start or advance the room.
+
+
+## Account rollout specifics
+
+- Protect sign-in and registration with HTTPS, a stable 32+-character `SESSION_SECRET`, and a canonical `APP_ORIGIN`. When TLS terminates at a trusted reverse proxy, set `TRUST_PROXY=1`.
+- Legacy decks are **not** automatically visible to a newly registered user. Examine `SELECT id, title FROM decks WHERE owner_id IS NULL;`, verify rightful ownership out of band, and only then set `owner_id` for specific records.
+- Players may join a hosted game without an account and see **that game's** prompts. A private deck is not downloadable through the public join flow; the host owner chooses whether to share its questions in a room.
+- Apply rate limiting at the edge for distributed deployment; app-local counters do not provide cross-instance protections.
+- Revoke sessions by deleting their PostgreSQL `session` store records, or force logout by rotating the session secret during a planned maintenance window.
