@@ -126,7 +126,7 @@ function sameOrigin(req: IncomingMessage) {
   } catch { return false; }
 }
 
-export function registerGameSockets(httpServer: Server) {
+export function registerGameSockets(httpServer: Server, loadDeck: (deckId: number) => Promise<DeckWithCards | undefined>) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws", maxPayload: 8192, perMessageDeflate: false });
   wss.on("connection", (ws, req) => {
     if (!sameOrigin(req)) {
