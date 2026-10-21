@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { randomBytes } from "node:crypto";
 import { allowRate, generateRoomCode, newPlayerCredentials, hashToken, isValidToken, incomingMessageSchema, MAX_PLAYERS, MAX_ROOMS, QUESTION_TIME_MS, safeLeaderboard, scoreAnswer } from "./game-protocol";
 
 type Player = {
@@ -36,6 +37,7 @@ type Room = {
 };
 
 const rooms = new Map<string, Room>();
+const hostTickets = new Map<string, { ownerId: string; deckId: number; expiresAt: number }>();
 const letters = ["A", "B", "C", "D"];
 
 function send(ws: WebSocket, type: string, payload: Record<string, unknown> = {}) {
@@ -140,13 +142,13 @@ function httpRate(req: { ip?: string; socket: { remoteAddress?: string } }, cate
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  app.get(api.decks.list.path, async (_req, res) => {
-    res.json(await storage.getDecks());
+  app.get(api.decks.list.path, async (req, res) => {
+    res.json(await storage.getDecks(req.session.userId!));
   });
   app.get(api.decks.get.path, async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid deck ID" });
-    const deck = await storage.getDeck(id);
+    const deck = await storage.getDeck(id, req.session.userId!);
     if (!deck) return res.status(404).json({ message: "Deck not found" });
     res.json(deck);
   });
@@ -154,7 +156,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!httpRate(req, "create", 20)) return res.status(429).json({ message: "Too many deck requests" });
     try {
       const input = api.decks.create.input.parse(req.body);
-      res.status(201).json(await storage.createDeck(input));
+      res.status(201).json(await storage.createDeck(input, req.session.userId!));
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
       console.error("Create deck failed:", err);
@@ -165,7 +167,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!httpRate(req, "import", 5)) return res.status(429).json({ message: "Too many imports" });
     try {
       const input = api.decks.import.input.parse(req.body);
-      res.status(201).json(await storage.importDeck(input.deck, input.cards));
+      res.status(201).json(await storage.importDeck(input.deck, input.cards, req.session.userId!));
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
       console.error("Deck import failed:", err);
@@ -178,8 +180,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!Number.isSafeInteger(deckId) || deckId <= 0) return res.status(400).json({ message: "Invalid deck ID" });
     try {
       const input = api.cards.create.input.parse(req.body);
-      if (!await storage.getDeck(deckId)) return res.status(404).json({ message: "Deck not found" });
-      res.status(201).json(await storage.createCards(deckId, input));
+      if (!await storage.getDeck(deckId, req.session.userId!)) return res.status(404).json({ message: "Deck not found" });
+      res.status(201).json(await storage.createCards(deckId, input, req.session.userId!));
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
       console.error("Create cards failed:", err);
@@ -190,9 +192,25 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!httpRate(req, "delete", 20)) return res.status(429).json({ message: "Too many delete requests" });
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid deck ID" });
-    const deleted = await storage.deleteDeck(id);
+    const deleted = await storage.deleteDeck(id, req.session.userId!);
     if (!deleted) return res.status(404).json({ message: "Deck not found" });
     res.status(204).send();
+  });
+
+  app.post("/api/game/host-ticket", async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ message: "Sign in required" });
+    if (!httpRate(req, "host-ticket", 10)) return res.status(429).json({ message: "Too many room requests" });
+    const parsed = z.object({ deckId: z.number().int().positive() }).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid deck ID" });
+    const deck = await storage.getDeck(parsed.data.deckId, req.session.userId);
+    if (!deck) return res.status(404).json({ message: "Deck not found" });
+    for (const [key, ticket] of hostTickets) if (ticket.expiresAt < Date.now()) hostTickets.delete(key);
+    if (hostTickets.size >= MAX_ROOMS) return res.status(429).json({ message: "Room capacity reached" });
+    const hostToken = randomBytes(32).toString("base64url");
+    hostTickets.set(hashToken(hostToken).toString("hex"), {
+      ownerId: req.session.userId, deckId: parsed.data.deckId, expiresAt: Date.now() + 5 * 60_000
+    });
+    res.json({ hostToken });
   });
 
   const wss = new WebSocketServer({ server: httpServer, path: "/ws", maxPayload: 4096 });
@@ -218,7 +236,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           case WS_EVENTS.CREATE_ROOM: {
             if (userRoomCode) return fail(ws, "Already in a room");
             if (rooms.size >= MAX_ROOMS) return fail(ws, "Game capacity reached");
-            const deck = await storage.getDeck(message.payload.deckId);
+            const key = hashToken(message.payload.hostToken).toString("hex");
+            const ticket = hostTickets.get(key);
+            hostTickets.delete(key); // Single-use ticket, including on failed attempts
+            if (!ticket || ticket.expiresAt < Date.now() || ticket.deckId !== message.payload.deckId) {
+              return fail(ws, "Host ticket invalid or expired");
+            }
+            const deck = await storage.getDeck(message.payload.deckId, ticket.ownerId);
             if (!deck) return fail(ws, "Deck not found");
             const playable = deck.cards.filter(card =>
               card.type === "multiple_choice" &&
@@ -357,7 +381,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     ws.on("error", error => console.error("Game socket error:", error.message));
   });
 
-  await seedDatabase();
   return httpServer;
 }
 
