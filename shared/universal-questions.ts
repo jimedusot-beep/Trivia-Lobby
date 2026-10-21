@@ -139,7 +139,14 @@ export function withoutAnswerKeys(question: UniversalQuestion) {
     case "multiple_choice": case "multiple_select":
       return { ...base, answer: { kind: answer.kind, options: answer.options } };
     case "matching": return { ...base, answer: { kind: answer.kind, prompts: answer.pairs.map(p => ({ id: p.id, prompt: p.prompt })), matches: answer.pairs.map(p => ({ id: p.match, label: p.match })).reverse() } };
-    case "ordering": return { ...base, answer: { kind: answer.kind, items: answer.items } };
+    case "ordering": {
+      const items = [...answer.items];
+      for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [items[i], items[j]] = [items[j], items[i]];
+      }
+      return { ...base, answer: { kind: answer.kind, items } };
+    }
     case "image_hotspot": case "diagram_identification":
       return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})) } };
     case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.label,label:t.label})).reverse() } };
