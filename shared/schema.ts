@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -15,14 +15,14 @@ export const decks = pgTable("decks", {
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
-  deckId: integer("deck_id").notNull(), // Foreign key ref added in relations
+  deckId: integer("deck_id").notNull().references(() => decks.id, { onDelete: "cascade" }),
   type: text("type").notNull().default("flashcard"), // 'flashcard' or 'multiple_choice'
   front: text("front").notNull(), // Question or Front of card
   back: text("back").notNull(),   // Answer or Back of card
   options: jsonb("options"),      // For trivia: ["A", "B", "C", "D"]
   correctOption: text("correct_option"), // For trivia: "A"
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [index("cards_deck_id_idx").on(table.deckId)]);
 
 // === RELATIONS ===
 
@@ -66,10 +66,14 @@ export const WS_EVENTS = {
   START_GAME: 'start_game',
   SUBMIT_ANSWER: 'submit_answer',
   NEXT_QUESTION: 'next_question',
-  REJOIN_ROOM: 'rejoin_room', // Added for reliability
+  REJOIN_ROOM: 'rejoin_room',
+  RESUME_HOST: 'resume_host',
   
   // Server -> Client
   ROOM_CREATED: 'room_created',
+  ROOM_JOINED: 'room_joined',
+  HOST_RESUMED: 'host_resumed',
+  LEADERBOARD: 'leaderboard',
   LOBBY_UPDATE: 'lobby_update',
   GAME_STARTED: 'game_started',
   QUESTION_START: 'question_start',
@@ -87,7 +91,7 @@ export interface CreateRoomPayload {
 export interface JoinRoomPayload {
   roomCode: string;
   playerName: string;
-  playerId?: string; // Optional for reconnects, but strictly client generates this usually or server assigns
+  playerId?: string; // Deprecated legacy interface; wire v1 uses separate credential-backed rejoin
 }
 
 export interface SubmitAnswerPayload {
