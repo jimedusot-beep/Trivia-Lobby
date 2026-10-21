@@ -3,7 +3,7 @@ import type { Server, IncomingMessage } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { z } from "zod";
 import { WS_EVENTS } from "@shared/schema";
-import { storage } from "./storage";
+import type { DeckWithCards } from "@shared/schema";
 import { isLibraryAuthorized } from "./library-auth";
 import { applyAnswer, MAX_GAME_PLAYERS, playableQuestions, publicLeaderboard, QUESTION_TIME_MS, type GameQuestion, type ScorePlayer } from "./game-engine";
 
