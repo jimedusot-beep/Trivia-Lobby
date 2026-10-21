@@ -32,8 +32,8 @@ The repository's original `docs/research/STUDY_AI_REFERENCE_AUDIT.md` contains t
 - A transaction-level `pg_advisory_xact_lock` serializes competing reviews of the same user/card. Each user/requestId pair is unique and duplicate submissions return their prior event without rescheduling.
 - New cards enter the due queue without needing a saved schedule row. Default due queue excludes future due cards. `missed` queue contains the latest pending weaknesses; successful ratings clear needsWork.
 - History and export are resolved exclusively using authenticated user identity from a hashed, expiry-bound random cookie token. No browser-provided `userId` is accepted.
-- Analytics use the last 10,000 review events and 20,000 cards, visibly marked as capped when limits are reached. Export includes all review events and states. Streaks are informational and do not revoke achievement milestones.
-- Course progress is derived from existing deck/category: explore (seen), recall (practice), long-term mastery (FSRS review interval 21+ days). No teacher-managed course authoring or unlock policies yet.
+- Analytics use the most recent 10,000 review events and up to 20,000 cards; a 30-minute inactivity boundary defines sessions. Subject-level improvement compares the latest 10 answers with the previous 10 in a subject, with no result when the previous window is empty. Export includes all review events and states. Streaks are informational and do not revoke achievement milestones.
+- Course progress is derived from existing deck/category: Explore (any reviewed), Cover (all reviewed), Retain (80% of cards with FSRS intervals 21+ days). These are original, non-punitive milestones, not teacher-managed lesson authoring or forced unlocks.
 - **Deleting a public deck currently cascades its per-card review history.** Preserve/soft-delete cards before production if a permanent audit trail is required.
 
 ## Deploy
@@ -41,13 +41,13 @@ The repository's original `docs/research/STUDY_AI_REFERENCE_AUDIT.md` contains t
 2. `npm ci && npm run check && npm test && npm run build`; start normally with `DATABASE_URL` configured.
 3. Open `/learning`, register a 12+ character password, navigate to a deck's **Adaptive** queue; reveal a card and select one of four ratings.
 4. Review on a second browser by signing in with the same account. History, schedule and progress are server-persisted; no local-storage secret.
-5. To run optional DB integration tests, provision an **isolated migrated** test database and set `STUDY_TEST_DATABASE_URL` before `npm test`. Generic CI skips this test when that env var is not supplied.
+5. To run optional DB integration tests, provision an **isolated migrated** test database and set `STUDY_TEST_DATABASE_URL` before `npm test`. GitHub Actions provisions an isolated PostgreSQL 16 service and sets this variable, so the cross-device/privacy test runs there without being skipped.
 
 ### Optional AI (off by default)
-Supply `STUDY_AI_ENDPOINT` as a server-operator-configured HTTPS JSON endpoint, optionally `STUDY_AI_API_KEY`. The adapter sends `{task, limit, instructions, source: {title,text}}`; expects `{cards:[{front,back,evidence}]}`. Evidence must be an **exact substring** of an account-owned source and duplicate questions are rejected. Source text is transferred to the operator-configured provider **only** when the signed-in user selects Suggest cards. Suggested cards remain private, unapproved, and editable. Approval does **not** publish to global decks. Never log source contents or place API keys in client bundles.
+Supply `STUDY_AI_ENDPOINT` as a server-operator-configured HTTPS JSON endpoint, optionally `STUDY_AI_API_KEY`. The adapter sends `{task, limit, instructions, source: {title,text}}`; expects `{cards:[{front,back,evidence}]}`. Evidence must be an **exact substring** of an account-owned source and duplicate questions are rejected. Source text is transferred to the operator-configured provider **only** when the signed-in user selects Suggest cards. Suggested cards remain private, unapproved, and editable, including their optional explanations. Approval does **not** publish to global decks. Never log source contents or place API keys in client bundles.
 
 ## Security and QA gates before production
 - **Block deployment until Phase 1** replaces insecure public deck/card editing, room-code generation and WebSocket reconnect flows. Existing deck endpoints remain unauthenticated; they cannot safely host private teacher content. Do not expose AI to legacy unowned decks.
 - The new email/password auth is deliberately scoped to private study data; before broader rollout add email verification/password recovery, account-deletion UI, externally backed rate limits, token cleanup/revocation policy and abuse monitoring.
-- SQL migration in this PR is not automatically applied by CI; shared-PostgreSQL and two-device E2E tests require an external test service. CI verifies TypeScript, unit tests and bundle build. Review all skipped checks.
+- CI provisions PostgreSQL, applies Drizzle's schema and replays the additive SQL migration; it then executes the privacy/cross-device API integration test, unit tests, TypeScript and bundle build. CI does not apply this migration to production databases. Cross-device E2E is exercised with two independently authenticated HTTP sessions, not actual browser automation.
 - Backups, retention/deletion policy and source-provider privacy disclosures are required before students upload sensitive materials.
