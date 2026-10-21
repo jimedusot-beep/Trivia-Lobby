@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useGameSocket } from "@/hooks/use-game-socket";
 import { WS_EVENTS } from "@shared/schema";
@@ -12,16 +12,19 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Host() {
   const { deckId } = useParams();
-  const { connected, gameState, emit } = useGameSocket();
+  const { connected, restoring, gameState, emit } = useGameSocket("host");
+  const createRequested = useRef(false);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   // Auto-create room on mount
   useEffect(() => {
-    if (connected && deckId && !gameState.roomCode) {
+    if (connected && deckId && !gameState.roomCode && !restoring && !createRequested.current) {
+      createRequested.current = true;
+      sessionStorage.setItem("trivia_host_deck_id", deckId);
       emit(WS_EVENTS.CREATE_ROOM, { deckId: parseInt(deckId) });
     }
-  }, [connected, deckId, gameState.roomCode, emit]);
+  }, [connected, deckId, gameState.roomCode, restoring, emit]);
 
   const copyCode = () => {
     if (gameState.roomCode) {
@@ -73,7 +76,7 @@ export default function Host() {
         {gameState.gameStatus === 'lobby' && (
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
             <div className="space-y-4">
-              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">trivia.app/join</span> with code:</h2>
+              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
               <div 
                 onClick={copyCode}
                 className="text-8xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
@@ -160,7 +163,7 @@ export default function Host() {
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
                    <div className="text-4xl font-bold text-green-400">
-                     {gameState.currentQuestion.choices.find((c: string) => c.startsWith(gameState.lastAnswerResult.correctLetter))}
+                     {gameState.currentQuestion.choices[["A", "B", "C", "D"].indexOf(gameState.lastAnswerResult.correctLetter)]}
                    </div>
                  </div>
 
@@ -194,7 +197,7 @@ export default function Host() {
                    className="h-16 px-12 text-xl font-bold bg-primary hover:bg-primary/90 btn-bouncy"
                    onClick={nextQuestion}
                  >
-                   Next Question <Play className="ml-2 w-5 h-5" />
+                   {gameState.phase === "reveal" ? "Show leaderboard" : "Next / Finish"} <Play className="ml-2 w-5 h-5" />
                  </Button>
                </div>
              )}
