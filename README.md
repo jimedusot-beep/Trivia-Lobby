@@ -24,11 +24,28 @@ Requires Node.js and a persistent PostgreSQL database.
 ```bash
 npm ci
 export DATABASE_URL='postgresql://...'
+export SESSION_SECRET='a-long-random-secret-with-at-least-32-characters'
+# In production, also set APP_ORIGIN=https://your-site.example
+# Set TRUST_PROXY=1 only when deployed behind your trusted reverse proxy.
 npm run db:push
 npm run dev
 ```
 
 The `DATABASE_URL` must point at a **persistent** PostgreSQL instance. Never commit credentials. Use a deployment platform that supports a long-running Node server and WebSockets.
+
+## Authentication, existing data and deployment
+
+Account passwords are hashed with scrypt, login sessions are stored in PostgreSQL and sent through HttpOnly SameSite cookies. Every deck and card API operation checks for the signed-in owner. Hosting requires a short-lived single-use ticket; players join with a room code and reconnect with server-issued credentials.
+
+**Before upgrading a populated database**, take a verified provider-managed backup, then run `npm run db:push`. Existing pre-account decks have `owner_id = NULL` and are intentionally invisible to new accounts. An administrator must identify the rightful owner and assign those specific decks **only after verifying ownership**. Do not automatically assign all historical decks to the first account.
+
+```sql
+SELECT id, title FROM decks WHERE owner_id IS NULL;
+-- Only after verifying the correct user/deck mapping:
+-- UPDATE decks SET owner_id = '<verified-user-uuid>' WHERE id = <verified-deck-id> AND owner_id IS NULL;
+```
+
+Set a stable secret `SESSION_SECRET` (32+ characters) and canonical `APP_ORIGIN` in production. Production session cookies require HTTPS; set `TRUST_PROXY=1` only behind a trusted TLS-terminating proxy. Runtime WebSocket rooms remain process-local and disappear on server restart. Distributed rate limiting, provider-managed daily database backups, restore drills and a deployment smoke check remain required operational work. See [P0 verification and migration runbook](docs/P0_MULTIPLAYER_DATA_VERIFICATION.md).
 
 ## Import file format
 
@@ -40,7 +57,7 @@ Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
 "What does DNA stand for?","Deoxyribonucleic acid","flashcard",,,,,
 ```
 
-Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The current application does not support users, private deck access, permanent original-document storage, or cross-device review progress. Save your own JSON backup regularly; downloaded backups contain **cards only**, not original uploaded files. Do not upload confidential student materials to an accessible public deployment.
+Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The app now has password-based accounts and owner-scoped deck APIs on the security review branch; deploy only after applying the updated schema and reviewing the authentication configuration. Permanent original-document storage and cross-device study review progress are still not implemented. Save your own JSON backup regularly; downloaded backups contain **cards only**, not original uploaded files. Do not upload confidential student materials to a public deployment until the P0 security pull request, operational backup/recovery, and deployment review are complete.
 
 ## Engineering research library (October 2026)
 
