@@ -14,43 +14,30 @@ export default function Play() {
   const [hasJoined, setHasJoined] = useState(false);
   const { toast } = useToast();
 
-  // Initial Join Logic
+  // Only the lobby route records the name. The server issues reconnect credentials.
   useEffect(() => {
-    if (connected && !hasJoined) {
-      const stored = localStorage.getItem('trivia_player');
-      if (!stored) {
-        setLocation("/join");
-        return;
-      }
-      
-      const { roomCode, name, playerId } = JSON.parse(stored);
-      
-      // Emit Join
-      emit(WS_EVENTS.JOIN_ROOM, { roomCode, name, playerId });
-      setHasJoined(true);
+    if (!connected || hasJoined) return;
+    let stored: { roomCode: string; name: string; playerId?: string; reconnectToken?: string } | null = null;
+    try {
+      const raw = localStorage.getItem("trivia_player");
+      stored = raw ? JSON.parse(raw) : null;
+    } catch { /* handled below */ }
+    if (!stored?.roomCode || !stored.name) {
+      setLocation("/join");
+      return;
     }
+    if (!stored.reconnectToken) {
+      emit(WS_EVENTS.JOIN_ROOM, { roomCode: stored.roomCode, playerName: stored.name });
+    }
+    setHasJoined(true);
   }, [connected, hasJoined, emit, setLocation]);
 
-  // Handle Game Over Confetti
+  useEffect(() => { if (!connected) setHasJoined(false); }, [connected]);
+
   useEffect(() => {
-      if (gameState.lastAnswerResult) {
-          const stored = localStorage.getItem('trivia_player');
-          const { playerId } = stored ? JSON.parse(stored) : { playerId: '' };
-          
-          const myScoreEntry = gameState.leaderboard?.find(p => p.playerId === playerId);
-          // Simple logic: if I got points this round, celebrate
-          // Realistically, server should tell me if I was correct in a private message or we check against correctLetter
-          
-          const isCorrect = gameState.currentQuestion?.choices
-              .find((c: string) => c.startsWith(gameState.lastAnswerResult.correctLetter))
-              ?.startsWith(gameState.lastAnswerResult.correctLetter);
-              
-          // Since we don't track "my previous score" easily here without more state, 
-          // let's just rely on the correctLetter matching my selectedAnswer
-          if (selectedAnswer === gameState.lastAnswerResult.correctLetter) {
-               confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
-          }
-      }
+    if (gameState.lastAnswerResult?.correct || (
+      gameState.lastAnswerResult && selectedAnswer === gameState.lastAnswerResult.correctLetter
+    )) confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
   }, [gameState.lastAnswerResult, selectedAnswer]);
 
   // Reset selection on new question
@@ -68,16 +55,16 @@ export default function Play() {
   }, [gameState.serverStartTs]);
 
   const submitAnswer = (letter: string) => {
-    if (selectedAnswer) return; // Prevent multi-submit
+    if (selectedAnswer || gameState.answeredCurrentQuestion || !gameState.currentQuestion) return;
     setSelectedAnswer(letter);
     
     const stored = localStorage.getItem('trivia_player');
     const { roomCode } = stored ? JSON.parse(stored) : { roomCode: '' };
     
-    emit(WS_EVENTS.SUBMIT_ANSWER, { roomCode, answer: letter });
+    emit(WS_EVENTS.SUBMIT_ANSWER, { roomCode, questionId: gameState.currentQuestion.questionId, answer: letter });
   };
 
-  if (!connected) return <div className="h-screen bg-primary flex items-center justify-center text-white font-bold">Connecting...</div>;
+  if (!connected) return <div className="h-screen bg-primary flex items-center justify-center text-white font-bold">Connecting to game server…</div>;
 
   const getButtonColor = (letter: string, index: number) => {
     const baseColors = [
@@ -104,12 +91,20 @@ export default function Play() {
   const symbols = ["▲", "◆", "●", "■"];
   const letters = ["A", "B", "C", "D"];
 
+  if (gameState.error) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
+      <h2 className="text-2xl font-bold">Game session unavailable</h2>
+      <p>{gameState.error}</p>
+      <Button onClick={() => setLocation("/join")}>Join another game</Button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 flex flex-col">
       <div className="flex justify-between items-center mb-6">
          <div className="font-bold text-slate-500">{gameState.roomCode}</div>
          <div className="font-bold text-xl text-primary">
-            {gameState.players.find(p => p.playerId === JSON.parse(localStorage.getItem('trivia_player') || '{}').playerId)?.score || 0} pts
+            {gameState.players.find(p => p.playerId === gameState.playerId)?.score ?? gameState.score ?? 0} pts
          </div>
       </div>
 
@@ -130,7 +125,7 @@ export default function Play() {
                  {letters.map((letter, i) => (
                    <button
                      key={letter}
-                     disabled={!!selectedAnswer}
+                     disabled={!!selectedAnswer || !!gameState.answeredCurrentQuestion}
                      onClick={() => submitAnswer(letter)}
                      className={`rounded-2xl shadow-lg border-b-8 transition-all active:border-b-0 active:translate-y-2 flex flex-col items-center justify-center gap-2 ${getButtonColor(letter, i)}`}
                    >
@@ -142,16 +137,16 @@ export default function Play() {
 
              {gameState.lastAnswerResult && (
                <div className="text-center space-y-6 animate-in zoom-in duration-300">
-                 {selectedAnswer === gameState.lastAnswerResult.correctLetter ? (
+                 {(gameState.lastAnswerResult.correct ?? (selectedAnswer === gameState.lastAnswerResult.correctLetter)) ? (
                    <>
                      <CheckCircle2 className="w-24 h-24 text-green-500 mx-auto" />
                      <h2 className="text-3xl font-black text-green-600">CORRECT!</h2>
-                     <p className="text-lg font-bold">+ {gameState.lastAnswerResult.leaderboard.find((p:any) => p.playerId === JSON.parse(localStorage.getItem('trivia_player') || '{}').playerId)?.lastPoints || 0} pts</p>
+                     <p className="text-lg font-bold">+ {gameState.lastAnswerResult.points ?? 0} pts</p>
                    </>
                  ) : (
                    <>
                      <XCircle className="w-24 h-24 text-red-500 mx-auto" />
-                     <h2 className="text-3xl font-black text-red-600">WRONG</h2>
+                     <h2 className="text-3xl font-black text-red-600">Incorrect or missed</h2>
                      <p className="text-muted-foreground">Keep trying!</p>
                    </>
                  )}
