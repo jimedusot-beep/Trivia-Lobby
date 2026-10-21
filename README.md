@@ -39,6 +39,13 @@ Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
 
 Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The current application does not support users, private deck access, or permanent document storage.
 
+## Engineering research library (October 2026)
+
+- [Learning-game clones, AI-assisted creator leads, and reconstruction tools](docs/LEARNING_GAME_RESEARCH.md) — 28 platform-inspired repositories, creator/tool leads, evidence classifications, license and verification checklist.
+- [Research-to-feature roadmap](docs/RESEARCH_TO_FEATURE_ROADMAP.md) — priorities and acceptance criteria for the current React/Express/WebSocket/PostgreSQL app.
+
+These are **research references only**. No third-party code, proprietary assets, AI agents, or reverse-engineering packages are installed by these documents; proposed game modes are not yet implemented.
+
 ## Product direction
 
 1. **Study library:** permanent original PDF/DOCX/PPTX/TXT/CSV uploads, private accounts, folders, searchable notes, and source-linked cards.
