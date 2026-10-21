@@ -52,3 +52,7 @@ See [Import & storage plan](docs/IMPORT_AND_STORAGE.md) for security, data reten
 ## Deployment note
 
 The current Express/WebSocket server is **not** a drop-in static Netlify deploy. A static frontend on Netlify would also need a separate long-running backend, PostgreSQL, a documented WebSocket URL, and correct cross-origin routing; alternatively deploy the full app on a Node host supporting WebSockets. Do not assume Netlify alone will keep rooms and files alive.
+
+## Open-source research and universal questions
+
+See [the learning-platform research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) for the expanded repository inventory, licensing checks, and phased implementation plan. The additive [universal question model](shared/universal-questions.ts) currently supports validating text, multiple-choice, hotspot, and matching questions plus converting existing cards. This model is **not yet connected to the app UI or persistence**. Tests are in [tests/universal-questions.test.ts](tests/universal-questions.test.ts) and can be run with `npx tsx --test tests/universal-questions.test.ts` once dependencies are installed.
