@@ -357,14 +357,14 @@ export async function seedDatabase() {
         back: "Paris",
         type: "multiple_choice",
         options: ["London", "Berlin", "Madrid", "Paris"],
-        correctOption: "Paris"
+        correctOption: "D"
       },
       {
         front: "Which planet is known as the Red Planet?",
         back: "Mars",
         type: "multiple_choice",
         options: ["Venus", "Mars", "Jupiter", "Saturn"],
-        correctOption: "Mars"
+        correctOption: "B"
       }
     ]);
   }
