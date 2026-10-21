@@ -188,7 +188,7 @@ export default function VisualPractice() {
           {!result?<Button disabled={busy||timed&&seconds===0} onClick={()=>void submit()}>{busy?"Checking…":"Check answer"}</Button>:
             <div role="status" className="border p-4 rounded space-y-2">
               <p className="font-semibold">{result.correct?"Correct!":"Not quite."}</p>
-              {result.answer&&<p><strong>Answer:</strong> {answerDescription(result.answer)}</p>}
+              {result.answer !== undefined && result.answer !== null && <p><strong>Answer:</strong> {answerDescription(result.answer)}</p>}
               {result.explanation&&<p>{result.explanation}</p>}
               <Button onClick={next}>{index+1===items.length?"Show results":"Next question"}</Button>
             </div>}
