@@ -59,7 +59,7 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.getByRole("button",{name:"Next question"}).click();
 
-    const region=page.getByRole("button",{name:"Region 1"});
+    const region=page.getByRole("button",{name:"Region 1",exact:true});
     await region.focus();
     await region.press("Enter");
     await page.getByRole("button",{name:"Check answer"}).click();
