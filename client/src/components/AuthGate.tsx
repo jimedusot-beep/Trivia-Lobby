@@ -54,7 +54,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
             <Button className="w-full" disabled={working} type="submit">{mode === "login" ? "Sign in" : "Create account"}</Button>
           </form>
-          <Button variant="link" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
+          <Button variant="ghost" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
             {mode === "login" ? "Need an account? Register" : "Already registered? Sign in"}
           </Button>
           <p className="text-sm text-muted-foreground">You can join a public game without an account. Private decks and files require sign-in.</p>

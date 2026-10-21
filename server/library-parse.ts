@@ -96,7 +96,9 @@ export function identifySource(filename: string, bytes: Buffer): { kind: SourceK
 type PreviewCard = ImportableCard & { sourceRef?: string };
 function textPairs(text: string): PreviewCard[] {
   const cards: PreviewCard[] = [];
-  for (const [index, line] of text.split(/\r?\n/).entries()) {
+  const lines = text.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
     const match = /^(.*?)\s*(?:\t|\s+::\s+|\s+=>\s+)\s*(.+)$/.exec(line.trim().replace(/^[-*]\s+/, ""));
     if (!match || !match[1].trim() || !match[2].trim() || match[1].length > 10000 || match[2].length > 10000) continue;
     cards.push({ front: match[1].trim(), back: match[2].trim(), options: [], type: "flashcard", correctOption: null, sourceRef: "line " + (index + 1) });
