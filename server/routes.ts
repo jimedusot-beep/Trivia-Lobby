@@ -1,371 +1,374 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { allowRate, generateRoomCode, newPlayerCredentials, hashToken, isValidToken, incomingMessageSchema, MAX_PLAYERS, MAX_ROOMS, QUESTION_TIME_MS, safeLeaderboard, scoreAnswer } from "./game-protocol";
 
-// === GAME STATE TYPES ===
 type Player = {
   id: string;
   name: string;
   score: number;
   streak: number;
+  lastPoints: number;
+  tokenHash: Buffer;
   ws: WebSocket;
-  lastSeen: number;
   connected: boolean;
+};
+
+type Question = {
+  id: number; front: string; back: string;
+  options: string[]; correctOption: string;
 };
 
 type Room = {
   code: string;
   hostWs: WebSocket;
-  deckId: number;
   players: Map<string, Player>;
-  state: 'lobby' | 'playing' | 'leaderboard' | 'finished';
+  state: "lobby" | "question" | "reveal" | "finished";
   currentQuestionIndex: number;
-  questions: any[]; // Cached questions from DB
-  questionStartTime?: number;
-  answersReceived: Set<string>; // playerId-questionIndex
+  questions: Question[];
+  questionStartTime: number;
+  timer?: ReturnType<typeof setTimeout>;
+  answersReceived: Set<string>;
 };
 
-// Global in-memory state for active rooms
 const rooms = new Map<string, Room>();
+const letters = ["A", "B", "C", "D"];
 
-export async function registerRoutes(
-  httpServer: Server,
-  app: Express
-): Promise<Server> {
-  
-  // === HTTP API ROUTES ===
-
-  app.get(api.decks.list.path, async (req, res) => {
-    const decks = await storage.getDecks();
-    res.json(decks);
+function send(ws: WebSocket, type: string, payload: Record<string, unknown> = {}) {
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, payload }));
+}
+function fail(ws: WebSocket, message: string) {
+  send(ws, WS_EVENTS.ERROR, { message });
+}
+function allClients(room: Room, type: string, payload: Record<string, unknown>) {
+  send(room.hostWs, type, payload);
+  for (const player of room.players.values()) if (player.connected) send(player.ws, type, payload);
+}
+function broadcastLobby(room: Room) {
+  const players = safeLeaderboard(room.players.values());
+  allClients(room, WS_EVENTS.LOBBY_UPDATE, { players });
+}
+function getLeaderboard(room: Room) {
+  return safeLeaderboard(room.players.values());
+}
+function currentQuestion(room: Room): Question | undefined {
+  return room.questions[room.currentQuestionIndex];
+}
+function publicQuestion(room: Room) {
+  const question = currentQuestion(room);
+  if (!question) return;
+  return {
+    questionId: room.currentQuestionIndex,
+    prompt: question.front,
+    choices: question.options,
+    timeLimitMs: QUESTION_TIME_MS,
+    serverStartTs: room.questionStartTime
+  };
+}
+function revealRound(room: Room) {
+  if (room.state !== "question") return;
+  clearTimeout(room.timer);
+  room.timer = undefined;
+  room.state = "reveal";
+  const question = currentQuestion(room);
+  if (!question) return;
+  const shared = {
+    questionId: room.currentQuestionIndex,
+    correctLetter: question.correctOption,
+    explanation: question.back,
+    leaderboard: getLeaderboard(room)
+  };
+  send(room.hostWs, WS_EVENTS.ANSWER_RESULT, shared);
+  for (const player of room.players.values()) {
+    if (!player.connected) continue;
+    send(player.ws, WS_EVENTS.ANSWER_RESULT, {
+      ...shared,
+      correct: room.answersReceived.has(player.id) ? player.lastPoints > 0 : false,
+      points: player.lastPoints
+    });
+  }
+}
+function beginQuestion(room: Room) {
+  clearTimeout(room.timer);
+  room.answersReceived.clear();
+  room.state = "question";
+  room.questionStartTime = Date.now();
+  for (const player of room.players.values()) player.lastPoints = 0;
+  const payload = publicQuestion(room);
+  if (!payload) return;
+  allClients(room, WS_EVENTS.QUESTION_START, payload);
+  room.timer = setTimeout(() => revealRound(room), QUESTION_TIME_MS);
+}
+function finishGame(room: Room) {
+  clearTimeout(room.timer);
+  room.timer = undefined;
+  room.state = "finished";
+  allClients(room, WS_EVENTS.GAME_OVER, { leaderboard: getLeaderboard(room) });
+}
+function syncPlayer(room: Room, player: Player) {
+  send(player.ws, WS_EVENTS.SYNC_SNAPSHOT, {
+    roomCode: room.code, playerId: player.id, score: player.score,
+    players: getLeaderboard(room),
+    gameStatus: room.state === "lobby" ? "lobby" : room.state === "finished" ? "ended" : "playing",
+    leaderboard: room.state === "finished" || room.state === "reveal" ? getLeaderboard(room) : []
   });
+  if (room.state === "question" || room.state === "reveal") {
+    const payload = publicQuestion(room);
+    if (payload) send(player.ws, WS_EVENTS.QUESTION_START, payload);
+    if (room.state === "reveal") {
+      const question = currentQuestion(room);
+      if (question) send(player.ws, WS_EVENTS.ANSWER_RESULT, {
+        questionId: room.currentQuestionIndex, correctLetter: question.correctOption,
+        explanation: question.back, leaderboard: getLeaderboard(room),
+        correct: room.answersReceived.has(player.id) ? player.lastPoints > 0 : false,
+        points: player.lastPoints
+      });
+    }
+  }
+}
 
+function httpRate(req: { ip?: string; socket: { remoteAddress?: string } }, category: string, max: number) {
+  return allowRate(`http:${req.ip || req.socket.remoteAddress || "unknown"}:${category}`, max, 60_000);
+}
+
+export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  app.get(api.decks.list.path, async (_req, res) => {
+    res.json(await storage.getDecks());
+  });
   app.get(api.decks.get.path, async (req, res) => {
-    const deck = await storage.getDeck(Number(req.params.id));
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid deck ID" });
+    const deck = await storage.getDeck(id);
     if (!deck) return res.status(404).json({ message: "Deck not found" });
     res.json(deck);
   });
-
   app.post(api.decks.create.path, async (req, res) => {
+    if (!httpRate(req, "create", 20)) return res.status(429).json({ message: "Too many deck requests" });
     try {
       const input = api.decks.create.input.parse(req.body);
-      const deck = await storage.createDeck(input);
-      res.status(201).json(deck);
+      res.status(201).json(await storage.createDeck(input));
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
+      console.error("Create deck failed:", err);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
-
   app.post(api.decks.import.path, async (req, res) => {
+    if (!httpRate(req, "import", 5)) return res.status(429).json({ message: "Too many imports" });
     try {
       const input = api.decks.import.input.parse(req.body);
-      const deck = await storage.importDeck(input.deck, input.cards);
-      res.status(201).json(deck);
+      res.status(201).json(await storage.importDeck(input.deck, input.cards));
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
       console.error("Deck import failed:", err);
       res.status(500).json({ message: "Import failed; no partial deck was saved." });
     }
   });
-
   app.post(api.cards.create.path, async (req, res) => {
+    if (!httpRate(req, "cards", 20)) return res.status(429).json({ message: "Too many card requests" });
+    const deckId = Number(req.params.id);
+    if (!Number.isSafeInteger(deckId) || deckId <= 0) return res.status(400).json({ message: "Invalid deck ID" });
     try {
-      const deckId = Number(req.params.id);
       const input = api.cards.create.input.parse(req.body);
-      const cards = await storage.createCards(deckId, input);
-      res.status(201).json(cards);
+      if (!await storage.getDeck(deckId)) return res.status(404).json({ message: "Deck not found" });
+      res.status(201).json(await storage.createCards(deckId, input));
     } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.message });
+      console.error("Create cards failed:", err);
       res.status(500).json({ message: "Internal Server Error" });
     }
   });
-
   app.delete(api.decks.delete.path, async (req, res) => {
-    await storage.deleteDeck(Number(req.params.id));
+    if (!httpRate(req, "delete", 20)) return res.status(429).json({ message: "Too many delete requests" });
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ message: "Invalid deck ID" });
+    const deleted = await storage.deleteDeck(id);
+    if (!deleted) return res.status(404).json({ message: "Deck not found" });
     res.status(204).send();
   });
 
-
-  // === WEBSOCKET SERVER ===
-  
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  wss.on('connection', (ws) => {
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws", maxPayload: 4096 });
+  wss.on("connection", (ws, request) => {
     let userRoomCode: string | null = null;
     let userId: string | null = null;
+    const ip = request.socket.remoteAddress || "unknown";
 
-    ws.on('message', async (data) => {
+    ws.on("message", async (data) => {
       try {
-        const message = JSON.parse(data.toString());
-        
+        if (!allowRate(`ws:${ip}:all`, 120, 60_000)) return fail(ws, "Too many messages");
+        const parsed = incomingMessageSchema.safeParse(JSON.parse(data.toString()));
+        if (!parsed.success) return fail(ws, "Invalid message payload");
+        const message = parsed.data;
+        const limits: Record<string, number> = {
+          create_room: 6, join_room: 20, rejoin_room: 20, submit_answer: 90
+        };
+        if (limits[message.type] && !allowRate(`ws:${ip}:${message.type}`, limits[message.type], 60_000)) {
+          return fail(ws, "Rate limit exceeded");
+        }
+
         switch (message.type) {
           case WS_EVENTS.CREATE_ROOM: {
-            const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            if (userRoomCode) return fail(ws, "Already in a room");
+            if (rooms.size >= MAX_ROOMS) return fail(ws, "Game capacity reached");
             const deck = await storage.getDeck(message.payload.deckId);
-            
-            if (!deck) {
-              ws.send(JSON.stringify({ type: WS_EVENTS.ERROR, payload: { message: "Deck not found" } }));
-              return;
-            }
-
-            rooms.set(roomCode, {
-              code: roomCode,
-              hostWs: ws,
-              deckId: message.payload.deckId,
-              players: new Map(),
-              state: 'lobby',
-              currentQuestionIndex: -1,
-              questions: deck.cards, // In a real app, shuffle/format these
-              answersReceived: new Set()
-            });
-            
-            userRoomCode = roomCode; // Host is associated with room
-            ws.send(JSON.stringify({ type: WS_EVENTS.ROOM_CREATED, payload: { roomCode } }));
-            break;
-          }
-
-          case WS_EVENTS.JOIN_ROOM: {
-            const { roomCode, playerName, playerId: existingId } = message.payload;
-            const room = rooms.get(roomCode);
-            
-            if (!room) {
-              ws.send(JSON.stringify({ type: WS_EVENTS.ERROR, payload: { message: "Room not found" } }));
-              return;
-            }
-
-            // Reuse ID if reconnecting, else gen new
-            const pid = existingId || Math.random().toString(36).substring(7);
-            userId = pid;
-            userRoomCode = roomCode;
-
-            const existingPlayer = room.players.get(pid);
-            if (existingPlayer) {
-              existingPlayer.connected = true;
-              existingPlayer.ws = ws;
-            } else {
-              room.players.set(pid, {
-                id: pid,
-                name: playerName,
-                score: 0,
-                streak: 0,
-                ws,
-                lastSeen: Date.now(),
-                connected: true
-              });
-            }
-
-            // Send sync snapshot to joining player
-            ws.send(JSON.stringify({
-              type: WS_EVENTS.SYNC_SNAPSHOT,
-              payload: {
-                state: room.state,
-                playerId: pid,
-                score: room.players.get(pid)?.score || 0
-              }
+            if (!deck) return fail(ws, "Deck not found");
+            const playable = deck.cards.filter(card =>
+              card.type === "multiple_choice" &&
+              Array.isArray(card.options) &&
+              card.options.length >= 2 &&
+              card.options.length <= 4 &&
+              card.options.every(option => typeof option === "string" && option.length > 0) &&
+              letters.slice(0, card.options.length).includes(card.correctOption || "")
+            ).map(card => ({
+              id: card.id, front: card.front, back: card.back,
+              options: card.options as string[], correctOption: card.correctOption as string
             }));
-
-            // Broadcast lobby update to host
-            broadcastLobbyUpdate(room);
+            if (!playable.length) return fail(ws, "Deck has no valid multiple-choice questions");
+            const roomCode = generateRoomCode(new Set(rooms.keys()));
+            const room: Room = {
+              code: roomCode, hostWs: ws, players: new Map(), state: "lobby",
+              currentQuestionIndex: -1, questions: playable,
+              questionStartTime: 0, answersReceived: new Set()
+            };
+            rooms.set(roomCode, room);
+            userRoomCode = roomCode;
+            send(ws, WS_EVENTS.ROOM_CREATED, { roomCode });
             break;
           }
-
+          case WS_EVENTS.JOIN_ROOM: {
+            if (userRoomCode) return fail(ws, "Already in a room");
+            const { roomCode, playerName } = message.payload;
+            const room = rooms.get(roomCode);
+            if (!room) return fail(ws, "Room not found");
+            if (room.state !== "lobby") return fail(ws, "Game already started");
+            if (room.players.size >= MAX_PLAYERS) return fail(ws, "Room is full");
+            const { playerId, reconnectToken } = newPlayerCredentials();
+            const player: Player = {
+              id: playerId, name: playerName, score: 0, streak: 0, lastPoints: 0,
+              tokenHash: hashToken(reconnectToken), ws, connected: true
+            };
+            room.players.set(playerId, player);
+            userId = playerId;
+            userRoomCode = roomCode;
+            send(ws, WS_EVENTS.ROOM_JOINED, { roomCode, playerId, reconnectToken });
+            syncPlayer(room, player);
+            broadcastLobby(room);
+            break;
+          }
+          case WS_EVENTS.REJOIN_ROOM: {
+            if (userRoomCode) return fail(ws, "Already in a room");
+            const { roomCode, playerId, reconnectToken } = message.payload;
+            const room = rooms.get(roomCode);
+            const player = room?.players.get(playerId);
+            if (!room || !player || !isValidToken(reconnectToken, player.tokenHash)) {
+              return fail(ws, "Session invalid or expired. Join a new game.");
+            }
+            const previousWs = player.ws;
+            const refreshed = newPlayerCredentials().reconnectToken;
+            player.tokenHash = hashToken(refreshed);
+            player.ws = ws;
+            player.connected = true;
+            userId = playerId;
+            userRoomCode = roomCode;
+            if (previousWs !== ws) previousWs.close(4001, "Reconnected elsewhere");
+            send(ws, WS_EVENTS.ROOM_JOINED, { roomCode, playerId, reconnectToken: refreshed });
+            syncPlayer(room, player);
+            broadcastLobby(room);
+            break;
+          }
           case WS_EVENTS.START_GAME: {
-            if (!userRoomCode) return;
-            const room = rooms.get(userRoomCode);
-            // Only host can start (hostWs check could be stricter but simplified here)
-            if (room && room.hostWs === ws) {
-              room.state = 'playing';
-              room.currentQuestionIndex = 0;
-              broadcastGameStart(room);
-              sendQuestion(room);
-            }
+            const room = rooms.get(message.payload.roomCode);
+            if (!room || room.hostWs !== ws || room.code !== userRoomCode) return fail(ws, "Host permission required");
+            if (room.state !== "lobby") return fail(ws, "Game is already running");
+            if (!room.players.size) return fail(ws, "No players have joined");
+            room.currentQuestionIndex = 0;
+            allClients(room, WS_EVENTS.GAME_STARTED, {});
+            beginQuestion(room);
             break;
           }
-
           case WS_EVENTS.SUBMIT_ANSWER: {
-            if (!userRoomCode || !userId) return;
-            const room = rooms.get(userRoomCode);
-            if (!room || room.state !== 'playing') return;
-
-            const answerKey = `${userId}-${room.currentQuestionIndex}`;
-            if (room.answersReceived.has(answerKey)) return; // Idempotent
-
-            room.answersReceived.add(answerKey);
+            const { roomCode, questionId, answer } = message.payload;
+            const room = rooms.get(roomCode);
+            if (!room || room.code !== userRoomCode || room.state !== "question" ||
+                questionId !== room.currentQuestionIndex || !userId) {
+              return fail(ws, "Question is no longer accepting answers");
+            }
             const player = room.players.get(userId);
-            const question = room.questions[room.currentQuestionIndex];
-            
-            if (player && question) {
-              // Basic scoring logic
-              const isCorrect = message.payload.answer === question.correctOption;
-              if (isCorrect) {
-                // Server authoritative timing bonus could go here
-                player.score += 100 + (player.streak * 10);
-                player.streak++;
-              } else {
-                player.streak = 0;
-              }
-              
-              // Tell player result immediately? Or wait for round end?
-              // For simplicity, let's wait for next question trigger or timer
+            if (!player || player.ws !== ws) return fail(ws, "Player session invalid");
+            if (Date.now() >= room.questionStartTime + QUESTION_TIME_MS) {
+              revealRound(room);
+              return fail(ws, "Answer deadline passed");
             }
+            if (room.answersReceived.has(userId)) return fail(ws, "Answer already submitted");
+            const question = currentQuestion(room);
+            if (!question || letters.indexOf(answer) >= question.options.length) return fail(ws, "Invalid answer");
+            const scored = scoreAnswer(answer, question.correctOption, player.streak);
+            player.score += scored.points;
+            player.streak = scored.streak;
+            player.lastPoints = scored.points;
+            room.answersReceived.add(userId);
+            send(ws, WS_EVENTS.ANSWER_ACCEPTED, { questionId });
+            const activePlayers = Array.from(room.players.values()).filter(p => p.connected);
+            if (activePlayers.length && activePlayers.every(p => room.answersReceived.has(p.id))) revealRound(room);
             break;
           }
-
           case WS_EVENTS.NEXT_QUESTION: {
-            if (!userRoomCode) return;
-            const room = rooms.get(userRoomCode);
-            if (room && room.hostWs === ws) {
-              // Show leaderboard first? Or just next question?
-              // Let's cycle: Question -> Leaderboard -> Question
-              
-              if (room.currentQuestionIndex >= room.questions.length - 1) {
-                room.state = 'finished';
-                broadcastGameOver(room);
-              } else {
-                 // Send leaderboard for previous question first if we want
-                 // For MVP: Host clicks "Next" to show leaderboard, then "Next" again for question?
-                 // Let's keep it simple: Host clicks next -> shows Answer/Leaderboard -> clicks Next -> New Question
-                 
-                 // Simplified flow: Host clicks "Next" -> New Question
-                 room.currentQuestionIndex++;
-                 sendQuestion(room);
-              }
+            const room = rooms.get(message.payload.roomCode);
+            if (!room || room.hostWs !== ws || room.code !== userRoomCode) return fail(ws, "Host permission required");
+            if (room.state !== "reveal") return fail(ws, "Wait for the round result");
+            if (room.currentQuestionIndex >= room.questions.length - 1) finishGame(room);
+            else {
+              room.currentQuestionIndex += 1;
+              beginQuestion(room);
             }
             break;
           }
         }
-      } catch (e) {
-        console.error("WebSocket message error:", e);
+      } catch (error) {
+        console.error("Game message failed:", error);
+        fail(ws, "Unable to process game message");
       }
     });
 
-    ws.on('close', () => {
-      if (userRoomCode && userId) {
-        const room = rooms.get(userRoomCode);
-        if (room) {
-          const player = room.players.get(userId);
-          if (player) {
-            player.connected = false;
-            // Optionally remove after timeout
-          }
+    ws.on("close", () => {
+      if (!userRoomCode) return;
+      const room = rooms.get(userRoomCode);
+      if (!room) return;
+      if (room.hostWs === ws) {
+        clearTimeout(room.timer);
+        rooms.delete(room.code);
+        for (const player of room.players.values()) fail(player.ws, "Host disconnected; this room is closed");
+      } else if (userId) {
+        const player = room.players.get(userId);
+        if (player && player.ws === ws) {
+          player.connected = false;
+          broadcastLobby(room);
         }
       }
     });
+    ws.on("error", error => console.error("Game socket error:", error.message));
   });
 
-  // Helpers
-  function broadcastLobbyUpdate(room: Room) {
-    const playersList = Array.from(room.players.values()).map(p => ({
-      name: p.name,
-      score: p.score,
-      connected: p.connected
-    }));
-    
-    room.hostWs.send(JSON.stringify({
-      type: WS_EVENTS.LOBBY_UPDATE,
-      payload: { players: playersList }
-    }));
-  }
-
-  function broadcastGameStart(room: Room) {
-    const msg = JSON.stringify({ type: WS_EVENTS.GAME_STARTED });
-    room.hostWs.send(msg);
-    room.players.forEach(p => {
-      if (p.connected) p.ws.send(msg);
-    });
-  }
-
-  function sendQuestion(room: Room) {
-    const question = room.questions[room.currentQuestionIndex];
-    if (!question) return;
-
-    // Mask correct answer for players
-    const playerPayload = {
-      question: question.front,
-      choices: question.options,
-      timeLimit: 30000,
-      startTime: Date.now()
-    };
-
-    const hostPayload = {
-      ...playerPayload,
-      correctOption: question.correctOption,
-      answer: question.back // explanation/back of card
-    };
-
-    room.hostWs.send(JSON.stringify({
-      type: WS_EVENTS.QUESTION_START,
-      payload: hostPayload
-    }));
-
-    room.players.forEach(p => {
-      if (p.connected) {
-        p.ws.send(JSON.stringify({
-          type: WS_EVENTS.QUESTION_START,
-          payload: playerPayload
-        }));
-      }
-    });
-  }
-
-  function broadcastGameOver(room: Room) {
-    const leaderboard = Array.from(room.players.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-
-    const msg = JSON.stringify({
-      type: WS_EVENTS.GAME_OVER,
-      payload: { leaderboard }
-    });
-
-    room.hostWs.send(msg);
-    room.players.forEach(p => {
-      if (p.connected) p.ws.send(msg);
-    });
-  }
-
-  // Seed if empty
   await seedDatabase();
-
   return httpServer;
 }
 
-// Seed function
 export async function seedDatabase() {
   const existing = await storage.getDecks();
-  if (existing.length === 0) {
-    const deck = await storage.createDeck({
-      title: "General Knowledge",
-      description: "A sample trivia deck",
-      category: "Trivia"
-    });
-    
-    await storage.createCards(deck.id, [
-      {
-        front: "What is the capital of France?",
-        back: "Paris",
-        type: "multiple_choice",
-        options: ["London", "Berlin", "Madrid", "Paris"],
-        correctOption: "D"
-      },
-      {
-        front: "Which planet is known as the Red Planet?",
-        back: "Mars",
-        type: "multiple_choice",
-        options: ["Venus", "Mars", "Jupiter", "Saturn"],
-        correctOption: "B"
-      }
-    ]);
-  }
+  if (existing.length > 0) return;
+  const deck = await storage.createDeck({
+    title: "General Knowledge",
+    description: "A sample trivia deck",
+    category: "Trivia"
+  });
+  await storage.createCards(deck.id, [
+    { front: "What is the capital of France?", back: "Paris", type: "multiple_choice",
+      options: ["London", "Berlin", "Madrid", "Paris"], correctOption: "D" },
+    { front: "Which planet is known as the Red Planet?", back: "Mars", type: "multiple_choice",
+      options: ["Venus", "Mars", "Jupiter", "Saturn"], correctOption: "B" }
+  ]);
 }
