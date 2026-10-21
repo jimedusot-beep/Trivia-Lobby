@@ -384,18 +384,3 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   return httpServer;
 }
 
-export async function seedDatabase() {
-  const existing = await storage.getDecks();
-  if (existing.length > 0) return;
-  const deck = await storage.createDeck({
-    title: "General Knowledge",
-    description: "A sample trivia deck",
-    category: "Trivia"
-  });
-  await storage.createCards(deck.id, [
-    { front: "What is the capital of France?", back: "Paris", type: "multiple_choice",
-      options: ["London", "Berlin", "Madrid", "Paris"], correctOption: "D" },
-    { front: "Which planet is known as the Red Planet?", back: "Mars", type: "multiple_choice",
-      options: ["Venus", "Mars", "Jupiter", "Saturn"], correctOption: "B" }
-  ]);
-}
