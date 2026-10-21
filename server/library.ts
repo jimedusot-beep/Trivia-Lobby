@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { randomUUID, createHash } from "node:crypto";
 import { readFile, mkdir, writeFile, unlink } from "node:fs/promises";
 import { isAbsolute, join, resolve, sep } from "node:path";
-import { and, eq, desc, ilike, sum } from "drizzle-orm";
+import { and, eq, desc, ilike, sum, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { libraryFiles } from "@shared/schema";
@@ -59,7 +59,11 @@ export function registerLibraryRoutes(app: Express): void {
   app.get("/api/library/files", requireUser, async (req, res, next) => {
     try {
       const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 100) : "";
-      const condition = q ? and(eq(libraryFiles.ownerId, req.studyUser!.id), ilike(libraryFiles.originalName, "%" + q + "%")) : eq(libraryFiles.ownerId, req.studyUser!.id);
+      const pattern = "%" + q + "%";
+      const condition = q ? and(eq(libraryFiles.ownerId, req.studyUser!.id), or(
+        ilike(libraryFiles.originalName, pattern), ilike(libraryFiles.folder, pattern),
+        sql`array_to_string(${libraryFiles.tags}, ' ') ILIKE ${pattern}`,
+      )) : eq(libraryFiles.ownerId, req.studyUser!.id);
       const files = await db.select().from(libraryFiles).where(condition).orderBy(desc(libraryFiles.createdAt)).limit(500);
       res.json(files.map(publicMetadata));
     } catch (e) { next(e); }
