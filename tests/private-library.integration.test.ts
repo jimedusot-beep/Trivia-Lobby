@@ -59,6 +59,15 @@ describe("private library HTTP integration (dedicated disposable database requir
       assert.equal((await request("GET", "/api/library/files/" + id + "/preview", c2)).res.status, 404);
       assert.equal((await request("GET", "/api/library/files/" + id + "/original", c2)).res.status, 404);
       assert.equal((await request("GET", "/api/library/files", c2)).data.length, 0);
+      const organized = await request("PATCH", "/api/library/files/" + id, c1,
+        { folder: "Phonetics", tags: ["articulators", "lecture"] });
+      assert.equal(organized.res.status, 200);
+      assert.equal((await request("GET", "/api/library/files?q=Phonetics", c1)).data.length, 1);
+      assert.equal((await request("GET", "/api/library/files?q=articulators", c1)).data.length, 1);
+      assert.equal((await request("GET", "/api/library/files?q=articulators", c2)).data.length, 0);
+      assert.equal((await request("PATCH", "/api/library/files/" + id, c2,
+        { folder: "Stolen" })).res.status, 404);
+
       const preview = await request("GET", "/api/library/files/" + id + "/preview", c1);
       assert.equal(preview.data.cards.length, 2);
       assert.equal(preview.data.cards[0].sourceRef, "line 1");
