@@ -70,6 +70,7 @@ export const WS_EVENTS = {
   
   // Server -> Client
   ROOM_CREATED: 'room_created',
+  ROOM_JOINED: 'room_joined',
   LOBBY_UPDATE: 'lobby_update',
   GAME_STARTED: 'game_started',
   QUESTION_START: 'question_start',
