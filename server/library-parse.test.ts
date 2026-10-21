@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes, createHash } from "node:crypto";
 import { safeFilename, identifySource, inspectArchive, previewSource } from "./library-parse";
-import { getCookie, hashPassword, verifyPassword, hashSessionToken } from "./auth";
+import { getCookie, hashPassword, verifyPassword, hashSessionToken } from "./auth-crypto";
 
 // Construct tiny uncompressed ZIP files without downloading dependencies or fixtures.
 function simpleZip(name: string, data: string): Buffer {
