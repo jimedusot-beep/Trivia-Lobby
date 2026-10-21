@@ -12,7 +12,7 @@ This is the **single active codebase**: [jimedusot-beep/Trivia-Lobby](https://gi
 - Host/join live trivia games with WebSockets
 - Database-backed decks and cards with PostgreSQL
 - CSV paste import with preview
-- New: select a local CSV or TSV file, preview, then import deck and cards in **one database transaction** (on the feature branch until merged)
+- New: select a local CSV or TSV file, preview, then import deck and cards in **one database transaction**
 
 ## Getting started
 
