@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import ImportDeck from "@/pages/ImportDeck";
 import Study from "@/pages/Study";
+import Practice from "@/pages/Practice";
 import Host from "@/pages/Host";
 import Join from "@/pages/Join";
 import Play from "@/pages/Play";
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/import" component={ImportDeck} />
       <Route path="/study/:id" component={Study} />
+      <Route path="/practice/:id" component={Practice} />
       <Route path="/host/:deckId" component={Host} />
       <Route path="/join" component={Join} />
       <Route path="/play" component={Play} />
