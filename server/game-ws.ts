@@ -155,7 +155,7 @@ export function registerGameSockets(httpServer: Server, loadDeck: (deckId: numbe
             if (!isLibraryAuthorized(req.headers.cookie)) { error(ws, "Sign in to host a game"); return; }
             if (role) { error(ws, "You are already in a room"); return; }
             const { deckId } = z.object({ deckId: z.number().int().positive() }).parse(incoming.payload);
-            const deck = await storage.getDeck(deckId);
+            const deck = await loadDeck(deckId);
             if (!deck) { error(ws, "Deck not found"); return; }
             const questions = playableQuestions(deck.cards);
             if (!questions.length) { error(ws, "Choose a deck with valid multiple-choice questions"); return; }
