@@ -30,7 +30,7 @@ export function isValidToken(token: string, expectedHash: Buffer): boolean {
 const roomCode = z.string().regex(/^[A-HJ-NP-Z2-9]{8}$/);
 const empty = z.object({ roomCode }).strict();
 export const incomingMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("create_room"), payload: z.object({ deckId: z.number().int().positive() }).strict() }).strict(),
+  z.object({ type: z.literal("create_room"), payload: z.object({ deckId: z.number().int().positive(), hostToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict() }).strict(),
   z.object({ type: z.literal("join_room"), payload: z.object({
     roomCode, playerName: z.string().trim().min(1).max(24)
   }).strict() }).strict(),
