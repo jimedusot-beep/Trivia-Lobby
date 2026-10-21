@@ -148,6 +148,8 @@ export default function ImportDeck() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                  <Link href="/library" className="underline font-semibold">Save an original file in your private source library instead</Link>. This quick importer stores derived cards only.
+                  <br />
                   <strong>CSV/TSV headers:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption. Or use a Trivia Lobby JSON backup.
                 </div>
                 <div className="space-y-2">
@@ -173,7 +175,7 @@ export default function ImportDeck() {
                 <Button 
                   className="w-full rounded-xl" 
                   onClick={handleParse}
-                  disabled={!deckInfo.title || !csvContent}
+                  disabled={!csvContent || (!deckInfo.title && !selectedFilename?.toLowerCase().endsWith(".json"))}
                 >
                   Preview & Validate <Upload className="ml-2 h-4 w-4" />
                 </Button>
@@ -186,7 +188,7 @@ export default function ImportDeck() {
           <Card className="rounded-2xl border-none shadow-lg animate-in slide-in-from-right-4">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Preview ({parsedCards.length} Cards)</CardTitle>
-              <Button variant="outline" onClick={() => setStep(1)}>Edit CSV</Button>
+              <Button variant="outline" onClick={() => setStep(1)}>Edit import</Button>
             </CardHeader>
             <CardContent>
               <div className="max-h-[500px] overflow-auto rounded-lg border">
