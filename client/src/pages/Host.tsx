@@ -18,7 +18,7 @@ export default function Host() {
 
   // Auto-create room on mount
   useEffect(() => {
-    if (connected && deckId && !gameState.roomCode) {
+    if (connected && deckId && !gameState.roomCode && !sessionStorage.getItem("trivia_host_room")) {
       emit(WS_EVENTS.CREATE_ROOM, { deckId: parseInt(deckId) });
     }
   }, [connected, deckId, gameState.roomCode, emit]);
@@ -73,7 +73,7 @@ export default function Host() {
         {gameState.gameStatus === 'lobby' && (
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
             <div className="space-y-4">
-              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">trivia.app/join</span> with code:</h2>
+              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
               <div 
                 onClick={copyCode}
                 className="text-8xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
@@ -160,7 +160,7 @@ export default function Host() {
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
                    <div className="text-4xl font-bold text-green-400">
-                     {gameState.currentQuestion.choices.find((c: string) => c.startsWith(gameState.lastAnswerResult.correctLetter))}
+                     {gameState.currentQuestion.choices[gameState.lastAnswerResult.correctLetter.charCodeAt(0) - 65]}
                    </div>
                  </div>
 
