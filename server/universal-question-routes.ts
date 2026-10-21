@@ -11,7 +11,7 @@ const idSchema = z.coerce.number().int().positive().safe();
 const questionInput = universalQuestionSchema.omit({ id: true });
 const reorderInput = z.object({ ids: z.array(z.number().int().positive()).max(500) });
 function ids(req: Request) {
-  return { deckId: idSchema.parse(req.params.deckId), questionId: idSchema.parse(req.params.questionId) };
+  return { deckId: idSchema.parse(req.params.deckId), questionId: req.params.questionId === undefined ? 0 : idSchema.parse(req.params.questionId) };
 }
 function failure(err: unknown, res: Response) {
   if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid question or response", details: err.issues });
