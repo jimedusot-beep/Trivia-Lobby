@@ -41,9 +41,10 @@ CREATE TABLE IF NOT EXISTS study_sources (
 CREATE TABLE IF NOT EXISTS study_drafts (
   id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
   source_id uuid NOT NULL REFERENCES study_sources(id) ON DELETE CASCADE,
-  front text NOT NULL, back text NOT NULL, evidence text NOT NULL,
+  front text NOT NULL, back text NOT NULL, explanation text, evidence text NOT NULL,
   approved boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE study_drafts ADD COLUMN IF NOT EXISTS explanation text;
 CREATE INDEX IF NOT EXISTS study_drafts_user_source_idx ON study_drafts(user_id,source_id);
 COMMIT;
