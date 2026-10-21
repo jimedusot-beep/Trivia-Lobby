@@ -51,6 +51,17 @@ These are **research references only**. No third-party code, proprietary assets,
 
 - [AI reconstruction expansion: five research and testing tracks](docs/research/AI_RECONSTRUCTION_TRACKS.md) — evidence-linked specifications, host/player automation, original UI prototypes, replay QA, and case studies. [Structured inventory](docs/research/ai-reconstruction-candidates.json) (`node --test tests/research-manifest.test.mjs`). [Implementation issue #6](https://github.com/jimedusot-beep/Trivia-Lobby/issues/6).
 
+## Phase 1 multiplayer repair (draft PR #10)
+
+Phase 1 adds protocol v1, authoritative answer timing and scoring, sanitized result events, credential-backed player/host reconnection, collision-checked room codes, and a PostgreSQL FK migration. Automated tests include a two-player match and a PostgreSQL rollback exercise.
+
+**Release warning:** the existing deck HTTP API still has no user accounts or ownership authorization, and exposes answer keys to anyone who can access a deck. This prevents claiming production-ready game secrecy or private storage. Do not upload confidential materials or deploy for protected student assessments.
+
+- [Phase 1 security verification and open production blockers](docs/PHASE1_SECURITY_REPORT.md)
+- [Protocol and migration instructions](docs/PHASE1_SECURITY_PROTOCOL.md)
+- [External reference source, licensing and provenance audit](docs/PHASE1_REFERENCE_AUDIT.md)
+- [Draft implementation PR #10](https://github.com/jimedusot-beep/Trivia-Lobby/pull/10)
+
 ## Product direction
 
 1. **Study library:** permanent original PDF/DOCX/PPTX/TXT/CSV uploads, private accounts, folders, searchable notes, and source-linked cards.
