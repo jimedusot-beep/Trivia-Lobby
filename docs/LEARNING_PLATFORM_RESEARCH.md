@@ -90,3 +90,42 @@ Use verified licenses at specific commits, retain notices and attribution, and r
 
 - **Added in this branch:** curated repository catalog, integration plan, and additive v1 schema/adapter.
 - **Not completed:** dependencies integrated, reverse engineering of proprietary formats, PDF ingestion, visual game components, authentication, cloud storage, FSRS integration, security repair, runtime tests.
+
+
+## Round 2 — Additional game engines and interoperability leads (2026-10-21)
+
+These **12 new candidates** extend the existing inventory. Links lead to independent projects or alternatives, not verified decompilations of any proprietary app. Claims below are based on project descriptions; source code, licenses, dependencies, and current maintenance need inspection before adoption.
+
+| Repository | Proposed technical value | Adaptation risk |
+|---|---|---|
+| [Lawndlwd/quizz](https://github.com/Lawndlwd/quizz) | Server-controlled timers, game recovery, persistent sessions and scoring settings | Medium/high: auth, data persistence, architecture |
+| [virgilvox/doot-games](https://github.com/virgilvox/doot-games) | Declarative mini-game plugins, room lifecycle, party-game building blocks | Medium/high: architecture and licensing |
+| [arvindfroi/quizparty](https://github.com/arvindfroi/quizparty) | WebRTC host-as-server design, shareable quiz JSON, QR/PIN joining | Medium: peer authentication, host reliability |
+| [Congmoow/QuestPilot](https://github.com/Congmoow/QuestPilot) | Question bank search, wrong-answer notebooks, CSV/JSON/TOML imports | Medium: desktop-to-web portability |
+| [ecamodeo/qti-builder](https://github.com/ecamodeo/qti-builder) | QTI 2.1 import/export representation including matching and ordering | Medium: target compatibility validation |
+| [OpenQuester/OpenQuester](https://github.com/OpenQuester/OpenQuester) | Quiz packages, buzzer/wager/secret question game modes | Medium: custom format conversion |
+| [mholzi/quizify](https://github.com/mholzi/quizify) | QR joins, phone buzzer, local-first party quiz and power-ups | Medium: Home Assistant specialization |
+| [asaf-shitrit/openpartygames](https://github.com/asaf-shitrit/openpartygames) | Shared-screen/phone-only hosting, versioned content packs | High: AGPL-3.0, Cloudflare-specific backend |
+| [donebd/SIGame](https://github.com/donebd/SIGame) | Offline quiz package engine and .siq import reference | Medium: package format and trust boundary |
+| [yohurokano/openquiz](https://github.com/yohurokano/openquiz) | React/Express/Socket.IO question types and classroom play | Medium: rewrite Socket.IO to ws or adapter |
+| [kylejckson/NanoQuiz](https://github.com/kylejckson/NanoQuiz) | Compact JSON quiz format and straightforward host/join flow | Low/medium: educational reference |
+| [Mezee/cast-party-quiz](https://github.com/Mezee/cast-party-quiz) | Chromecast and phone-as-buzzer TV game architecture | Medium/high: streaming setup |
+| [abhijatchaturvedi/gamenight](https://github.com/abhijatchaturvedi/gamenight) | Multi-mode room settings, quiz timing, drawing games | Medium/high: external trivia API and game rules |
+
+**Correction:** this round contains **13** repository references in the table. With the previous 29 (including questgen), 18 additions, and this round of 13, the catalog contains **60 unique candidate links** before separately counting the official Anki codebase. Counts describe research leads, not validated working integrations.
+
+### Specific integration experiments
+
+1. **QTI bridge prototype:** create a specification of what Trivia Lobby can faithfully represent (multiple choice, multiple select, matching, short answer) and a per-format loss report. Do not import XML or ZIP without limits, path traversal defense, and entity-expansion prevention.
+2. **Wrong-answer notebook:** extract wrong responses from local practice events into per-user review queues; verify stable question IDs and user authorization.
+3. **Mini-game extension API:** define a server-authoritative game mode interface with lifecycle (create, join, start, submit, reveal, finish), capabilities and versioning. Do not load arbitrary external game code at runtime.
+4. **Game identity hardening:** prioritize reconnect token verification before following peer-to-peer or extended lobby implementations.
+5. **Export adapters:** prototype user-owned JSON and QTI output with round-trip tests; avoid undocumented scraping endpoints.
+
+### Code and reverse-engineering provenance
+
+- Independently recreated applications are not necessarily reverse engineered; do not categorize them as decompilations.
+- `.siq`, QTI, APKG and supported interchange formats should be researched through published format descriptions or independently obtained legitimate example files.
+- For each candidate, record its **commit hash, SPDX license, dependency advisories, project activity, source files examined, tests performed, and whether code is permitted to be copied**.
+- Treat unknown licensing as reference-only. Even when a license is permissive, copying branding, characters, logos or proprietary question banks is not approved.
+
