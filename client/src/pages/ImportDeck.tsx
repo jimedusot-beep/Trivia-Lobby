@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import Papa from "papaparse";
-import { useCreateDeck, useCreateCards } from "@/hooks/use-decks";
+import { useImportDeck } from "@/hooks/use-decks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,10 +17,36 @@ export default function ImportDeck() {
   const [step, setStep] = useState(1);
   const [deckInfo, setDeckInfo] = useState({ title: "", description: "", category: "General" });
   const [csvContent, setCsvContent] = useState("");
+  const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
   const [parsedCards, setParsedCards] = useState<any[]>([]);
 
-  const createDeck = useCreateDeck();
-  const createCards = useCreateCards();
+  const importDeck = useImportDeck();
+
+  const handleFile = async (file?: File) => {
+    if (!file) return;
+    if (!/\.(csv|tsv)$/i.test(file.name)) {
+      toast({ title: "Unsupported file", description: "Choose a CSV or TSV file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Limit imports to 2 MB per file.", variant: "destructive" });
+      return;
+    }
+    try {
+      const text = await file.text();
+      if (!text.trim()) throw new Error("File is empty");
+      setCsvContent(text.replace(/^\uFEFF/, ""));
+      setSelectedFilename(file.name);
+      setDeckInfo(prev => ({
+        ...prev,
+        title: prev.title || file.name.replace(/\.(csv|tsv)$/i, "").replace(/[_-]/g, " "),
+      }));
+      setParsedCards([]);
+      setStep(1);
+    } catch {
+      toast({ title: "Could not read file", description: "Please choose a valid CSV or TSV file.", variant: "destructive" });
+    }
+  };
 
   const handleParse = () => {
     if (!csvContent.trim()) {
@@ -31,6 +57,7 @@ export default function ImportDeck() {
     Papa.parse(csvContent, {
       header: true,
       skipEmptyLines: true,
+      delimiter: "", // Auto-detect comma or tab separators.
       complete: (results) => {
         if (results.errors.length > 0) {
           toast({ title: "CSV Error", description: "Failed to parse CSV.", variant: "destructive" });
@@ -61,17 +88,13 @@ export default function ImportDeck() {
 
   const handleImport = async () => {
     try {
-      // 1. Create Deck
-      const deck = await createDeck.mutateAsync({
-        title: deckInfo.title,
-        description: deckInfo.description,
-        category: deckInfo.category
-      });
-
-      // 2. Create Cards
-      await createCards.mutateAsync({
-        deckId: deck.id,
-        cards: parsedCards.map(c => ({ ...c, deckId: deck.id }))
+      await importDeck.mutateAsync({
+        deck: {
+          title: deckInfo.title,
+          description: deckInfo.description,
+          category: deckInfo.category,
+        },
+        cards: parsedCards,
       });
 
       toast({ title: "Success!", description: "Deck imported successfully." });
@@ -81,7 +104,7 @@ export default function ImportDeck() {
     }
   };
 
-  const isPending = createDeck.isPending || createCards.isPending;
+  const isPending = importDeck.isPending;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
@@ -136,13 +159,27 @@ export default function ImportDeck() {
 
             <Card className="rounded-2xl border-none shadow-lg">
               <CardHeader>
-                <CardTitle>Cards Data (CSV)</CardTitle>
+                <CardTitle>Upload study cards (CSV or TSV)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
                   <strong>Format:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption
                 </div>
-                <Textarea 
+                <div className="space-y-2">
+                  <Label htmlFor="deck-file">Choose a file from your device</Label>
+                  <Input
+                    id="deck-file"
+                    type="file"
+                    accept=".csv,.tsv,text/csv,text/tab-separated-values"
+                    onChange={e => void handleFile(e.target.files?.[0])}
+                    aria-describedby="upload-help"
+                  />
+                  <p id="upload-help" className="text-xs text-muted-foreground">
+                    Up to 2 MB. {selectedFilename ? `Selected: ${selectedFilename}` : "Or paste CSV/TSV text below."}
+                    The imported cards are saved to the configured PostgreSQL database. The original file is not yet archived.
+                  </p>
+                </div>
+                <Textarea
                   className="min-h-[200px] font-mono text-sm"
                   placeholder="Paste CSV content here..."
                   value={csvContent}
