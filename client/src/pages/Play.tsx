@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useGameSocket } from "@/hooks/use-game-socket";
+import { useGameSocket, type SavedPlayerSession } from "@/hooks/use-game-socket";
 import { WS_EVENTS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -23,34 +23,20 @@ export default function Play() {
         return;
       }
       
-      const { roomCode, name, playerId } = JSON.parse(stored);
-      
-      // Emit Join
-      emit(WS_EVENTS.JOIN_ROOM, { roomCode, name, playerId });
+      let player: SavedPlayerSession;
+      try { player = JSON.parse(stored); }
+      catch { localStorage.removeItem("trivia_player"); setLocation("/join"); return; }
+      if (player.playerId && player.resumeToken) { setHasJoined(true); return; }
+      emit(WS_EVENTS.JOIN_ROOM, { roomCode: player.roomCode, name: player.name });
       setHasJoined(true);
     }
   }, [connected, hasJoined, emit, setLocation]);
 
-  // Handle Game Over Confetti
+  // Celebrate only the server-confirmed correct answer for this player.
   useEffect(() => {
-      if (gameState.lastAnswerResult) {
-          const stored = localStorage.getItem('trivia_player');
-          const { playerId } = stored ? JSON.parse(stored) : { playerId: '' };
-          
-          const myScoreEntry = gameState.leaderboard?.find(p => p.playerId === playerId);
-          // Simple logic: if I got points this round, celebrate
-          // Realistically, server should tell me if I was correct in a private message or we check against correctLetter
-          
-          const isCorrect = gameState.currentQuestion?.choices
-              .find((c: string) => c.startsWith(gameState.lastAnswerResult.correctLetter))
-              ?.startsWith(gameState.lastAnswerResult.correctLetter);
-              
-          // Since we don't track "my previous score" easily here without more state, 
-          // let's just rely on the correctLetter matching my selectedAnswer
-          if (selectedAnswer === gameState.lastAnswerResult.correctLetter) {
-               confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
-          }
-      }
+    if (gameState.lastAnswerResult && selectedAnswer === gameState.lastAnswerResult.correctLetter) {
+      confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
+    }
   }, [gameState.lastAnswerResult, selectedAnswer]);
 
   // Reset selection on new question
@@ -127,7 +113,7 @@ export default function Play() {
            <>
              {gameState.currentQuestion && !gameState.lastAnswerResult && (
                <div className="grid grid-cols-2 gap-4 h-96">
-                 {letters.map((letter, i) => (
+                 {letters.slice(0, gameState.currentQuestion?.choices.length || 4).map((letter, i) => (
                    <button
                      key={letter}
                      disabled={!!selectedAnswer}
