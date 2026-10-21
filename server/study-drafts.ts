@@ -15,7 +15,7 @@ const generatedSchema = z.object({ cards: z.array(z.object({
   explanation: z.string().trim().max(1500).optional(),
   evidence: z.string().trim().min(8).max(1000),
 })).max(15) });
-const changeSchema = z.object({ front: z.string().trim().min(3).max(400), back: z.string().trim().min(1).max(1000), explanation: z.string().trim().max(1500).nullable(), approved: z.boolean() }).strict();
+const changeSchema = z.object({ front: z.string().trim().min(3).max(400), back: z.string().trim().min(1).max(1000), explanation: z.string().trim().max(1500).nullable().optional(), approved: z.boolean() }).strict();
 
 export function registerStudyDraftRoutes(app: Express, safe: Guarded, findUser: FindUser) {
   app.get("/api/study/sources", safe(async (req, res) => {
