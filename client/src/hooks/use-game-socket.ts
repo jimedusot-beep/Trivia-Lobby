@@ -88,7 +88,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.HOST_RESUMED: {
             const saved = safeRead<HostSession>(sessionStorage, "trivia_host");
             sessionStorage.setItem("trivia_host", JSON.stringify({
-              roomCode: payload.roomCode, hostToken: payload.hostToken, deckId: saved?.deckId ?? 0,
+              roomCode: payload.roomCode, hostToken: payload.hostToken, deckId: saved?.deckId ?? Number(sessionStorage.getItem("trivia_host_deck_id") ?? 0),
             }));
             setRestoring(false);
             setGameState(prev => ({ ...prev, roomCode: payload.roomCode, phase: "lobby" }));
