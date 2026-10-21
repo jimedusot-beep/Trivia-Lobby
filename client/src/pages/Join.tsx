@@ -32,12 +32,8 @@ export default function Join() {
 
     setIsJoining(true);
     
-    // Generate a random ID for this session
-    const playerId = crypto.randomUUID();
-    
-    // Store in localStorage for persistence
+    // The server alone issues a player ID and a secret reconnect credential.
     localStorage.setItem('trivia_player', JSON.stringify({
-      playerId,
       name,
       roomCode: code.toUpperCase()
     }));
@@ -58,10 +54,10 @@ export default function Join() {
             <Label className="text-lg">Room Code</Label>
             <Input 
               className="h-14 text-center text-2xl font-mono uppercase tracking-widest bg-muted/50 border-2 focus:border-primary" 
-              placeholder="ABCD"
+              placeholder="8-character code"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
-              maxLength={4}
+              maxLength={8}
             />
           </div>
           <div className="space-y-2">
@@ -71,7 +67,7 @@ export default function Join() {
               placeholder="Enter nickname"
               value={name}
               onChange={e => setName(e.target.value)}
-              maxLength={12}
+              maxLength={24}
             />
           </div>
           <Button 
