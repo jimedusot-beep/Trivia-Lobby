@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
+import LibraryGate from "@/components/LibraryGate";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -29,11 +30,13 @@ function Router() {
 }
 
 function App() {
+  const [location] = useLocation();
+  const guestRoute = location === "/join" || location === "/play";
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {guestRoute ? <Router /> : <LibraryGate><Router /></LibraryGate>}
       </TooltipProvider>
     </QueryClientProvider>
   );
