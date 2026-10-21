@@ -73,3 +73,7 @@ All code in this PR is authored for Trivia Lobby. These external repositories we
 | [hugobarragon/react-quizzes](https://github.com/hugobarragon/react-quizzes) | `085a3963e3bdc7f70842ab53a690fa01a0adca4f` | MIT | `src/QuizzBuilder/FormBuilder.tsx` and tool container | Reference only |
 
 Other requested repositories remain research leads, not verified integration claims. QTI/H5P interoperability needs a dedicated standards-conformance and licensing review.
+
+### Optional Playwright E2E (not run in default CI)
+
+The browser test `e2e/visual-exam.spec.ts` exercises creating a fresh deck, adding three kinds, page reload, responsive mobile play, keyboard selection and scored results. It needs a disposable database with the migration applied and a running app. Example: `npm install --no-save @playwright/test && npx playwright install chromium && BASE_URL=http://localhost:5000 npx playwright test e2e/visual-exam.spec.ts --project=chromium` (omit `--project` if no named project is configured). It **has not been executed or certified** in this PR.
