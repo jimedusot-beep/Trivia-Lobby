@@ -14,6 +14,7 @@ export interface IStorage {
   getDecks(): Promise<Deck[]>;
   getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined>;
   createDeck(deck: InsertDeck): Promise<Deck>;
+  importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck>;
   deleteDeck(id: number): Promise<void>;
   
   // Cards
@@ -37,6 +38,16 @@ export class DatabaseStorage implements IStorage {
   async createDeck(deck: InsertDeck): Promise<Deck> {
     const [newDeck] = await db.insert(decks).values(deck).returning();
     return newDeck;
+  }
+
+  // Save deck and every card in a single transaction. Roll back on any failure.
+  async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck> {
+    if (cardsList.length === 0) throw new Error('Cannot import an empty deck');
+    return db.transaction(async (tx) => {
+      const [created] = await tx.insert(decks).values(deck).returning();
+      await tx.insert(cards).values(cardsList.map(card => ({ ...card, deckId: created.id })));
+      return created;
+    });
   }
 
   async deleteDeck(id: number): Promise<void> {
