@@ -160,7 +160,7 @@ export default function Host() {
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
                    <div className="text-4xl font-bold text-green-400">
-                     {gameState.currentQuestion.choices[gameState.lastAnswerResult.correctLetter.charCodeAt(0) - 65]}
+                     {gameState.currentQuestion?.choices[gameState.lastAnswerResult.correctLetter.charCodeAt(0) - 65] ?? "Unavailable"}
                    </div>
                  </div>
 
