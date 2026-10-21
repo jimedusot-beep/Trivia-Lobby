@@ -15,7 +15,7 @@ export const decks = pgTable("decks", {
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
-  deckId: integer("deck_id").notNull(), // Foreign key ref added in relations
+  deckId: integer("deck_id").notNull().references(() => decks.id, { onDelete: "cascade" }),
   type: text("type").notNull().default("flashcard"), // 'flashcard' or 'multiple_choice'
   front: text("front").notNull(), // Question or Front of card
   back: text("back").notNull(),   // Answer or Back of card
@@ -70,6 +70,8 @@ export const WS_EVENTS = {
   
   // Server -> Client
   ROOM_CREATED: 'room_created',
+  ROOM_JOINED: 'room_joined',
+  ANSWER_ACCEPTED: 'answer_accepted',
   LOBBY_UPDATE: 'lobby_update',
   GAME_STARTED: 'game_started',
   QUESTION_START: 'question_start',
@@ -87,7 +89,7 @@ export interface CreateRoomPayload {
 export interface JoinRoomPayload {
   roomCode: string;
   playerName: string;
-  playerId?: string; // Optional for reconnects, but strictly client generates this usually or server assigns
+  // The server generates player IDs. Reconnect requires a separate secret token.
 }
 
 export interface SubmitAnswerPayload {
