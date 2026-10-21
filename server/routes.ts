@@ -112,6 +112,7 @@ function finishGame(room: Room) {
 function syncPlayer(room: Room, player: Player) {
   send(player.ws, WS_EVENTS.SYNC_SNAPSHOT, {
     roomCode: room.code, playerId: player.id, score: player.score,
+    answeredCurrentQuestion: room.state === "question" && room.answersReceived.has(player.id),
     players: getLeaderboard(room),
     gameStatus: room.state === "lobby" ? "lobby" : room.state === "finished" ? "ended" : "playing",
     leaderboard: room.state === "finished" || room.state === "reveal" ? getLeaderboard(room) : []
@@ -119,6 +120,9 @@ function syncPlayer(room: Room, player: Player) {
   if (room.state === "question" || room.state === "reveal") {
     const payload = publicQuestion(room);
     if (payload) send(player.ws, WS_EVENTS.QUESTION_START, payload);
+    if (room.state === "question" && room.answersReceived.has(player.id)) {
+      send(player.ws, WS_EVENTS.ANSWER_ACCEPTED, { questionId: room.currentQuestionIndex });
+    }
     if (room.state === "reveal") {
       const question = currentQuestion(room);
       if (question) send(player.ws, WS_EVENTS.ANSWER_RESULT, {
