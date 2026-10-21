@@ -13,6 +13,7 @@ import Join from "@/pages/Join";
 import Play from "@/pages/Play";
 import NotFound from "@/pages/not-found";
 import ExamBuilder from "@/pages/ExamBuilder";
+import NewExamDeck from "@/pages/NewExamDeck";
 import VisualPractice from "@/pages/VisualPractice";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/import" component={ImportDeck} />
       <Route path="/study/:id" component={Study} />
       <Route path="/practice/:id" component={Practice} />
+      <Route path="/new-exam" component={NewExamDeck} />
       <Route path="/exam-builder/:id" component={ExamBuilder} />
       <Route path="/visual-practice/:id" component={VisualPractice} />
       <Route path="/host/:deckId" component={Host} />
