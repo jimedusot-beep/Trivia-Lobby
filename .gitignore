@@ -4,3 +4,10 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Keep environment secrets and private keys out of Git
+.env
+.env.*
+!.env.example
+*.pem
+*.key

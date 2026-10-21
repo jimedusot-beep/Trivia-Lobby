@@ -40,3 +40,5 @@ jobs:
         run: npm run db:migrate:phase3
       - name: Verify private HTTP boundaries with PostgreSQL
         run: npm run test:integration
+      - name: Enforce production dependency security gate
+        run: npm audit --omit=dev --audit-level=high
