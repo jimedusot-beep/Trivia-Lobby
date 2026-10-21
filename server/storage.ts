@@ -18,7 +18,7 @@ export interface IStorage {
   deleteDeck(id: number): Promise<void>;
   
   // Cards
-  createCards(deckId: number, cardsList: InsertCard[]): Promise<Card[]>;
+  createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -55,7 +55,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(decks).where(eq(decks.id, id));
   }
 
-  async createCards(deckId: number, cardsList: InsertCard[]): Promise<Card[]> {
+  async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]> {
     if (cardsList.length === 0) return [];
     
     const cardsWithDeckId = cardsList.map(c => ({ ...c, deckId }));
