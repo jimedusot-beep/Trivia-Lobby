@@ -71,7 +71,7 @@ export async function registerRoutes(
 
 
   // Dedicated validated multiplayer protocol and room lifecycle.
-  registerGameSockets(httpServer);
+  registerGameSockets(httpServer, id => storage.getDeck(id));
 
   // Seed if empty
   await seedDatabase();
