@@ -50,6 +50,13 @@ describe("Trivia Lobby deck file interchange", () => {
     );
   });
 
+  it("rejects missing earlier answer options rather than shifting A/B letters", () => {
+    assert.throws(
+      () => parseDeckContent("Front,Back,Type,OptionA,OptionB,OptionC,CorrectOption\nQuestion,Answer,multiple_choice,A,,C,C", "bad.csv"),
+      /contiguous/,
+    );
+  });
+
   it("rejects unknown JSON instead of treating it as a deck backup", () => {
     assert.throws(() => parseDeckContent('{"cards":[]}', "unknown.json"), /Unsupported JSON backup format/);
   });
