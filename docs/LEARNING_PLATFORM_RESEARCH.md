@@ -129,3 +129,38 @@ These **12 new candidates** extend the existing inventory. Links lead to indepen
 - For each candidate, record its **commit hash, SPDX license, dependency advisories, project activity, source files examined, tests performed, and whether code is permitted to be copied**.
 - Treat unknown licensing as reference-only. Even when a license is permissive, copying branding, characters, logos or proprietary question banks is not approved.
 
+
+
+## Round 3 — QTI ecosystems and exam construction (2026-10-21)
+
+Ten additional GitHub repositories were checked as existing via repository search. These are **research references only**; no third-party code or binary was copied, and feature claims have not been runtime-tested. For each integration, verify LICENSE at the specific commit and validate against representative exports. None of these are asserted to be leaked or decompiled commercial products.
+
+| New repository | Capability worth inspecting | Fit and cautions |
+|---|---|---|
+| [LongsightGroup/qti3](https://github.com/LongsightGroup/qti3) | Framework-neutral TypeScript QTI 3 parsing, scoring, rendering, test fixtures | **High:** a modern TypeScript reference for interoperability; check exact spec profile and API stability |
+| [collinsherriff/openassess](https://github.com/collinsherriff/openassess) | Local browser question bank, PDF-to-QTI, QTI/Moodle/GIFT/Aiken/CSV conversion | **High:** privacy-preserving import UX; PDF extraction accuracy and loss reports need testing |
+| [tchajed/question-bank](https://github.com/tchajed/question-bank) | Source-controlled TOML questions, course exams and QTI export | **High:** question versioning and repeatable exports; distinct Go/CLI architecture |
+| [atomicjolt/OpenAssessments](https://github.com/atomicjolt/OpenAssessments) | Older edX XML/QTI quiz engine | Medium: Rails/PostgreSQL architecture and legacy dependency maintenance |
+| [gpoore/text2qti](https://github.com/gpoore/text2qti) | Markdown-ish text to QTI Canvas quizzes with feedback and answer keys | **High:** simple manual import path for college materials; verify syntax edge cases |
+| [examplary/qti](https://github.com/examplary/qti) | TypeScript parsing and generation for QTI 2.1/3.0 packages | **High:** adapter candidate; test round-trip fidelity and manifest safety |
+| [agencyenterprise/qti-3-player](https://github.com/agencyenterprise/qti-3-player) | Front-end QTI 3 XML rendering | Medium: project documents partial expressions and no adaptive behavior |
+| [bobb34/QST](https://github.com/bobb34/QST) | Assessment, gradebook, Moodle XML and multiple QTI versions | Medium: broad assessment workflows; much larger stack |
+| [hugobarragon/react-quizzes](https://github.com/hugobarragon/react-quizzes) | React quiz builder with drag/drop ordering and rich-text questions | Medium: assess maintenance, accessible controls and React 18 fit |
+| [kaganlove/QTI-Converter](https://github.com/kaganlove/QTI-Converter) | Aiken/text to Canvas QTI question banks | Medium: focused export workflow; validate generated packages |
+
+**Catalog tally:** 29 original linked references (including questgen) + 18 round-1 additions + 13 round-2 additions + 10 round-3 additions = **70 catalog references**, excluding the separately cited official Anki repository. This tally is not a count of audited, integrated or production-ready packages.
+
+### Highest-value code experiments (not implemented in this branch)
+
+- Establish **QTI conformance fixture tests** for our `shared/universal-questions.ts` answer variants using public fixtures from qti3.
+- Build a strict **QTI package parser** with ZIP entry quotas, XML entity protection, no filesystem traversal, and loss reporting for unsupported question interactions.
+- Add **Aiken and Markdown import previews** based on text2qti format conventions; preserve answer rationale and explicit answer validation.
+- Prototype a **printable exam/answer-key exporter** from normalized questions; avoid leaking the answer key to student/game-player payloads.
+- Make **source ownership and licensing** visible in the import screen; don't import teacher/student private material before access control exists.
+- Keep the existing React/Express/PostgreSQL runtime, adding format adapters rather than transplanting entire LMS applications.
+
+### Research sources
+- [qti3 documentation](https://github.com/LongsightGroup/qti3)
+- [OpenAssess documentation](https://github.com/collinsherriff/openassess)
+- [text2qti examples](https://github.com/gpoore/text2qti)
+- [examplary QTI package](https://github.com/examplary/qti)
