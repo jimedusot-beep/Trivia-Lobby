@@ -39,7 +39,7 @@ export default function ImportDeck() {
       setSelectedFilename(file.name);
       setDeckInfo(prev => ({
         ...prev,
-        title: prev.title || file.name.replace(/\.(csv|tsv)$/i, "").replace(/[_-]/g, " "),
+        title: prev.title || (/\.json$/i.test(file.name) ? "" : file.name.replace(/\.(csv|tsv)$/i, "").replace(/[_-]/g, " ")),
       }));
       setParsedCards([]);
       setStep(1);
