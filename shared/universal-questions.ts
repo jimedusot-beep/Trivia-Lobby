@@ -44,7 +44,10 @@ const matching = z.object({
   kind: z.literal("matching"), pairs: z.array(z.object({
     id: identifier, prompt: short, match: short,
   })).min(2).max(20),
-}).superRefine((v, c) => validIds(v.pairs.map(p => p.id), v.pairs.map(p => p.id), c));
+}).superRefine((v, c) => {
+  validIds(v.pairs.map(p => p.id), v.pairs.map(p => p.id), c);
+  if (new Set(v.pairs.map(p => p.match)).size !== v.pairs.length) c.addIssue({ code: z.ZodIssueCode.custom, message: "Matching labels must be unique" });
+});
 const ordering = z.object({
   kind: z.literal("ordering"), items: z.array(option).min(2).max(20),
   correctOrderIds: z.array(identifier).min(2).max(20),
@@ -63,7 +66,10 @@ const imageHotspot = z.object({
 const dragDropLabels = z.object({
   kind: z.literal("drag_drop_labels"), imageUrl: httpsUrl,
   imageAlt: short, targets: z.array(point).min(2).max(30),
-}).superRefine((v, c) => validIds(v.targets.map(t => t.id), v.targets.map(t => t.id), c));
+}).superRefine((v, c) => {
+  validIds(v.targets.map(t => t.id), v.targets.map(t => t.id), c);
+  if (new Set(v.targets.map(t => t.label)).size !== v.targets.length) c.addIssue({ code: z.ZodIssueCode.custom, message: "Drag labels must be unique" });
+});
 const diagramIdentification = z.object({
   kind: z.literal("diagram_identification"), imageUrl: httpsUrl,
   imageAlt: short, targets: z.array(point).min(2).max(30),
@@ -115,7 +121,9 @@ export function gradeUniversalAnswer(question: UniversalQuestion, response: unkn
     case "drag_drop_labels": {
       const submitted = matchedIds.parse(response).matchIds;
       const ids = question.answer.kind === "matching" ? question.answer.pairs.map(p => p.id) : question.answer.targets.map(t => t.id);
-      return Object.keys(submitted).length === ids.length && ids.every(id => submitted[id] === id);
+      return Object.keys(submitted).length === ids.length && (question.answer.kind === "matching"
+        ? question.answer.pairs.every(pair => submitted[pair.id] === pair.match)
+        : question.answer.targets.every(point => submitted[point.id] === point.label));
     }
     case "ordering": return JSON.stringify(orderedIds.parse(response).orderIds) === JSON.stringify(question.answer.correctOrderIds);
     case "true_false": return boolResponse.parse(response).value === question.answer.correct;
@@ -130,11 +138,11 @@ export function withoutAnswerKeys(question: UniversalQuestion) {
   switch (answer.kind) {
     case "multiple_choice": case "multiple_select":
       return { ...base, answer: { kind: answer.kind, options: answer.options } };
-    case "matching": return { ...base, answer: { kind: answer.kind, prompts: answer.pairs.map(p => ({ id: p.id, prompt: p.prompt })), matches: answer.pairs.map(p => ({ id: p.id, label: p.match })) } };
+    case "matching": return { ...base, answer: { kind: answer.kind, prompts: answer.pairs.map(p => ({ id: p.id, prompt: p.prompt })), matches: answer.pairs.map(p => ({ id: p.match, label: p.match })).reverse() } };
     case "ordering": return { ...base, answer: { kind: answer.kind, items: answer.items } };
     case "image_hotspot": case "diagram_identification":
       return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})) } };
-    case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.id,label:t.label})) } };
+    case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.label,label:t.label})).reverse() } };
     case "true_false": return { ...base, answer: { kind: answer.kind } };
     default: return { ...base, answer: { kind: answer.kind } };
   }
