@@ -227,11 +227,39 @@ export function registerStudyRoutes(app: Express) {
     const start = new Date(); start.setUTCHours(0, 0, 0, 0);
     if (!activeDays.has(start.toISOString().slice(0, 10))) start.setUTCDate(start.getUTCDate() - 1);
     while (activeDays.has(start.toISOString().slice(0, 10))) { streak++; start.setUTCDate(start.getUTCDate() - 1); }
+    // A study session is a cluster of review events separated by less than 30 minutes.
+    const chronological = events.map(e => e.reviewedAt.getTime()).sort((a, b) => a - b);
+    const sessionCount = chronological.reduce((count, time, i) =>
+      count + (i === 0 || time - chronological[i - 1] > 30 * 60_000 ? 1 : 0), 0);
+    const subjectReviews = new Map<string, boolean[]>();
+    for (const e of events) {
+      const item = byId.get(e.cardId);
+      if (!item) continue;
+      const name = item.category ?? "General";
+      const record = subjectReviews.get(name) ?? [];
+      record.push(e.correct);
+      subjectReviews.set(name, record);
+    }
+    const weaknessCount = new Map<string, number>();
+    for (const item of subjects) if (stateMap.get(item.id)?.needsWork) {
+      const name = item.category ?? "General";
+      weaknessCount.set(name, (weaknessCount.get(name) ?? 0) + 1);
+    }
+    const ratio = (items: boolean[]) => items.length ? items.filter(Boolean).length / items.length * 100 : null;
+    const subjectProgress = Array.from(subjectReviews, ([subject, flags]) => {
+      const latest = ratio(flags.slice(0, 10));
+      const previous = ratio(flags.slice(10, 20));
+      return {
+        subject, attempts: flags.length, accuracy: Math.round(ratio(flags) ?? 0),
+        weakCards: weaknessCount.get(subject) ?? 0,
+        improvementPoints: latest !== null && previous !== null ? Math.round(latest - previous) : null,
+      };
+    }).sort((a, b) => a.accuracy - b.accuracy);
     const correct = events.filter(e => e.correct).length;
     const totalDue = Array.from(stats.values()).reduce((n, x) => n + x.due, 0);
     res.json({
       attempts: events.length, correct, accuracy: events.length ? Math.round(100 * correct / events.length) : 0,
-      sessions: activeDays.size, dueReviews: totalDue, studyStreak: streak, xp: events.length + correct * 4,
+      sessions: sessionCount, studyDays: activeDays.size, subjectProgress, dueReviews: totalDue, studyStreak: streak, xp: events.length + correct * 4,
       achievements: [
         ...(events.length >= 1 ? ["First review"] : []),
         ...(events.length >= 25 ? ["25 reviews"] : []),
