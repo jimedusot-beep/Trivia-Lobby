@@ -46,6 +46,7 @@ export default function Home() {
               <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
             </Button>
           </Link>
+          <Link href="/library"><Button size="lg" variant="secondary" className="h-16 px-8 rounded-2xl">Private source library</Button></Link>
           <Link href="/import">
             <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">
               <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
