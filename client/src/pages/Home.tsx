@@ -125,7 +125,7 @@ export default function Home() {
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <CardContent className="pt-6 grid grid-cols-2 gap-3">
                   <Link href={`/study/${deck.id}`}>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
                       <Brain className="mr-2 h-4 w-4" /> Study
@@ -134,6 +134,16 @@ export default function Home() {
                   <Link href={`/practice/${deck.id}`}>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
                       <ClipboardList className="mr-2 h-4 w-4" /> Practice
+                    </Button>
+                  </Link>
+                  <Link href={`/exam-builder/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Exam Builder
+                    </Button>
+                  </Link>
+                  <Link href={`/visual-practice/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                      <ClipboardList className="mr-2 h-4 w-4" /> Visual Exam
                     </Button>
                   </Link>
                   <Link href={`/host/${deck.id}`}>
