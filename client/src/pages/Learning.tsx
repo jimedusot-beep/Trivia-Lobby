@@ -8,7 +8,8 @@ import { Progress } from "@/components/ui/progress";
 type User = { id: string; email: string };
 type CardRow = { id: number; front: string; back: string; dueAt: string | null; needsWork: boolean };
 type DeckStat = { deckId: number; title: string; subject: string; total: number; learned: number; due: number; mastered: number; attempts: number; correct: number; accuracy: number | null };
-type Dashboard = { attempts: number; correct: number; accuracy: number; sessions: number; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
+type SubjectProgress = { subject: string; attempts: number; accuracy: number; weakCards: number; improvementPoints: number | null };
+type Dashboard = { attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
 type WrongEvent = { id: string; cardId: number; deckId: number; front: string; subject: string; reviewedAt: string; rating: number };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -91,12 +92,24 @@ export default function Learning() {
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {dashboard && <>
         <section aria-label="Learning statistics" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {([["Due reviews", dashboard.dueReviews], ["Accuracy", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study days", dashboard.sessions]] as const).map(([label, value]) =>
+          {([["Due reviews", dashboard.dueReviews], ["Accuracy", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study sessions", dashboard.sessions]] as const).map(([label, value]) =>
             <Card key={label}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p></CardContent></Card>)}
         </section>
-        <p className="text-sm text-muted-foreground">Optional milestones: {dashboard.xp} practice XP · {dashboard.studyStreak} day current streak. A break never removes achievements. XP is not a multiplayer score.</p>
+        <p className="text-sm text-muted-foreground">Study days: {dashboard.studyDays}. Optional milestones: {dashboard.xp} practice XP · {dashboard.studyStreak} day current streak. A break never removes achievements. XP is not a multiplayer score.</p>
         <p className="text-sm">Achievements: {dashboard.achievements.length ? dashboard.achievements.join(" · ") : "Your first review is waiting."}</p>
         {dashboard.historyLimited && <p role="note">Analytics shows your most recent 10,000 reviews. Export includes all events.</p>}
+        <section className="space-y-3" aria-label="Subject improvement">
+          <h2 className="text-2xl font-bold">Weak subjects and improvement</h2>
+          <p className="text-sm text-muted-foreground">Improvement compares accuracy in the latest 10 attempts with the previous 10 for the same subject. A change is shown only when both windows contain reviews.</p>
+          {!dashboard.subjectProgress.length ? <p>Study cards to see subject trends.</p> :
+            <div className="grid md:grid-cols-2 gap-3">{dashboard.subjectProgress.map(subject =>
+              <Card key={subject.subject}><CardContent className="p-4 space-y-1">
+                <h3 className="font-bold">{subject.subject}</h3>
+                <p>{subject.accuracy}% accuracy across {subject.attempts} attempts</p>
+                <p className="text-sm text-muted-foreground">{subject.weakCards} unresolved weak cards</p>
+                <p className="text-sm">{subject.improvementPoints === null ? "Not enough reviews to compare yet" : `${subject.improvementPoints > 0 ? "+" : ""}${subject.improvementPoints} percentage points in recent recall`}</p>
+              </CardContent></Card>)}</div>}
+        </section>
         <section className="space-y-3"><h2 className="text-2xl font-bold">Course pathways</h2>
           <p className="text-muted-foreground">Explore cards → build recall → reach long-term mastery (21+ day intervals). Study at your own pace.</p>
           <div className="grid md:grid-cols-2 gap-4">{dashboard.decks.map(deck =>
@@ -104,6 +117,11 @@ export default function Learning() {
               <CardContent className="space-y-3">
                 <Progress aria-label={`${deck.title} learned cards`} value={deck.total ? 100 * deck.learned / deck.total : 0} />
                 <p className="text-sm">{deck.learned}/{deck.total} started · {deck.mastered} mastered · {deck.due} due · {deck.accuracy === null ? "No attempts" : `${deck.accuracy}% accuracy`}</p>
+                <ol className="text-sm space-y-1" aria-label={`${deck.title} milestones`}>
+                  <li>{deck.learned > 0 ? "✓" : "○"} Explore: start reviewing your first card</li>
+                  <li>{deck.total > 0 && deck.learned === deck.total ? "✓" : "○"} Cover: review every card at least once</li>
+                  <li>{deck.total > 0 && deck.mastered >= Math.ceil(0.8 * deck.total) ? "✓" : "○"} Retain: achieve 21-day intervals for 80% of cards</li>
+                </ol>
                 <div className="flex flex-wrap gap-2">
                   <Link href={`/learning/review/${deck.deckId}?mode=due`}><Button>Review due</Button></Link>
                   <Link href={`/learning/review/${deck.deckId}?mode=missed`}><Button variant="outline">Retry weak cards</Button></Link>
