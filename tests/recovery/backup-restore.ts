@@ -35,7 +35,7 @@ test("encrypted snapshot restores PostgreSQL contents and exact retained-origina
     process.env.PRIVATE_STORAGE_DIR=restoreRoot;assert.deepEqual(await getPrivateObject(key),bytes);
     assert.equal((await restored.query("SELECT extracted_text FROM library_files WHERE id=$1",[fid])).rows[0].extracted_text,"Exact original bytes");
   }finally{
-    await restored?.end();await source.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);await source.query("DELETE FROM users WHERE id=$1",[owner]);await source.end();
+    await restored?.end();await source.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);await source.query("DELETE FROM decks WHERE owner_id=$1",[owner]);await source.query("DELETE FROM users WHERE id=$1",[owner]);await source.end();
     await rm(sourceRoot,{recursive:true,force:true});await rm(restoreRoot,{recursive:true,force:true});await rm(temp,{recursive:true,force:true});
   }
 });
