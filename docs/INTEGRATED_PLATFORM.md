@@ -39,7 +39,7 @@ Set `DATABASE_URL` and absolute encrypted durable `BACKUP_DIR`, then run `npm ru
 
 ## Verification limits
 
-The [review record](INTEGRATION_REVIEW.md) records 57 passing unit/socket tests, five passing database/API tests on native PostgreSQL 16 and PGlite, native archive restoration, encrypted original-file recovery, 21 browser tests across Chromium/Firefox/WebKit on merged main, type checking, build and smoke results. The build-tool maintenance branch adds compiled-stylesheet layout/focus regressions. Each code change must pass the hosted matrix before merge.
+The [review record](INTEGRATION_REVIEW.md) records 57 passing unit/socket tests, five passing database/API tests on native PostgreSQL 16 and PGlite, native archive restoration, encrypted original-file recovery, 27 browser tests across Chromium/Firefox/WebKit through merged PR #22, type checking, build and smoke results. Compiled-stylesheet layout/focus regressions are included. Five additional [game-mode browser scenarios](GAME_MODE_ACCEPTANCE.md) extend the same required matrix and verify reduced-motion behavior. Each code change must pass the hosted matrix before merge.
 
 Automated accessibility checks cover representative join/home flows, authoring alternatives and phone overflow; this is not a full WCAG conformance audit. The full production/development dependency audit is clear at the current lockfile. The validated [Tailwind 4 migration](BUILD_TOOL_MIGRATION.md) removes the vulnerable selector/glob chain; CI audits both scopes. Supported browser minimums are Safari 16.4, Chrome 111 and Firefox 128. License metadata is an inventory; inspect the distributed license files before redistribution.
 

@@ -35,20 +35,20 @@ All 48 requested items are tracked below. **Implemented** describes the merged s
 | 29 | P1 Study | Timed/untimed practice | Implemented: universal practice modes and saved missed answers; solo timer is local, competitive timer is server-authoritative. |
 | 30 | P1 Study | Explanations/source citations | Implemented: authoring, backups and post-check explanations, attribution/page/source passages. |
 | 31 | P1 Quality | Expanded unit tests | Implemented: 57 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction (including text-free PDFs), permissions and projection/guard regressions. |
-| 32 | P1 Quality | Playwright host/player E2E | Implemented: seven scenarios pass in each of Chromium, Firefox and WebKit (21 total) on merged main; compiled-style regressions extend the browser suite. |
+| 32 | P1 Quality | Playwright host/player E2E | Implemented: nine scenarios pass in each of Chromium, Firefox and WebKit (27 total) through PR #22; five added game-mode scenarios extend the same required matrix. |
 | 33 | P1 Quality | PostgreSQL integration tests | Implemented: five API/relational tests pass on native PostgreSQL 16 and PGlite; repeated migrations and native archive restoration pass. |
 | 34 | P1 Quality | Dependency/license audits | Implemented: full production/development audit reports zero vulnerabilities after the validated Tailwind 4 migration; CI now audits both scopes. Inventory records 280 packages with no missing/review-required license metadata. |
 | 35 | P1 Quality | Deployment smoke tests | Implemented: HTTP/DB/real-WS smoke passes locally; production smoke pending deployment. |
 | 36 | P1 Quality | Reconcile main/research branches | Implemented: main (including PR #7 projections/guards) plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; all seven screenshot PRs (#5, #8, #10, #11, #15, #20, #21) merged through PR #21. |
 | 37 | P1 Experience | Host/player feedback/errors | Implemented: visible reconnect state, invalid action/deadline errors, acknowledgments and restored answered state. |
-| 38 | P1 Experience | Mobile/accessibility audit | Partial: phone overflow, keyboard, labels, menu alternatives, reduced motion and representative axe checks pass; full manual screen-reader/touch audit pending. |
+| 38 | P1 Experience | Mobile/accessibility audit | Partial: phone overflow, keyboard, labels, menu alternatives, reduced motion (including live-game celebrations) and representative axe checks pass; full manual screen-reader/touch audit pending. |
 | 39 | P1 Experience | Draft save/recovery | Implemented: private server drafts, optimistic revisions, recovery, keepalive flush and visible save/conflict feedback. |
 | 40 | P2 AI | Flashcards from PDF/DOCX | Partial: source extraction and optional HTTPS generation adapter implemented; real provider configuration/quality acceptance and OCR remain. |
 | 41 | P2 AI | Evidence-linked reviewed questions | Implemented: exact source-evidence filter, editable suggestions, owner approval and idempotent publication; no live-provider evaluation. |
 | 42 | P2 AI | Difficulty-adaptive practice | Implemented: weak/due/unknown priority and recent-accuracy difficulty bucket; a rule-based policy rather than an external model. |
 | 43 | P2 Games | Team competition | Implemented: balanced teams and server-computed aggregate scoring. |
 | 44 | P2 Games | Original shops/upgrades | Implemented: workshop earned coins, Focus bonus and Guard protection; server validates costs/phase/consumption. |
-| 45 | P2 Games | Buzzer, wagering and party modes | Implemented: five-second buzzer turn, bounded virtual-point wagers and every-third-round party multiplier. Full mode/browser matrix pending. |
+| 45 | P2 Games | Buzzer, wagering and party modes | Implemented: five-second buzzer turn, bounded virtual-point wagers and every-third-round party multiplier; all six modes have browser acceptance scenarios in the three-engine CI matrix. See GAME_MODE_ACCEPTANCE.md. |
 | 46 | P2 Integration | QTI/Anki import/export | Partial format coverage: QTI 2.1 single-choice/exact text items and ZIP packages; quoted two-column Anki text round-trip and basic legacy APKG text import. Unsupported custom/cloze/media/new compressed variants rejected. |
 | 47 | P2 Integration | Review research candidates | Implemented: reference catalog/source audits retained; no third-party application code transplanted. |
 | 48 | P2 Integration | Provenance/license inventory | Implemented: research references/audits, branch ancestry, generated dependency inventory and original-image prompt recorded. Upstream licensing changes still require review before reuse. |

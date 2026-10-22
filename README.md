@@ -46,7 +46,7 @@ npm run test:e2e
 npm run smoke
 ```
 
-The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build, full dependency audit and compiled-style regressions, HTTP/DB/WS smoke and three browser engines. See [merged main acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907) for recorded hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
+All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE.md), including purchase/reconnect and buzzer handoff behavior. The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build, full dependency audit and compiled-style regressions, HTTP/DB/WS smoke and three browser engines. See [merged main acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907) for recorded hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
 
 ## Operations and research
 
