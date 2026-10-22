@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -96,3 +96,18 @@ export interface SubmitAnswerPayload {
 }
 
 // ... other payloads can be inferred from context, but these help shared understanding
+
+
+// Phase 2: additive question definitions. Legacy cards remain unchanged.
+// JSON is parsed against the versioned shared schema at the API boundary.
+export const universalQuestions = pgTable("universal_questions", {
+  id: serial("id").primaryKey(),
+  deckId: integer("deck_id").notNull().references(() => decks.id, { onDelete: "cascade" }),
+  position: integer("position").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  definition: jsonb("definition").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, table => [
+  uniqueIndex("uq_universal_question_deck_fingerprint").on(table.deckId, table.fingerprint),
+  index("idx_universal_question_deck_position").on(table.deckId, table.position),
+]);

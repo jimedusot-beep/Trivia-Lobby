@@ -1,0 +1,64 @@
+name: Phase 2 Visual Exam E2E
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "e2e/**"
+      - "client/**"
+      - "server/**"
+      - "shared/**"
+      - "migrations/**"
+      - ".github/workflows/phase2-e2e.yml"
+jobs:
+  visual-exam:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: trivia_e2e
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trivia -d trivia_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trivia:trivia@127.0.0.1:5432/trivia_e2e
+      PORT: "5000"
+      BASE_URL: http://127.0.0.1:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Bootstrap disposable PostgreSQL schema
+        run: npm run db:push
+      - name: Verify additive Phase 2 migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0001_universal_questions.sql
+      - name: Install browser test runner
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+      - name: Run real PostgreSQL integration test
+        run: npx tsx --test tests/universal-questions-db.test.ts
+      - name: Start development web server
+        run: |
+          npm run dev >/tmp/trivia-e2e-server.log 2>&1 &
+          echo $! >/tmp/trivia-e2e-server.pid
+          for i in $(seq 1 45); do
+            if curl -sf http://127.0.0.1:5000/api/decks >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/trivia-e2e-server.log
+          exit 1
+      - name: Browser creation, persistence, mobile and scoring
+        run: npx playwright test e2e/visual-exam.spec.ts --browser=chromium --reporter=line
+      - name: Print server logs on failure
+        if: failure()
+        run: cat /tmp/trivia-e2e-server.log || true
