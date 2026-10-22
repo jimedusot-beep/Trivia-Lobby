@@ -44,6 +44,8 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageA.getByRole("button", { name: "Reveal answer" }).click();
     await expect(pageA.getByText("A persisted response")).toBeVisible();
     await pageA.getByRole("button", { name: "Again" }).click();
+    // Await the persisted mutation before leaving this page.
+    await expect(pageA.getByRole("heading", { name: "Follow-up " + suffix })).toBeVisible();
     await pageA.goto(base + "/learning");
     await expect(pageA.getByRole("heading", { name: "Wrong-answer notebook" })).toBeVisible();
     await expect(pageA.getByText(question)).toBeVisible();
