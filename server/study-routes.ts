@@ -59,7 +59,8 @@ function checkRate(req: Request, res: Response) {
 
 function failure(res: Response, err: unknown) {
   if (err instanceof z.ZodError) { res.status(400).json({ message: "Invalid request", issues: err.issues }); return; }
-  console.error("Study API error:", err);
+  // Database exceptions can embed private source text in SQL parameters. Log only the class.
+  console.error("Study API error:", err instanceof Error ? err.name : "UnknownError");
   res.status(500).json({ message: "Study request failed" });
 }
 
@@ -147,7 +148,10 @@ export function registerStudyRoutes(app: Express) {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), ${input.cardId})`);
       const [existing] = await tx.select().from(studyEvents)
         .where(and(eq(studyEvents.userId, user.id), eq(studyEvents.requestId, input.requestId))).limit(1);
-      if (existing) return { event: existing, replay: true };
+      if (existing) {
+        if (existing.cardId !== input.cardId || existing.rating !== input.rating) return { conflict: true as const };
+        return { event: existing, replay: true };
+      }
       const [card] = await tx.select({ id: cards.id }).from(cards).where(eq(cards.id, input.cardId)).limit(1);
       if (!card) return null;
       const [previous] = await tx.select().from(studySchedule)
@@ -173,6 +177,7 @@ export function registerStudyRoutes(app: Express) {
       return { event, replay: false };
     });
     if (!answer) { res.status(404).json({ message: "Card not found" }); return; }
+    if ("conflict" in answer) { res.status(409).json({ message: "Review request ID already used for a different card or rating" }); return; }
     res.status(answer.replay ? 200 : 201).json(answer);
   }));
 
@@ -186,10 +191,21 @@ export function registerStudyRoutes(app: Express) {
     }).from(studyEvents).innerJoin(cards, eq(studyEvents.cardId, cards.id))
       .innerJoin(decks, eq(cards.deckId, decks.id))
       .where(eq(studyEvents.userId, user.id)).orderBy(desc(studyEvents.reviewedAt)).limit(2000);
-    const schedule = await db.select({ cardId: studySchedule.cardId, needsWork: studySchedule.needsWork })
-      .from(studySchedule).where(eq(studySchedule.userId, user.id));
-    const weak = new Set(schedule.filter(x => x.needsWork).map(x => x.cardId));
-    res.json({ events, wrongAnswers: events.filter(x => weak.has(x.cardId) && x.rating <= 2), historyLimited: events.length === 2000 });
+    // Derive the notebook from current per-user state, not a limited history slice.
+    // A forgotten card can remain weak even if its last miss is older than 2,000 events.
+    const wrongAnswers = await db.select({
+      cardId: studySchedule.cardId,
+      deckId: cards.deckId,
+      front: cards.front,
+      subject: decks.category,
+      reviewedAt: studySchedule.reviewedAt,
+      rating: studySchedule.lastRating,
+    }).from(studySchedule)
+      .innerJoin(cards, eq(studySchedule.cardId, cards.id))
+      .innerJoin(decks, eq(cards.deckId, decks.id))
+      .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.needsWork, true)))
+      .orderBy(desc(studySchedule.reviewedAt)).limit(5000);
+    res.json({ events, wrongAnswers, historyLimited: events.length === 2000, notebookLimited: wrongAnswers.length === 5000 });
   }));
 
   app.get("/api/study/dashboard", safe(async (req, res) => {
