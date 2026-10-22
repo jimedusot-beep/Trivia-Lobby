@@ -25,7 +25,7 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await page.getByRole("button", { name: "Need an account? Register" }).click();
     await page.getByLabel("Email").fill(address);
     await page.getByLabel(/Password/).fill(password);
-    await page.getByRole("button", { name: "Create account", exact:true }).click();
+    await Promise.all([page.waitForEvent("domcontentloaded"), page.getByRole("button", { name: "Create account", exact:true }).click()]);
     await expect(page.getByRole("heading", { name: "My learning" })).toBeVisible();
   };
   try {
@@ -57,7 +57,7 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageB.goto(base + "/learning");
     await pageB.getByLabel("Email").fill(email);
     await pageB.getByLabel(/Password/).fill(password);
-    await pageB.getByRole("button", { name: "Sign in", exact: true }).click();
+    await Promise.all([pageB.waitForEvent("domcontentloaded"), pageB.getByRole("button", { name: "Sign in", exact: true }).click()]);
     await expect(pageB.getByRole("heading", { name: "My learning" })).toBeVisible();
     await expect(pageB.getByText(question)).toBeVisible();
     expect(await pageB.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);

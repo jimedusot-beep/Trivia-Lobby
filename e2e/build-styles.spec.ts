@@ -1,19 +1,33 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile, readdir } from "node:fs/promises";
+const externalFonts = new WeakMap<Page, string[]>();
 
 async function builtStyles(page: Page) {
   const assets = new URL("../dist/public/assets/", import.meta.url);
-  const styles = (await readdir(assets)).filter(name => name.endsWith(".css"));
+  const files = await readdir(assets);
+  const styles = files.filter(name => name.endsWith(".css"));
   expect(styles.length).toBeGreaterThan(0);
   const css = (await Promise.all(styles.map(name => readFile(new URL(name, assets), "utf8")))).join("\n");
+  // The dev server does not serve dist assets; load the exact built font bytes.
+  await page.route("**/assets/*.woff2", async route => {
+    const name = new URL(route.request().url()).pathname.split("/").pop()!;
+    if (!files.includes(name)) return route.fallback();
+    await route.fulfill({ contentType: "font/woff2", body: await readFile(new URL(name, assets)) });
+  });
   await page.locator('style[data-vite-dev-id], link[rel="stylesheet"]').evaluateAll(nodes => nodes.forEach(node => node.remove()));
   await page.addStyleTag({ content: css });
+  expect(await page.evaluate(async () => {
+    await document.fonts.ready;
+    return document.fonts.check('16px "Nunito Variable"') && document.fonts.check('16px "Fredoka Variable"');
+  })).toBe(true);
 }
 
-// An external font provider is independent of the compiled application CSS.
 test.beforeEach(async ({ page }) => {
-  await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ contentType: "text/css", body: "" }));
+  const requests: string[] = [];
+  externalFonts.set(page, requests);
+  page.on("request", request => { if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(request.url())) requests.push(request.url()); });
 });
+test.afterEach(async ({ page }) => { expect(externalFonts.get(page)).toEqual([]); });
 
 test("built styles preserve the join form, theme and keyboard focus on phone and desktop", async ({ page }) => {
   for (const width of [375, 1280]) {
@@ -21,6 +35,7 @@ test("built styles preserve the join form, theme and keyboard focus on phone and
     await page.goto("/join");
     const code = page.getByLabel("Room Code", { exact: true });
     await expect(code).toBeVisible();
+    await expect(page.locator('meta[name="viewport"]')).not.toHaveAttribute("content", /maximum-scale|user-scalable=no/);
     // Exercise the shipped stylesheet as well as the Vite development pipeline.
     await builtStyles(page);
 
