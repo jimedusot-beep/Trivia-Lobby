@@ -10,7 +10,9 @@ type CardRow = { id: number; front: string; back: string; dueAt: string | null; 
 type DeckStat = { deckId: number; title: string; subject: string; total: number; learned: number; due: number; mastered: number; attempts: number; correct: number; accuracy: number | null };
 type SubjectProgress = { subject: string; attempts: number; accuracy: number; weakCards: number; improvementPoints: number | null };
 type Dashboard = { visual:{attempts:number;correct:number;due:number}; attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
-type WrongEvent = { id: string; cardId: number; deckId: number; front: string; subject: string; reviewedAt: string; rating: number };
+type WrongEvent = { id: string; kind: "card" | "visual"; deckId: number; front: string; subject: string; reviewedAt: string | null };
+type LegacyWrongEvent = { cardId: number; deckId: number; front: string; subject: string; reviewedAt: string };
+type VisualWrongEvent = { questionId: number; deckId: number; front: string; subject: string; reviewedAt: string | null };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   if (!response.ok) {
@@ -70,9 +72,16 @@ export default function Learning() {
     try {
       const [summary, history] = await Promise.all([
         api<Dashboard>("/api/study/dashboard"),
-        api<{ wrongAnswers: WrongEvent[] }>("/api/study/history"),
+        api<{ wrongAnswers: LegacyWrongEvent[]; visualWrongAnswers: VisualWrongEvent[] }>("/api/study/history"),
       ]);
-      setDashboard(summary); setWrong(history.wrongAnswers); setError("");
+      setDashboard(summary);
+      setWrong([
+        ...history.wrongAnswers.map(x => ({ id: "card:" + x.cardId, kind: "card" as const,
+          deckId: x.deckId, front: x.front, subject: x.subject, reviewedAt: x.reviewedAt })),
+        ...(history.visualWrongAnswers ?? []).map(x => ({ id: "visual:" + x.questionId, kind: "visual" as const,
+          deckId: x.deckId, front: x.front, subject: x.subject, reviewedAt: x.reviewedAt })),
+      ]);
+      setError("");
     } catch (err) { setError((err as Error).message); }
   }, []);
   useEffect(() => { if (user) void load(); }, [user, load]);
@@ -80,7 +89,7 @@ export default function Learning() {
   if (!user) return <main className="p-4"><Link href="/">← Library</Link><AccountGate onReady={setUser} /></main>;
   const subjects = Array.from(new Set(wrong.map(x => x.subject || "General"))).sort();
   const filtered = wrong.filter(x => subjectFilter === "all" || (x.subject || "General") === subjectFilter);
-  const unique = filtered.filter((x, i, all) => all.findIndex(y => y.cardId === x.cardId) === i);
+  const unique = filtered.filter((x, i, all) => all.findIndex(y => y.id === x.id) === i);
   return <main className="min-h-screen bg-muted/20 p-4 md:p-8 [overflow-wrap:anywhere]">
     <div className="max-w-5xl mx-auto space-y-7">
       <header className="flex flex-wrap justify-between items-center gap-3">
@@ -138,9 +147,9 @@ export default function Learning() {
         </select>
         {!unique.length ? <p className="text-muted-foreground">No unresolved weak cards in this subject.</p> :
           <ul className="space-y-2">{unique.slice(0, 100).map(item =>
-            <li key={item.cardId} className="p-3 rounded border bg-card flex flex-wrap sm:flex-nowrap justify-between gap-3 items-center">
-              <div className="min-w-0 flex-1"><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · Missed {new Date(item.reviewedAt).toLocaleDateString()}</p></div>
-              <Button asChild variant="outline"><Link href={`/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
+            <li key={item.id} className="p-3 rounded border bg-card flex flex-wrap sm:flex-nowrap justify-between gap-3 items-center">
+              <div className="min-w-0 flex-1"><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · {item.kind === "visual" ? "Visual question" : "Flashcard"} · Missed {item.reviewedAt ? new Date(item.reviewedAt).toLocaleDateString() : "recently"}</p></div>
+              <Button asChild variant="outline"><Link href={item.kind === "visual" ? `/visual-practice/${item.deckId}?mode=adaptive` : `/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
             </li>)}</ul>}
       </section>
     </div>

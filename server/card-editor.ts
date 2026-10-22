@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { and,eq,sql } from "drizzle-orm";
 import { z } from "zod";
 import { api } from "@shared/routes";
-import { cards,decks } from "@shared/schema";
+import { cards,decks,studySchedule } from "@shared/schema";
 import { db } from "./db";
 import { requireUser } from "./auth";
 import { CardConflict,deduplicateCards } from "./card-dedup";
@@ -31,10 +31,21 @@ export function registerCardEditorRoutes(app:Express){
    const saved=await db.transaction(async tx=>{
     await tx.select({id:decks.id}).from(decks).where(eq(decks.id,deckId)).for("update");
     const current=await tx.select().from(cards).where(eq(cards.deckId,deckId));
-    if(!current.some(c=>c.id===cardId))return null;
+    const previous=current.find(c=>c.id===cardId);
+    if(!previous)return null;
     const other=current.filter(c=>c.id!==cardId).map(c=>({...c,type:c.type as typeof input.type,options:Array.isArray(c.options)?c.options as string[]:[]}));
     if(!deduplicateCards([input],other).length)throw new CardConflict("This question is already saved");
-    const [updated]=await tx.update(cards).set(input).where(and(eq(cards.id,cardId),eq(cards.deckId,deckId))).returning();return updated;
+    // Review transactions lock the same card row before scheduling. Reset the
+    // current FSRS state when the teaching material changes, without deleting
+    // historical study events or resetting on an unchanged save.
+    await tx.select({id:cards.id}).from(cards).where(eq(cards.id,cardId)).for("update");
+    const changed = previous.front !== input.front || previous.back !== input.back ||
+      previous.type !== input.type ||
+      JSON.stringify(previous.options ?? null) !== JSON.stringify(input.options ?? null) ||
+      (previous.correctOption ?? null) !== (input.correctOption ?? null);
+    const [updated]=await tx.update(cards).set(input).where(and(eq(cards.id,cardId),eq(cards.deckId,deckId))).returning();
+    if(changed)await tx.delete(studySchedule).where(eq(studySchedule.cardId,cardId));
+    return updated;
    });
    if(!saved){res.status(404).json({message:"Card not found"});return;}res.json(saved);
   }catch(e){if(e instanceof z.ZodError)res.status(400).json({message:"Invalid card"});else next(e);}

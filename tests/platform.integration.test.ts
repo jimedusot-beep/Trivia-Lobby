@@ -62,6 +62,37 @@ test("combined platform: ownership, universal restore, draft revisions, evidence
   const count=await pool.query("SELECT count(*)::int n FROM question_attempts WHERE owner_id=$1 AND request_id=$2",[a.data.id,requestId]);assert.equal(count.rows[0].n,1);
   assert.equal((await request(path+`/questions/${saved[0].id}/check`,"POST",{requestId,response:{selectedIds:["B"]}},a.cookie)).status,409);
   assert.equal((await request(path+`/questions/${saved[0].id}/check`,"POST",{requestId:randomUUID(),skipped:true},a.cookie)).data.correct,false);
+  // Weak universal questions belong in the private notebook alongside flashcards.
+  const visualMisses=await request("/api/study/history","GET",undefined,a.cookie);
+  assert.equal(visualMisses.status,200);
+  assert(visualMisses.data.visualWrongAnswers.some((x:any)=>x.questionId===saved[0].id));
+  const strangerHistory=await request("/api/study/history","GET",undefined,b.cookie);
+  assert.equal(strangerHistory.data.visualWrongAnswers.length,0);
+  const [oldSchedule]= (await pool.query("SELECT due_at FROM question_schedule WHERE owner_id=$1 AND question_id=$2",[a.data.id,saved[0].id])).rows;
+  assert(oldSchedule,"the missed visual question should have a schedule");
+  const {id:_omitted,...originalQuestion}=saved[0].question;
+  const unchanged=await request(path+`/questions/${saved[0].id}`,"PATCH",originalQuestion,a.cookie);
+  assert.equal(unchanged.status,200);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM question_schedule WHERE question_id=$1",[saved[0].id])).rows[0].n,1,"unchanged visual edits retain mastery");
+  const changed=await request(path+`/questions/${saved[0].id}`,"PATCH",{...originalQuestion,prompt:"Revised Alpha prompt"},a.cookie);
+  assert.equal(changed.status,200);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM question_schedule WHERE question_id=$1",[saved[0].id])).rows[0].n,0,"changed visual question resets mastery");
+  assert.equal((await pool.query("SELECT count(*)::int n FROM question_attempts WHERE owner_id=$1 AND question_id=$2",[a.data.id,saved[0].id])).rows[0].n,2,"prior answers remain in history");
+  assert.equal((await request("/api/study/history","GET",undefined,a.cookie)).data.visualWrongAnswers.some((x:any)=>x.questionId===saved[0].id),false);
+  // A stale question version cannot be used to create new scheduled memory.
+  const { rememberQuestion }=await import("../server/question-memory");
+  assert.equal(await rememberQuestion(a.data.id,saved[0].id,randomUUID(),{response:{selectedIds:["A"]},skipped:false},true,saved[0].question),"stale");
+  assert.equal((await pool.query("SELECT count(*)::int n FROM question_schedule WHERE question_id=$1",[saved[0].id])).rows[0].n,0);
+  // Legacy flashcards also reset after edits, but historical reviews remain.
+  const legacyReview=await request("/api/study/review","POST",{cardId:originalCard.id,rating:3,requestId:randomUUID()},a.cookie);
+  assert.equal(legacyReview.status,201);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM study_schedule WHERE card_id=$1",[originalCard.id])).rows[0].n,1);
+  assert.equal((await request(path+`/cards/${originalCard.id}`,"PATCH",{front:"Corrected imported card",back:"After",type:"flashcard"},a.cookie)).status,200);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM study_schedule WHERE card_id=$1",[originalCard.id])).rows[0].n,1);
+  assert.equal((await request(path+`/cards/${originalCard.id}`,"PATCH",{front:"Corrected imported card",back:"Final updated answer",type:"flashcard"},a.cookie)).status,200);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM study_schedule WHERE card_id=$1",[originalCard.id])).rows[0].n,0);
+  assert.equal((await pool.query("SELECT count(*)::int n FROM study_events WHERE card_id=$1",[originalCard.id])).rows[0].n,1);
+
   const evidence="A retained, reviewable source passage about learning and study practice. It contains facts for a teacher to check.";
   const source=await request("/api/study/sources","POST",{title:"Own source",body:evidence},a.cookie);assert.equal(source.status,201);
   const draftId=randomUUID();await pool.query("INSERT INTO study_drafts(id,user_id,source_id,front,back,evidence) VALUES($1,$2,$3,$4,$5,$6)",[draftId,a.data.id,source.data.id,"What does this source cover?","Learning and study practice",evidence]);

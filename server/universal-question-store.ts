@@ -46,11 +46,24 @@ export async function addUniversalQuestion(deckId: number, question: UniversalQu
   });
 }
 export async function editUniversalQuestion(deckId: number, questionId: number, question: UniversalQuestion) {
-  const [row] = await db.update(universalQuestions)
-    .set({ definition: question, fingerprint: fingerprint(question) })
-    .where(and(eq(universalQuestions.deckId, deckId), eq(universalQuestions.id, questionId)))
-    .returning();
-  return row ? decode(row) : undefined;
+  return db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(8091, ${deckId})`);
+    const [old] = await tx.select().from(universalQuestions)
+      .where(and(eq(universalQuestions.deckId, deckId), eq(universalQuestions.id, questionId)))
+      .for("update");
+    if (!old) return undefined;
+    const materiallyChanged = JSON.stringify(universalQuestionSchema.parse(old.definition)) !== JSON.stringify(question);
+    const [row] = await tx.update(universalQuestions)
+      .set({ definition: question, fingerprint: fingerprint(question) })
+      .where(and(eq(universalQuestions.deckId, deckId), eq(universalQuestions.id, questionId)))
+      .returning();
+    // Historical attempt rows stay immutable. Only the current FSRS mastery
+    // is invalidated, and unchanged saves preserve the existing due date.
+    if (materiallyChanged) {
+      await tx.execute(sql`DELETE FROM question_schedule WHERE question_id=${questionId}`);
+    }
+    return decode(row);
+  });
 }
 export async function removeUniversalQuestion(deckId: number, questionId: number) {
   const rows = await db.delete(universalQuestions)

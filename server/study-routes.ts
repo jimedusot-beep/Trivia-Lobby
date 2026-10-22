@@ -55,8 +55,12 @@ export function registerStudyRoutes(app: Express) {
         if (existing.cardId !== input.cardId || existing.rating !== input.rating) return { conflict: true as const };
         return { event: existing, replay: true };
       }
-      const [card] = await tx.select({ id: cards.id }).from(cards).innerJoin(decks, eq(cards.deckId, decks.id)).where(and(eq(cards.id, input.cardId), eq(decks.ownerId, user.id))).limit(1);
-      if (!card) return null;
+      // Serialize recall against content edits: a changed answer invalidates
+      // the schedule only after every earlier in-flight review has committed.
+      const locked = await tx.execute(sql`
+        SELECT c.id FROM cards c JOIN decks d ON d.id=c.deck_id
+        WHERE c.id=${input.cardId} AND d.owner_id=${user.id} FOR UPDATE OF c`);
+      if (!locked.rows.length) return null;
       const [previous] = await tx.select().from(studySchedule)
         .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.cardId, input.cardId))).limit(1);
       const now = new Date();
@@ -106,9 +110,29 @@ export function registerStudyRoutes(app: Express) {
     }).from(studySchedule)
       .innerJoin(cards, eq(studySchedule.cardId, cards.id))
       .innerJoin(decks, eq(cards.deckId, decks.id))
-      .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.needsWork, true)))
+      .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.needsWork, true), eq(decks.ownerId, user.id)))
       .orderBy(desc(studySchedule.reviewedAt)).limit(5000);
-    res.json({ events, wrongAnswers, historyLimited: events.length === 2000, notebookLimited: wrongAnswers.length === 5000 });
+    // Universal/visual questions maintain their own FSRS state. Include their
+    // unresolved mistakes without disclosing the question keys or another owner's questions.
+    const weakVisual = await db.execute(sql`
+      SELECT qs.question_id AS "questionId", uq.deck_id AS "deckId",
+        uq.definition->>'prompt' AS "front", d.category AS "subject",
+        (SELECT max(qa.created_at) FROM question_attempts qa
+         WHERE qa.owner_id=${user.id} AND qa.question_id=qs.question_id) AS "reviewedAt"
+      FROM question_schedule qs
+      JOIN universal_questions uq ON uq.id=qs.question_id
+      JOIN decks d ON d.id=uq.deck_id
+      WHERE qs.owner_id=${user.id} AND d.owner_id=${user.id} AND qs.needs_work=true
+      ORDER BY "reviewedAt" DESC NULLS LAST, qs.question_id
+      LIMIT 5000`);
+    const visualWrongAnswers = weakVisual.rows.map(row => ({
+      questionId: Number(row.questionId), deckId: Number(row.deckId),
+      front: String(row.front ?? ""), subject: String(row.subject ?? "General"),
+      reviewedAt: row.reviewedAt instanceof Date ? row.reviewedAt.toISOString()
+        : row.reviewedAt ? new Date(String(row.reviewedAt)).toISOString() : null,
+    }));
+    res.json({ events, wrongAnswers, visualWrongAnswers, historyLimited: events.length === 2000,
+      notebookLimited: wrongAnswers.length === 5000 || visualWrongAnswers.length === 5000 });
   }));
 
   app.get("/api/study/dashboard", safe(async (req, res) => {
