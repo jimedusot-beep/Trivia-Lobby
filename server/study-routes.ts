@@ -7,6 +7,7 @@ import { db } from "./db";
 import { cards, decks, studyAccounts, studyAuthTokens, studySchedule, studyEvents } from "@shared/schema";
 import { calculateReview, isStudyRating, normalizedPrompt } from "./study-scheduler";
 import { registerStudyDraftRoutes } from "./study-drafts";
+import { trustedStudyOrigin } from "./study-security";
 
 const scrypt = promisify(callbackScrypt);
 const TOKEN_NAME = "tl_study";
@@ -73,8 +74,7 @@ export function registerStudyRoutes(app: Express) {
   app.use("/api/study", (req, res, next) => {
     res.setHeader("Cache-Control", "private, no-store");
     if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-      const origin = req.get("Origin");
-      if (req.get("Sec-Fetch-Site") === "cross-site" || (origin && (!req.get("Host") || new URL(origin).host !== req.get("Host")))) {
+      if (!trustedStudyOrigin(req.get("Origin"), req.get("Host"), req.get("Sec-Fetch-Site"))) {
         res.status(403).json({ message: "Cross-site request rejected" }); return;
       }
     }
