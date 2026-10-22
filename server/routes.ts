@@ -5,7 +5,9 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { requireUser, requireSameOrigin, registerAuthRoutes, resolveUser } from "./auth";
 import { registerUniversalQuestionRoutes } from "./universal-question-routes";
+import { registerLibraryRoutes } from "./library";
 
 // === GAME STATE TYPES ===
 type Player = {
@@ -38,72 +40,54 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // === HTTP API ROUTES ===
-  registerUniversalQuestionRoutes(app);
-
-  app.get(api.decks.list.path, async (req, res) => {
-    const decks = await storage.getDecks();
-    res.json(decks);
+  // Require authenticated ownership for every deck/card request.
+  app.use("/api", requireSameOrigin);
+  registerAuthRoutes(app);
+  app.get(api.decks.list.path, requireUser, async (req, res, next) => {
+    try { res.json(await storage.getDecks(req.studyUser!.id)); } catch (e) { next(e); }
   });
-
-  app.get(api.decks.get.path, async (req, res) => {
-    const deck = await storage.getDeck(Number(req.params.id));
-    if (!deck) return res.status(404).json({ message: "Deck not found" });
-    res.json(deck);
-  });
-
-  app.post(api.decks.create.path, async (req, res) => {
+  app.get(api.decks.get.path, requireUser, async (req, res, next) => {
     try {
-      const input = api.decks.create.input.parse(req.body);
-      const deck = await storage.createDeck(input);
-      res.status(201).json(deck);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
-      res.status(500).json({ message: "Internal Server Error" });
-    }
+      const deck = await storage.getDeck(Number(req.params.id), req.studyUser!.id);
+      if (!deck) { res.status(404).json({ message: "Deck not found" }); return; }
+      res.json(deck);
+    } catch (e) { next(e); }
   });
-
-  app.post(api.decks.import.path, async (req, res) => {
+  app.post(api.decks.create.path, requireUser, async (req, res, next) => {
+    try { res.status(201).json(await storage.createDeck(api.decks.create.input.parse(req.body), req.studyUser!.id)); }
+    catch (e) { if (e instanceof z.ZodError) res.status(400).json({ message: e.message }); else next(e); }
+  });
+  app.post(api.decks.import.path, requireUser, async (req, res, next) => {
     try {
       const input = api.decks.import.input.parse(req.body);
-      const deck = await storage.importDeck(input.deck, input.cards);
-      res.status(201).json(deck);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
-      console.error("Deck import failed:", err);
-      res.status(500).json({ message: "Import failed; no partial deck was saved." });
-    }
+      res.status(201).json(await storage.importDeck(input.deck, input.cards, req.studyUser!.id));
+    } catch (e) { if (e instanceof z.ZodError) res.status(400).json({ message: e.message }); else next(e); }
   });
-
-  app.post(api.cards.create.path, async (req, res) => {
+  app.post(api.cards.create.path, requireUser, async (req, res, next) => {
     try {
-      const deckId = Number(req.params.id);
       const input = api.cards.create.input.parse(req.body);
-      const cards = await storage.createCards(deckId, input);
-      res.status(201).json(cards);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.message });
-      }
-      res.status(500).json({ message: "Internal Server Error" });
+      res.status(201).json(await storage.createCards(Number(req.params.id), input, req.studyUser!.id));
+    } catch (e) {
+      if (e instanceof z.ZodError) res.status(400).json({ message: e.message });
+      else if (e instanceof Error && e.message === "Deck not found") res.status(404).json({ message: e.message });
+      else next(e);
     }
   });
-
-  app.delete(api.decks.delete.path, async (req, res) => {
-    await storage.deleteDeck(Number(req.params.id));
-    res.status(204).send();
+  app.delete(api.decks.delete.path, requireUser, async (req, res, next) => {
+    try {
+      if (!await storage.deleteDeck(Number(req.params.id), req.studyUser!.id)) { res.status(404).json({ message: "Deck not found" }); return; }
+      res.status(204).send();
+    } catch (e) { next(e); }
   });
-
+  registerLibraryRoutes(app);
+  app.use("/api/decks/:deckId/questions", requireUser);
+  registerUniversalQuestionRoutes(app);
 
   // === WEBSOCKET SERVER ===
   
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, request) => {
     let userRoomCode: string | null = null;
     let userId: string | null = null;
 
@@ -114,7 +98,8 @@ export async function registerRoutes(
         switch (message.type) {
           case WS_EVENTS.CREATE_ROOM: {
             const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-            const deck = await storage.getDeck(message.payload.deckId);
+            const hostUser = await resolveUser(request.headers.cookie);
+            const deck = await storage.getDeck(message.payload.deckId, hostUser?.id || '');
             
             if (!deck) {
               ws.send(JSON.stringify({ type: WS_EVENTS.ERROR, payload: { message: "Deck not found" } }));
@@ -337,37 +322,6 @@ export async function registerRoutes(
     });
   }
 
-  // Seed if empty
-  await seedDatabase();
-
+  // No ownerless demo seed: every private deck must have an owner.
   return httpServer;
-}
-
-// Seed function
-export async function seedDatabase() {
-  const existing = await storage.getDecks();
-  if (existing.length === 0) {
-    const deck = await storage.createDeck({
-      title: "General Knowledge",
-      description: "A sample trivia deck",
-      category: "Trivia"
-    });
-    
-    await storage.createCards(deck.id, [
-      {
-        front: "What is the capital of France?",
-        back: "Paris",
-        type: "multiple_choice",
-        options: ["London", "Berlin", "Madrid", "Paris"],
-        correctOption: "D"
-      },
-      {
-        front: "Which planet is known as the Red Planet?",
-        back: "Mars",
-        type: "multiple_choice",
-        options: ["Venus", "Mars", "Jupiter", "Saturn"],
-        correctOption: "B"
-      }
-    ]);
-  }
 }

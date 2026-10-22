@@ -148,6 +148,8 @@ export default function ImportDeck() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                  <Link href="/library" className="underline font-semibold">Save an original file in your private source library instead</Link>. This quick importer stores derived cards only.
+                  <br />
                   <strong>CSV/TSV headers:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption. Or use a Trivia Lobby JSON backup.
                 </div>
                 <div className="space-y-2">

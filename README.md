@@ -19,12 +19,14 @@ This is the **single active codebase**: [jimedusot-beep/Trivia-Lobby](https://gi
 
 ## Getting started
 
-Requires Node.js and a persistent PostgreSQL database.
+Requires Node.js and a persistent PostgreSQL database. For the Phase 3 draft branch, also provision a private persistent source volume outside the repository.
 
 ```bash
 npm ci
 export DATABASE_URL='postgresql://...'
-npm run db:push
+npm run db:push            # fresh database only
+npm run db:migrate:phase3  # when running the Phase 3 branch
+export PRIVATE_STORAGE_DIR='/srv/trivia-private'  # persistent private volume
 npm run dev
 ```
 
@@ -40,7 +42,7 @@ Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
 "What does DNA stand for?","Deoxyribonucleic acid","flashcard",,,,,
 ```
 
-Imported deck/card records persist **only as long as the connected PostgreSQL database is retained**. The original source file is not yet stored; keep your own source copy for now. The current application does not support users, private deck access, permanent original-document storage, or cross-device review progress. Save your own JSON backup regularly; downloaded backups contain **cards only**, not original uploaded files. Do not upload confidential student materials to an accessible public deployment.
+On the main branch, existing browser CSV/TSV/JSON imports save deck/card records to PostgreSQL and do not retain originals. **Draft Phase 3 PR #15 adds private accounts and a separate Source Library flow** that retains the original before explicit preview/approval. The legacy Create Deck importer still only saves derived cards; use Source Library if original retention matters. Private bytes survive deployments only if the operator provides durable database and volume storage with tested backups. Study progress and complete account export are not implemented. Do not use sensitive student data on an unreviewed deployment.
 
 ## Engineering research library (October 2026)
 
@@ -50,6 +52,10 @@ Imported deck/card records persist **only as long as the connected PostgreSQL da
 These are **research references only**. No third-party code, proprietary assets, AI agents, or reverse-engineering packages are installed by these documents; proposed game modes are not yet implemented.
 
 - [AI reconstruction expansion: five research and testing tracks](docs/research/AI_RECONSTRUCTION_TRACKS.md) — evidence-linked specifications, host/player automation, original UI prototypes, replay QA, and case studies. [Structured inventory](docs/research/ai-reconstruction-candidates.json) (`node --test tests/research-manifest.test.mjs`). [Implementation issue #6](https://github.com/jimedusot-beep/Trivia-Lobby/issues/6).
+
+## Phase 3 implementation under review
+
+[Draft PR #15](https://github.com/jimedusot-beep/Trivia-Lobby/pull/15) adds accounts, ownership controls, original-file retention, searchable folders/tags and a human-approved import preview. [Phase 3 security and operational runbook](docs/PHASE3_SECURITY_AND_OPERATIONS.md) lists the supported formats, migration steps, CI evidence and important remaining security gaps. **This PR is not merged and not a guarantee of production readiness.**
 
 ## Product direction
 
