@@ -48,11 +48,15 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
     assert.equal(first.status, 201);
     const replay = await send("/api/study/review", "POST", { cardId, rating: 1, requestId }, a.cookie!);
     assert.equal(replay.status, 200); assert.equal(replay.value.replay, true);
+    const conflicted = await send("/api/study/review", "POST", { cardId, rating: 4, requestId }, a.cookie!);
+    assert.equal(conflicted.status, 409, "a retry key cannot silently change a past rating");
     const historyA = await send("/api/study/history", "GET", undefined, a.cookie!);
     const historyB = await send("/api/study/history", "GET", undefined, b.cookie!);
     assert.equal(historyA.value.events.length, 1);
     assert.equal(historyA.value.wrongAnswers.length, 1);
+    assert.equal(historyA.value.wrongAnswers[0].cardId, cardId);
     assert.equal(historyB.value.events.length, 0);
+    assert.equal(historyB.value.wrongAnswers.length, 0);
     const aQueue = await send(`/api/study/queue?deckId=${deckId}&mode=missed`, "GET", undefined, a.cookie!);
     const bQueue = await send(`/api/study/queue?deckId=${deckId}&mode=missed`, "GET", undefined, b.cookie!);
     assert.equal(aQueue.value.cards.length, 1);
@@ -65,6 +69,11 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
     const exportA = await send("/api/study/export", "GET", undefined, deviceB.cookie!);
     assert.equal(exportA.value.events.length, 1);
     assert.equal(exportA.value.states.length, 1);
+    const invalidOrigin = await fetch(origin + "/api/study/review", {
+      method: "POST", headers: { Origin: "https://attacker.example", Cookie: a.cookie!, "Content-Type": "application/json" },
+      body: JSON.stringify({ cardId, rating: 1, requestId: randomUUID() }),
+    });
+    assert.equal(invalidOrigin.status, 403, "reject cross-origin review mutation");
     const resolved = await send("/api/study/review", "POST", { cardId, rating: 3, requestId: randomUUID() }, deviceB.cookie!);
     assert.equal(resolved.status, 201);
     const afterRetry = await send(`/api/study/queue?deckId=${deckId}&mode=missed`, "GET", undefined, a.cookie!);
