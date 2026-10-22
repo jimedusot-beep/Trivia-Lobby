@@ -57,13 +57,18 @@ test("source extraction preserves plain text without network requests",async()=>
   const text="Question :: Answer\n".repeat(5);const extracted=await extractSource("own.txt",Buffer.from(text));
   assert.equal(extracted.text,text);assert.equal(extracted.status,"extracted");
 });
-test("PDF worker extracts source text with a real original PDF fixture",async()=>{
- const content="BT /F1 12 Tf 20 50 Td (Memory :: Review) Tj ET";
+function originalPdf(content:string){
  const objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",`<< /Length ${content.length} >>\nstream\n${content}\nendstream`,"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
  let pdf="%PDF-1.4\n";const offsets=[0];
  objects.forEach((body,i)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${i+1} 0 obj\n${body}\nendobj\n`;});
  const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(n=>String(n).padStart(10,"0")+" 00000 n \n").join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
- const extracted=await extractSource("original.pdf",Buffer.from(pdf));assert.match(extracted.text,/Memory\s*::\s*Review/);assert.equal(extracted.pages,1);assert.equal(extracted.status,"extracted");
+ return Buffer.from(pdf);
+}
+test("PDF worker extracts source text with a real original PDF fixture",async()=>{
+ const extracted=await extractSource("original.pdf",originalPdf("BT /F1 12 Tf 20 50 Td (Memory :: Review) Tj ET"));assert.match(extracted.text,/Memory\s*::\s*Review/);assert.equal(extracted.pages,1);assert.equal(extracted.status,"extracted");
+});
+test("PDF without text requires OCR and does not present page markers as source evidence",async()=>{
+ const extracted=await extractSource("image-only.pdf",originalPdf("q Q"));assert.equal(extracted.text,"");assert.equal(extracted.pages,1);assert.equal(extracted.status,"ocr-required");
 });
 test("malformed APKG cannot execute SQLite statements",async()=>{
   await assert.rejects(()=>parseApkg(Buffer.from("not a zip")),/ZIP/);

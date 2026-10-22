@@ -46,7 +46,7 @@ npm run test:e2e
 npm run smoke
 ```
 
-The integrated GitHub Actions workflow is configured for migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. It has not yet run for this branch. Local results and their limits are recorded in the [review](docs/INTEGRATION_REVIEW.md).
+The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. See [PR #21 checks](https://github.com/jimedusot-beep/Trivia-Lobby/pull/21/checks) for current hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
 
 ## Operations and research
 

@@ -17,8 +17,8 @@ All 48 requested items are tracked below. **Implemented** describes the combined
 | 11 | P0 Multiplayer | Game state transitions | Implemented: lobby, playing, reveal, leaderboard and finished snapshots. |
 | 12 | P0 Multiplayer | Complete multiplayer test | Implemented: socket match covers two players, invalid actions and deadlines; browser match covers host/player reload, reconnect and finish. |
 | 13 | P0 Data | Transactional deck deletion | Implemented: atomic owner-filtered deletion and FK cascades; rollback coverage. |
-| 14 | P0 Data | Relational foreign keys | Implemented: additive migrations validate references and enforce cascades. Native PostgreSQL acceptance pending. |
-| 15 | P0 Data | Durable database backups | Pending operations: restricted archive/checksum/empty-target restore scripts and CI job exist; production scheduling, retention/PITR and native restore rehearsal remain. |
+| 14 | P0 Data | Relational foreign keys | Implemented: additive migrations validate references and enforce cascades; native PostgreSQL 16 acceptance passes. |
+| 15 | P0 Data | Durable database backups | Pending operations: restricted archive/checksum/empty-target restore scripts pass native hosted rehearsal; production scheduling and retention/PITR remain. |
 | 16 | P1 Data | Save original documents | Implemented: bounded validated original bytes retained with hashes; authorized retrieval tested. |
 | 17 | P1 Data | Secure object storage | Partial: private volume and encrypted private S3 adapter implemented; production bucket/retention and S3 acceptance pending. |
 | 18 | P1 Data | Folders, courses and tags | Implemented: private library metadata and organization UI. |
@@ -34,9 +34,9 @@ All 48 requested items are tracked below. **Implemented** describes the combined
 | 28 | P1 Study | Cross-device study progress | Implemented: shared account-backed legacy/universal histories; independent browser-context reload test passes. |
 | 29 | P1 Study | Timed/untimed practice | Implemented: universal practice modes and saved missed answers; solo timer is local, competitive timer is server-authoritative. |
 | 30 | P1 Study | Explanations/source citations | Implemented: authoring, backups and post-check explanations, attribution/page/source passages. |
-| 31 | P1 Quality | Expanded unit tests | Implemented: 51 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction, permissions and projection/guard regressions. |
+| 31 | P1 Quality | Expanded unit tests | Implemented: 52 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction (including text-free PDFs), permissions and projection/guard regressions. |
 | 32 | P1 Quality | Playwright host/player E2E | Partial acceptance: all five Chromium scenarios pass; Firefox/WebKit projects await CI. |
-| 33 | P1 Quality | PostgreSQL integration tests | Partial acceptance: five API/relational tests pass on PGlite; native PostgreSQL 16 workflow awaits execution. |
+| 33 | P1 Quality | PostgreSQL integration tests | Implemented: five API/relational tests pass on native PostgreSQL 16 and PGlite; repeated migrations and native archive restoration pass. |
 | 34 | P1 Quality | Dependency/license audits | Implemented audit: production has zero reported vulnerabilities; eight development advisories remain. Inventory records 280 packages with no missing/review-required license metadata. |
 | 35 | P1 Quality | Deployment smoke tests | Implemented: HTTP/DB/real-WS smoke passes locally; production smoke pending deployment. |
 | 36 | P1 Quality | Reconcile main/research branches | Implemented: main (including PR #7 projections/guards) plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; prepared for draft PR review. |

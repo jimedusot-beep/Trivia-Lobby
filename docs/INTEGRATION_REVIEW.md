@@ -11,9 +11,10 @@ The [48-item status checklist](IMPLEMENTATION_CHECKLIST.md) identifies bounded i
 | Check | Actual result |
 |---|---|
 | TypeScript | `npm run check` passed. |
-| Unit and real WebSocket tests | `npm test`: 51 passed, zero failed or skipped. Includes timers, reconnect rotation, host/player permissions, scoring, portable formats, extraction, schemas, matching, rate limits and main's projection/guard regressions. |
-| Migrations | All five ordered migrations applied twice against the disposable local test database. |
-| Database/API integration | Five passed, zero skipped, using PGlite's PostgreSQL engine over its socket adapter. Covers ownership, retained originals, FK cascades/rollback, study idempotency, drafts, reviewed publication, card editing and JSON restore. This does not substitute for native PostgreSQL 16 acceptance. |
+| Unit and real WebSocket tests | 52 passed locally on Node 22.23.3, zero failed or skipped. Includes timers, reconnect rotation, host/player permissions, scoring, portable formats, extraction including text-free PDFs, schemas, matching, rate limits and main's projection/guard regressions. |
+| Migrations | All five ordered migrations applied twice against native PostgreSQL 16 in hosted acceptance and against the disposable local PGlite database. |
+| Database/API integration | Five passed, zero skipped, on native PostgreSQL 16 in hosted acceptance; five also pass using local PGlite over its socket adapter. Covers ownership, retained originals, FK cascades/rollback, study idempotency, drafts, reviewed publication, card editing and JSON restore. |
+| Native database archive | `pg_dump`, archive validation/checksum and empty-target atomic `pg_restore` passed in hosted acceptance. This is a disposable CI database, not a production backup configuration. |
 | Browser acceptance | Five Chromium tests passed with retries disabled: join keyboard/axe/phone layout; cross-device private history and legacy practice saving; imported-card edit/reorder/reload; host/player match with both reconnecting; visual authoring/reopen/MCQ/matching/hotspot practice. |
 | Build | Production client and server built. Client JS is about 666 kB before gzip (205 kB gzip), with a bundle-size warning. |
 | Smoke | HTTP liveness, database readiness and actual WebSocket exchange passed against the test app. |
@@ -21,11 +22,11 @@ The [48-item status checklist](IMPLEMENTATION_CHECKLIST.md) identifies bounded i
 | Full dependency audit | Eight development advisories: five high, three moderate, in the Tailwind 3 glob/selector chain. These remain open; no forced Tailwind 4 migration. |
 | License inventory | 280 installed production packages inventoried; no missing/review-required license metadata. This is not legal clearance. |
 
-Local browser acceptance used Chromium 141 with Playwright 1.64.1 and Node 24.19.0. Native PostgreSQL binaries and the other browser runtimes were unavailable in this execution environment. The committed workflow targets Node 22, native PostgreSQL 16 and Playwright-managed Chromium/Firefox/WebKit; it still needs to run on the combined branch.
+Local browser acceptance used Chromium 141 with Playwright 1.64.1 and Node 24.19.0; the complete unit/socket suite also passes on Node 22.23.3. Native PostgreSQL 16, repeated migrations, the five integration tests and archive restoration passed in [hosted run 39808253872](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39808253872) at source commit `d535b49`. Browser-matrix acceptance was still running when this record was updated; consult [PR #21 checks](https://github.com/jimedusot-beep/Trivia-Lobby/pull/21/checks) for the current result.
 
 ## Remaining acceptance and operator work
 
-- Run `.github/workflows/integrated-platform.yml`, including native PostgreSQL, `pg_dump`/empty-target `pg_restore`, Firefox and WebKit. The local JSON restore test passed; native database archive restoration is unverified.
+- Complete the full Chromium/Firefox/WebKit matrix in `.github/workflows/integrated-platform.yml` and require green checks before merge. Native PostgreSQL and archive restoration have passed; the browser matrix remains a separate acceptance gate.
 - Provision durable private object storage, enable independent original-file retention, and configure scheduled encrypted offsite database backups plus provider point-in-time recovery. The app adapters and scripts do not provision these services.
 - Rehearse migration from a copy of any existing database. Ownerless legacy decks remain inaccessible until ownership is verified. A previously deployed separate Phase 4 account system needs explicit identity mapping; migration refuses to guess.
 - Configure and acceptance-test a real private S3 bucket and optional HTTPS AI provider. Neither was accessed. PDF/DOCX extraction and evidence approval are tested locally; no OCR or live AI-output quality evaluation was performed.

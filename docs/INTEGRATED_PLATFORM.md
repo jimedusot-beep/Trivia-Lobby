@@ -29,7 +29,7 @@ Choose durable `PRIVATE_STORAGE_DIR` outside the application tree or `S3_BUCKET`
 
 ## Backup and restore
 
-Set `DATABASE_URL` and absolute encrypted durable `BACKUP_DIR`, then run `npm run backup:db`. Schedule it in the hosting provider/system scheduler, retain encrypted offsite copies, enable provider point-in-time recovery and monitor failures. Restore only into an empty isolated DB using `RESTORE_DATABASE_URL`, `BACKUP_FILE`, `ALLOW_EMPTY_RESTORE=yes` and `npm run restore:db`. The configured CI job rehearses native archive restoration, separate from JSON deck restoration; that job has not yet run for this branch.
+Set `DATABASE_URL` and absolute encrypted durable `BACKUP_DIR`, then run `npm run backup:db`. Schedule it in the hosting provider/system scheduler, retain encrypted offsite copies, enable provider point-in-time recovery and monitor failures. Restore only into an empty isolated DB using `RESTORE_DATABASE_URL`, `BACKUP_FILE`, `ALLOW_EMPTY_RESTORE=yes` and `npm run restore:db`. Native archive restoration passed in hosted acceptance, separate from the JSON deck restoration tests; see the review record for the tested source revision.
 
 **Committing a script does not enable production backups.** Original files need corresponding S3 version retention or volume snapshots; restore DB metadata and original bytes together and verify their hashes. No production deployment, database, bucket, AI key or backup schedule has been changed here.
 
@@ -39,7 +39,7 @@ Set `DATABASE_URL` and absolute encrypted durable `BACKUP_DIR`, then run `npm ru
 
 ## Verification limits
 
-The [review record](INTEGRATION_REVIEW.md) records 51 passing unit/socket tests, five passing database/API tests using PGlite, five passing Chromium browser tests, type checking, build and smoke results. Native PostgreSQL 16, native archive restoration, Firefox and WebKit remain unverified here. Constituent PR results do not validate this combined branch.
+The [review record](INTEGRATION_REVIEW.md) records 52 passing unit/socket tests, five passing database/API tests on native PostgreSQL 16 and PGlite, native archive restoration, five passing local Chromium browser tests, type checking, build and smoke results. The full hosted browser matrix remains a separate acceptance gate. Constituent PR results do not validate this combined branch.
 
 Automated accessibility checks cover representative join/home flows, authoring alternatives and phone overflow; this is not a full WCAG conformance audit. Production dependency audit is clear at the current lockfile. Eight development build-tool advisories remain (five high, three moderate) in the Tailwind 3 selector/glob dependency chain; a forced Tailwind 4 migration was not applied. License metadata is an inventory; inspect the distributed license files before redistribution.
 

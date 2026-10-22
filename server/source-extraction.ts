@@ -28,7 +28,8 @@ export async function extractSource(filename: string, bytes: Buffer): Promise<Ex
           let text = '';
           for (let i=1;i<=pdf.numPages && text.length<200000;i++) {
             const page=await pdf.getPage(i), content=await page.getTextContent();
-            text += '\\n[Page '+i+']\\n'+content.items.map(x => x.str ? x.str+(x.hasEOL?'\\n':' ') : '').join('');
+            const pageText = content.items.map(x => x.str ? x.str+(x.hasEOL?'\\n':' ') : '').join('');
+            if (pageText.trim()) text += '\\n[Page '+i+']\\n'+pageText;
             page.cleanup();
           }
           result = { text:text.slice(0,200000), pages:pdf.numPages, status:text.trim()?'extracted':'ocr-required' };
