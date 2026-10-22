@@ -80,18 +80,46 @@ export type BulkCreateCardRequest = InsertCard[];
 export type DeckWithCards = Deck & { cards: Card[] };
 
 export const WS_EVENTS = {
-  CREATE_ROOM: 'create_room', JOIN_ROOM: 'join_room', START_GAME: 'start_game',
-  SUBMIT_ANSWER: 'submit_answer', NEXT_QUESTION: 'next_question',
-  REJOIN_ROOM: 'rejoin_room', ROOM_CREATED: 'room_created',
-  LOBBY_UPDATE: 'lobby_update', GAME_STARTED: 'game_started',
-  QUESTION_START: 'question_start', ANSWER_RESULT: 'answer_result',
-  GAME_OVER: 'game_over', ERROR: 'error', SYNC_SNAPSHOT: 'sync_snapshot',
+  // Client -> Server
+  CREATE_ROOM: 'create_room',
+  JOIN_ROOM: 'join_room',
+  START_GAME: 'start_game',
+  SUBMIT_ANSWER: 'submit_answer',
+  NEXT_QUESTION: 'next_question',
+  REJOIN_ROOM: 'rejoin_room',
+  RESUME_HOST: 'resume_host',
+  
+  // Server -> Client
+  ROOM_CREATED: 'room_created',
+  ROOM_JOINED: 'room_joined',
+  HOST_RESUMED: 'host_resumed',
+  LEADERBOARD: 'leaderboard',
+  LOBBY_UPDATE: 'lobby_update',
+  GAME_STARTED: 'game_started',
+  QUESTION_START: 'question_start',
+  ANSWER_RESULT: 'answer_result',
+  GAME_OVER: 'game_over',
+  ERROR: 'error',
+  SYNC_SNAPSHOT: 'sync_snapshot', // Added for reliability
 } as const;
 
-export interface CreateRoomPayload { deckId: number }
-export interface JoinRoomPayload { roomCode: string; playerName: string; playerId?: string }
-export interface SubmitAnswerPayload { roomCode: string; answer: string }
+// Define payload types for better type safety in socket handlers
+export interface CreateRoomPayload {
+  deckId: number;
+}
 
+export interface JoinRoomPayload {
+  roomCode: string;
+  playerName: string;
+  playerId?: string; // Deprecated legacy interface; wire v1 uses separate credential-backed rejoin
+}
+
+export interface SubmitAnswerPayload {
+  roomCode: string;
+  answer: string;
+}
+
+// ... other payloads can be inferred from context, but these help shared understanding
 // Phase 2: additive question definitions. Legacy cards remain unchanged.
 // JSON is parsed against the versioned shared schema at the API boundary.
 export const universalQuestions = pgTable("universal_questions", {

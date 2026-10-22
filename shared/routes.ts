@@ -71,7 +71,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/decks/:id/cards' as const,
-      input: z.array(insertCardSchema), // Bulk create for imports
+      input: z.array(insertCardSchema.omit({ deckId: true })).min(1).max(5000), // Server supplies deckId
       responses: {
         201: z.array(z.custom<typeof cards.$inferSelect>()),
         400: errorSchemas.validation,
