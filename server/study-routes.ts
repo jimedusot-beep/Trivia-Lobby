@@ -55,8 +55,12 @@ export function registerStudyRoutes(app: Express) {
         if (existing.cardId !== input.cardId || existing.rating !== input.rating) return { conflict: true as const };
         return { event: existing, replay: true };
       }
-      const [card] = await tx.select({ id: cards.id }).from(cards).innerJoin(decks, eq(cards.deckId, decks.id)).where(and(eq(cards.id, input.cardId), eq(decks.ownerId, user.id))).limit(1);
-      if (!card) return null;
+      // Serialize recall against content edits: a changed answer invalidates
+      // the schedule only after every earlier in-flight review has committed.
+      const locked = await tx.execute(sql`
+        SELECT c.id FROM cards c JOIN decks d ON d.id=c.deck_id
+        WHERE c.id=${input.cardId} AND d.owner_id=${user.id} FOR UPDATE OF c`);
+      if (!locked.rows.length) return null;
       const [previous] = await tx.select().from(studySchedule)
         .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.cardId, input.cardId))).limit(1);
       const now = new Date();
