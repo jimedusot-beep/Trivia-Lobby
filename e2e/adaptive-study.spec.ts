@@ -77,6 +77,28 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageOther.goto(base + `/learning/review/${deckId}?mode=missed`);
     await expect(pageOther.getByRole("heading", { name: "Queue complete" })).toBeVisible();
 
+    // A server-graded visual/universal question must surface in the private
+    // notebook with the visual practice retry route, not another user's page.
+    const visualPrompt="Visual missed question " + suffix;
+    const visualCreated=await pageA.request.post(base+`/api/decks/${deckId}/questions`,{data:{
+      schemaVersion:1,prompt:visualPrompt,answer:{kind:"multiple_choice",
+        options:[{id:"A",label:"Correct"},{id:"B",label:"Incorrect"}],correctOptionIds:["A"]},
+    }});
+    expect(visualCreated.status()).toBe(201);
+    const visualId=(await visualCreated.json()).id;
+    const visualCheck=await pageA.request.post(base+`/api/decks/${deckId}/questions/${visualId}/check`,{
+      data:{response:{selectedIds:["B"]},requestId:randomUUID()},
+    });
+    expect(visualCheck.status()).toBe(200);
+    expect((await visualCheck.json()).correct).toBe(false);
+    await pageA.goto(base+"/learning");
+    const visualRow=pageA.getByRole("listitem").filter({hasText:visualPrompt});
+    await expect(visualRow).toBeVisible();
+    await expect(visualRow.getByRole("link",{name:"Retry"}))
+      .toHaveAttribute("href",`/visual-practice/${deckId}?mode=adaptive`);
+    await pageOther.reload();
+    await expect(pageOther.getByText(visualPrompt)).toHaveCount(0);
+
     await pageA.goto(base+`/practice/${deckId}`);
     await pageA.getByRole("button",{name:"Reveal answer",exact:true}).click();
     await pageA.getByRole("button",{name:"I knew it",exact:true}).click();
