@@ -17,7 +17,7 @@ export function MatchingExercise({prompts,matches,value,onChange,disabled}:{
     {prompts.map(p=><div key={p.id} className="border rounded-lg p-3 space-y-2" data-match-target={p.id}
       onDragOver={e=>{if(!disabled)e.preventDefault();}} onDrop={e=>{e.preventDefault();const label=e.dataTransfer.getData("text/plain");if(matches.some(m=>m.id===label))assign(p.id,label);}}>
       <Button variant="ghost" className="h-auto min-h-11 whitespace-normal text-left" disabled={disabled||!active} onClick={()=>active&&assign(p.id,active)} aria-label={`Assign selected label to ${p.prompt}`}>{p.prompt}</Button>
-      <label className="block"><span className="sr-only">{p.prompt}</span><select className="w-full border rounded p-3 bg-background" disabled={disabled}
+      <label className="block"><span className="sr-only">{p.prompt}</span><select aria-label={p.prompt} className="w-full border rounded p-3 bg-background" disabled={disabled}
         value={value[p.id]??""} onChange={e=>assign(p.id,e.target.value)}>
         <option value="">Choose a label</option>{matches.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
       </select></label>

@@ -10,7 +10,7 @@ BEGIN
     RAISE EXCEPTION 'Orphan cards found; repair references before adding FK';
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'cards_deck_id_decks_id_fk'
+    SELECT 1 FROM pg_constraint WHERE conname = 'cards_deck_id_decks_id_fk' AND conrelid='cards'::regclass
   ) THEN
     ALTER TABLE cards
       ADD CONSTRAINT cards_deck_id_decks_id_fk

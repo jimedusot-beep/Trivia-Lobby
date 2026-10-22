@@ -5,6 +5,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { users, userSessions } from "@shared/schema";
+import { rateLimit } from "./rate-limit";
 
 const COOKIE = "tl_session";
 const DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -58,17 +59,8 @@ export function requireSameOrigin(req: Request, res: Response, next: NextFunctio
   }
   next();
 }
-const attempts = new Map<string, { count: number; reset: number }>();
-export function loginRateLimit(req: Request, res: Response, next: NextFunction): void {
-  const key = req.ip || "unknown";
-  const now = Date.now();
-  if (attempts.size > 5000) attempts.clear();
-  const value = attempts.get(key);
-  const nextValue = !value || value.reset <= now ? { count: 1, reset: now + 15 * 60_000 } : { count: value.count + 1, reset: value.reset };
-  attempts.set(key, nextValue);
-  if (nextValue.count > 20) { res.status(429).json({ message: "Too many attempts; retry later" }); return; }
-  next();
-}
+export const loginRateLimit = rateLimit(20, 15 * 60_000);
+const dummyHash = hashPassword("Unused-account-timing-sentinel");
 async function issueSession(res: Response, userId: string) {
   const token = randomBytes(32).toString("hex");
   await db.insert(userSessions).values({ tokenHash: hashSessionToken(token), userId, expiresAt: new Date(Date.now() + DURATION_MS) });
@@ -95,7 +87,8 @@ export function registerAuthRoutes(app: Express): void {
       const parsed = credentials.safeParse(req.body);
       if (!parsed.success) { res.status(401).json({ message: "Invalid email or password" }); return; }
       const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
-      if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      const valid = await verifyPassword(parsed.data.password, user?.passwordHash ?? await dummyHash);
+      if (!user || !valid) {
         res.status(401).json({ message: "Invalid email or password" }); return;
       }
       await issueSession(res, user.id);

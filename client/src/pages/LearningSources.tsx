@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Source = { id: string; title: string; body: string };
-type Draft = { id: string; sourceId: string; front: string; back: string; explanation: string | null; evidence: string; approved: boolean };
+type Draft = { id: string; sourceId: string; front: string; back: string; explanation: string | null; evidence: string; approved: boolean;publishedQuestionId?:number|null };
 const request = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   const result = await response.json().catch(() => ({}));
@@ -23,11 +23,14 @@ export default function LearningSources() {
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [decks,setDecks]=useState<{id:number;title:string}[]>([]);
+  const [publishDeck,setPublishDeck]=useState("");
   const [notice, setNotice] = useState("");
   const refresh = useCallback(async () => {
     try {
       const [sources, drafts] = await Promise.all([request<Source[]>("/api/study/sources"), request<Draft[]>("/api/study/drafts")]);
       setSources(sources); setDrafts(drafts);
+      setDecks(await request("/api/decks"));
     } catch (err) { setError((err as Error).message); }
   }, []);
   useEffect(() => { if (user) void refresh(); }, [user, refresh]);
@@ -74,6 +77,7 @@ export default function LearningSources() {
           <Button disabled={busy} onClick={() => void generate(s.id)}>Suggest cards</Button>
         </CardContent></Card>)}
       </div></section>
+      <label className="block">Publish approved questions into your private deck<select aria-label="Publish destination" className="border rounded p-3 block w-full" value={publishDeck} onChange={e=>setPublishDeck(e.target.value)}><option value="">Choose a deck</option>{decks.map(d=><option key={d.id} value={d.id}>{d.title}</option>)}</select></label>
       <section className="space-y-3"><h2 className="text-2xl font-bold">Suggested cards — human review</h2>
         {drafts.length === 0 ? <p>No AI draft suggestions yet. AI is optional and may not be configured.</p> : drafts.map(d =>
           <Card key={d.id}><CardContent className="p-4 space-y-3">
@@ -85,6 +89,8 @@ export default function LearningSources() {
             <Textarea id={`explanation-${d.id}`} rows={3} maxLength={1500} value={d.explanation ?? ""} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, explanation: e.target.value } : x))} />
             <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">Evidence: “{d.evidence}”</blockquote>
             <Button disabled={busy} variant={d.approved ? "outline" : "default"} onClick={() => void update(d)}>{d.approved ? "Return to pending" : "Save edits and approve"}</Button>
+            {d.approved && !d.publishedQuestionId && <Button disabled={busy||!publishDeck} variant="outline" onClick={async()=>{setBusy(true);try{await request(`/api/study/drafts/${d.id}/publish`,"POST",{deckId:Number(publishDeck)});await refresh();setNotice("Approved question published with its evidence and citation.");}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Publish approved question</Button>}
+            {d.publishedQuestionId && <span className="text-sm">Published</span>}
             <span className="ml-3 text-sm">{d.approved ? "Approved (private)" : "Not approved"}</span>
           </CardContent></Card>)}
       </section>

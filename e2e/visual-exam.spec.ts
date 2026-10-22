@@ -55,8 +55,8 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.getByRole("button",{name:"Next question"}).click();
 
-    await page.getByLabel("uno").selectOption("one");
-    await page.getByLabel("dos").selectOption("two");
+    await page.getByRole("combobox",{name:"uno",exact:true}).selectOption("one");
+    await page.getByRole("combobox",{name:"dos",exact:true}).selectOption("two");
     await page.getByRole("button",{name:"Check answer"}).click();
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.getByRole("button",{name:"Next question"}).click();

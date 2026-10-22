@@ -3,7 +3,7 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 import { zipSync, strToU8 } from "fflate";
 import Papa from "papaparse";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
-import { inspectArchive, readText, zipBytes, type MAX_SOURCE_BYTES } from "./library-parse";
+import { inspectArchive, readText, zipBytes } from "./library-parse";
 import type { ImportableCard } from "../client/src/lib/deck-io";
 
 const array = <T>(v: T | T[] | undefined): T[] => v === undefined ? [] : Array.isArray(v) ? v : [v];

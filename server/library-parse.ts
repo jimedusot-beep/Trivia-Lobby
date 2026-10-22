@@ -21,7 +21,8 @@ export function safeFilename(name: string): string {
 }
 export function readText(bytes: Buffer): string {
   if (bytes.includes(0)) throw new Error("Unexpected binary data");
-  const text = decoder.decode(bytes);
+  let text:string;
+  try{text=decoder.decode(bytes);}catch{throw new Error("Invalid UTF-8 source");}
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) throw new Error("XML entities are not allowed");
   return text;
 }

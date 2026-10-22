@@ -83,10 +83,16 @@ export function registerLibraryRoutes(app: Express): void {
       let contentText = "";
       try { contentText = await extractSource(filename, bytes); } catch { /* Retain originals even if extraction is unavailable. */ }
       await putObject(backend, key, bytes); savedKey = key;
-      const [file] = await db.insert(libraryFiles).values({
-        ownerId, originalName: filename, mimeType, sizeBytes: bytes.length, sha256, objectKey: key,
-        importStatus: "uploaded", storageBackend: backend, contentText,
-      }).returning();
+      const file = await db.transaction(async tx=>{
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerId}), 913004)`);
+        const [duplicate]=await tx.select({id:libraryFiles.id}).from(libraryFiles).where(and(eq(libraryFiles.ownerId,ownerId),eq(libraryFiles.sha256,sha256)));
+        if(duplicate)throw Object.assign(new Error("Identical source already uploaded"),{status:409});
+        const [usage]=await tx.select({total:sum(libraryFiles.sizeBytes)}).from(libraryFiles).where(eq(libraryFiles.ownerId,ownerId));
+        if(Number(usage?.total??0)+bytes.length>MAX_ACCOUNT_BYTES)throw Object.assign(new Error("Account source quota is 100 MB"),{status:413});
+        const [created]=await tx.insert(libraryFiles).values({ownerId,originalName:filename,mimeType,sizeBytes:bytes.length,sha256,objectKey:key,
+          importStatus:"uploaded",storageBackend:backend,contentText}).returning();
+        return created;
+      });
       savedKey = undefined;
       res.status(201).json(publicMetadata(file));
     } catch (err) {

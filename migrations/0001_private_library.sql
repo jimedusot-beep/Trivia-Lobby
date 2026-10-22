@@ -17,14 +17,14 @@ CREATE INDEX IF NOT EXISTS user_sessions_user_idx ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS user_sessions_expiry_idx ON user_sessions(expires_at);
 ALTER TABLE decks ADD COLUMN IF NOT EXISTS owner_id uuid;
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'decks_owner_id_users_id_fk') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'decks_owner_id_users_id_fk' AND conrelid='decks'::regclass) THEN
     ALTER TABLE decks ADD CONSTRAINT decks_owner_id_users_id_fk FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE RESTRICT NOT VALID;
   END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS decks_owner_idx ON decks(owner_id);
 CREATE INDEX IF NOT EXISTS cards_deck_idx ON cards(deck_id);
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cards_deck_id_decks_id_fk') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cards_deck_id_decks_id_fk' AND conrelid='cards'::regclass) THEN
     -- Existing orphans cannot block migration; all new/updated rows are checked.
     ALTER TABLE cards ADD CONSTRAINT cards_deck_id_decks_id_fk FOREIGN KEY (deck_id) REFERENCES decks(id) ON DELETE CASCADE NOT VALID;
   END IF;

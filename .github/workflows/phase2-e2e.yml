@@ -57,6 +57,10 @@ jobs:
           done
           cat /tmp/trivia-e2e-server.log
           exit 1
+      - name: HTTP, database and WebSocket deployment smoke
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:5000
+        run: npm run smoke
       - name: Browser creation, persistence, mobile and scoring
         run: npm run test:e2e -- --project=${{ matrix.browser }} --reporter=line
       - name: Print server logs on failure
