@@ -75,3 +75,8 @@ See [Import & storage plan](docs/IMPORT_AND_STORAGE.md) for security, data reten
 ## Deployment note
 
 The current Express/WebSocket server is **not** a drop-in static Netlify deploy. A static frontend on Netlify would also need a separate long-running backend, PostgreSQL, a documented WebSocket URL, and correct cross-origin routing; alternatively deploy the full app on a Node host supporting WebSockets. Do not assume Netlify alone will keep rooms and files alive.
+
+
+## Phase 2 visual exam builder (development)
+
+The new **New Exam Deck** flow creates an empty deck and opens the [Exam Builder](docs/PHASE2_UNIVERSAL_QUESTIONS.md). Author multiple-choice, matching and image-hotspot questions and practice them with server-graded solo responses. Apply the documented PostgreSQL migration before use. These decks are **not private** until account and ownership controls are implemented; new question definitions are not yet included in legacy JSON backups, and visual exams are not enabled in live multiplayer.

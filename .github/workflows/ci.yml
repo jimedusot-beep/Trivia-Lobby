@@ -31,5 +31,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Create current main schema in disposable PostgreSQL
+        run: npx drizzle-kit push --force
+      - name: Verify additive visual-question migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0001_universal_questions.sql
       - run: npm run test
       - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

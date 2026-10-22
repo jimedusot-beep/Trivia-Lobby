@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { attachGameSocket } from "./live-game";
+import { registerUniversalQuestionRoutes } from "./universal-question-routes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -11,6 +12,7 @@ export async function registerRoutes(
 ): Promise<Server> {
   
   // === HTTP API ROUTES ===
+  registerUniversalQuestionRoutes(app);
 
   app.get(api.decks.list.path, async (req, res) => {
     const decks = await storage.getDecks();
