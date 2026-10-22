@@ -1,15 +1,12 @@
 -- Phase 4 standalone PostgreSQL migration. Run after existing decks/cards tables exist.
 -- Safe to run on a populated database: old public decks/cards remain unchanged.
 BEGIN;
-CREATE TABLE IF NOT EXISTS study_accounts (
-  id uuid PRIMARY KEY, email text NOT NULL UNIQUE, password_hash text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS study_auth_tokens (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+-- A separately deployed experimental study_accounts database needs an operator-reviewed identity migration.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid=to_regclass('study_schedule') AND c.confrelid=to_regclass('study_accounts')) THEN
+    RAISE EXCEPTION 'Experimental study account identities require explicit migration to users before proceeding';
+  END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS study_schedule (
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   card_id integer NOT NULL REFERENCES cards(id) ON DELETE CASCADE,

@@ -1,77 +1,55 @@
-# Trivia Lobby 🎮📚
+# Trivia Lobby
 
-**One app for family game night and college study.** Trivia Lobby combines live multiplayer quiz battles, reusable flashcards, and an evolving personal study library. Inspired by the *types* of learning experiences offered by Kahoot, Duolingo, and Quizlet; not affiliated with them.
+Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
 
-## Repositories consolidated
+This branch integrates current main with secure multiplayer, private source storage and the FSRS study engine. The [integrated implementation and runbook](docs/INTEGRATED_PLATFORM.md) maps the complete checklist and distinguishes implemented features from deployment configuration. Historical phase reports describe their original branches.
 
-This is the **single active codebase**: [jimedusot-beep/Trivia-Lobby](https://github.com/jimedusot-beep/Trivia-Lobby). [Trivia-lobb](https://github.com/jimedusot-beep/Trivia-lobb) was an empty duplicate, and now points here. Nothing needed to be copied from it.
+## Start
 
-## Already in the app
+Use Node 22+, persistent PostgreSQL and a private durable source volume or private S3 bucket. See `.env.example`; never commit credentials.
 
-- Flashcard decks and study view
-- Host/join live trivia games with WebSockets
-- Database-backed decks and cards with PostgreSQL
-- CSV/TSV paste or file selection, preview and validation, with an **all-or-nothing PostgreSQL import transaction**
-- New: versioned Trivia Lobby JSON backup restore plus CSV/JSON backup downloads from each deck's study screen
-- New: searchable deck library and solo multiple-choice practice; small decks use reveal-and-rate instead of made-up distractors
-- New: review missed flashcards within the same study session (fixed queue behavior)
-- TypeScript, regression tests and production build in GitHub Actions
-
-## Getting started
-
-Requires Node.js and a persistent PostgreSQL database. For the Phase 3 draft branch, also provision a private persistent source volume outside the repository.
-
-```bash
+```sh
 npm ci
 export DATABASE_URL='postgresql://...'
-npm run db:push            # fresh database only
-npm run db:migrate:phase3  # when running the Phase 3 branch
-export PRIVATE_STORAGE_DIR='/srv/trivia-private'  # persistent private volume
+export PRIVATE_STORAGE_DIR='/srv/trivia-originals'
+npm run db:migrate
 npm run dev
 ```
 
-The `DATABASE_URL` must point at a **persistent** PostgreSQL instance. Never commit credentials. Use a deployment platform that supports a long-running Node server and WebSockets.
+Back up existing databases before migration. Pre-account decks require verified ownership assignment. Previously deployed experimental Phase 4 identities need explicit migration. Use checked-in migrations in production, not `db:push`.
 
-## Import file format
+## Features
 
-Create a UTF-8 `.csv` or `.tsv` file (or restore a previously exported `.json` deck backup) with header names as below, then select it on **Create Deck** and preview before saving.
+- One account for private decks, documents, drafts and learning history; guests can join live rooms.
+- Retained originals, course/folder/tag organization, extracted-content search, reviewed imports and source-linked drafting.
+- MCQ/matching/hotspot authoring with editing, reordering and server autosave. Eleven graded model kinds.
+- Visual practice with saved attempts, FSRS schedules, timed/untimed/adaptive modes, explanations and citations.
+- Due reviews, wrong-answer notebook, course/subject statistics, cross-device persistence and progress export.
+- Server-authoritative live quiz state, rotating reconnect credentials and deadlines. Classic, teams, buzzer, virtual-point wagers, original workshop upgrades and party rounds.
+- V2 JSON backups preserve legacy cards and visual definitions/order/citations. Anki text and supported QTI item export; supported QTI and basic legacy APKG text import.
 
-```csv
-Front,Back,Type,OptionA,OptionB,OptionC,OptionD,CorrectOption
-"What planet is called the Red Planet?","Mars","multiple_choice","Earth","Mars","Jupiter","Venus","B"
-"What does DNA stand for?","Deoxyribonucleic acid","flashcard",,,,,
+Live games currently support 2–4-choice MCQs from either question schema. QTI conversion covers QTI 2.1 single-choice and plain short-answer items. Anki conversion covers two-column text and basic two-field legacy APKG text notes. Custom/cloze/media/new compressed APKG formats remain retained originals and need a supported export. JSON is the lossless complex-question format; original media bytes and histories have separate backup paths. Scanned PDFs need OCR/transcription. AI stays disabled until a provider is configured, and requires explicit review/approval/publication.
+
+## Verification
+
+```sh
+npm run check
+npm test
+npm run build
+npm audit --omit=dev --audit-level=high
+npm run audit:licenses
+# Isolated disposable PostgreSQL only, after migration:
+TEST_DATABASE_URL="$DATABASE_URL" STUDY_TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
+# With a running test app and browser runtimes:
+npx playwright install chromium firefox webkit
+npm run test:e2e
+npm run smoke
 ```
 
-On the main branch, existing browser CSV/TSV/JSON imports save deck/card records to PostgreSQL and do not retain originals. **Draft Phase 3 PR #15 adds private accounts and a separate Source Library flow** that retains the original before explicit preview/approval. The legacy Create Deck importer still only saves derived cards; use Source Library if original retention matters. Private bytes survive deployments only if the operator provides durable database and volume storage with tested backups. Study progress and complete account export are not implemented. Do not use sensitive student data on an unreviewed deployment.
+GitHub Actions runs migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. Consult the PR's latest integrated workflow for results.
 
-## Engineering research library (October 2026)
+## Operations and research
 
-- [Learning-game clones, AI-assisted creator leads, and reconstruction tools](docs/LEARNING_GAME_RESEARCH.md) — 28 platform-inspired repositories, creator/tool leads, evidence classifications, license and verification checklist.
-- [Research-to-feature roadmap](docs/RESEARCH_TO_FEATURE_ROADMAP.md) — priorities and acceptance criteria for the current React/Express/WebSocket/PostgreSQL app.
+Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. Provision persistent storage and database backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
 
-These are **research references only**. No third-party code, proprietary assets, AI agents, or reverse-engineering packages are installed by these documents; proposed game modes are not yet implemented.
-
-- [AI reconstruction expansion: five research and testing tracks](docs/research/AI_RECONSTRUCTION_TRACKS.md) — evidence-linked specifications, host/player automation, original UI prototypes, replay QA, and case studies. [Structured inventory](docs/research/ai-reconstruction-candidates.json) (`node --test tests/research-manifest.test.mjs`). [Implementation issue #6](https://github.com/jimedusot-beep/Trivia-Lobby/issues/6).
-
-## Phase 3 implementation under review
-
-[Draft PR #15](https://github.com/jimedusot-beep/Trivia-Lobby/pull/15) adds accounts, ownership controls, original-file retention, searchable folders/tags and a human-approved import preview. [Phase 3 security and operational runbook](docs/PHASE3_SECURITY_AND_OPERATIONS.md) lists the supported formats, migration steps, CI evidence and important remaining security gaps. **This PR is not merged and not a guarantee of production readiness.**
-
-## Product direction
-
-1. **Study library:** permanent original PDF/DOCX/PPTX/TXT/CSV uploads, private accounts, folders, searchable notes, and source-linked cards.
-2. **Study loop:** spaced repetition, self-tests, streaks, daily practice, and progress by course.
-3. **Game night:** host/join rooms, timed questions, scoreboards, teams, friend/family packs, and accessible mobile play.
-4. **Content creation:** bulk importing, document-to-card suggestions with human review, editing, duplicates, and exports.
-5. **Reliability:** backups, private files, restoration tests, import limits, audit logs, and clear retention policy.
-
-See [Import & storage plan](docs/IMPORT_AND_STORAGE.md) for security, data retention, and hosting considerations. See also the [28-project reference audit and integration blueprint](docs/research/INTEGRATION_BLUEPRINT.md).
-
-## Deployment note
-
-The current Express/WebSocket server is **not** a drop-in static Netlify deploy. A static frontend on Netlify would also need a separate long-running backend, PostgreSQL, a documented WebSocket URL, and correct cross-origin routing; alternatively deploy the full app on a Node host supporting WebSockets. Do not assume Netlify alone will keep rooms and files alive.
-
-
-## Phase 2 visual exam builder (development)
-
-The new **New Exam Deck** flow creates an empty deck and opens the [Exam Builder](docs/PHASE2_UNIVERSAL_QUESTIONS.md). Author multiple-choice, matching and image-hotspot questions and practice them with server-graded solo responses. Apply the documented PostgreSQL migration before use. These decks are **not private** until account and ownership controls are implemented; new question definitions are not yet included in legacy JSON backups, and visual exams are not enabled in live multiplayer.
+Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.

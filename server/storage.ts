@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { decks, cards, libraryFiles, deckSources, type InsertDeck, type InsertCard, type Deck, type Card } from "@shared/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 
 export interface IStorage {
   getDecks(ownerId: string): Promise<Deck[]>;
@@ -28,6 +29,13 @@ export class DatabaseStorage implements IStorage {
   async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, "deckId">[], ownerId: string, sourceFileId?: string): Promise<Deck> {
     if (cardsList.length === 0 || cardsList.length > 5000) throw new Error("Import requires 1–5000 cards");
     return db.transaction(async tx => {
+      const fingerprint = createHash("sha256").update(JSON.stringify({deck,cardsList,sourceFileId:sourceFileId??null})).digest("hex");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerId}),hashtext(${fingerprint}))`);
+      const receipt=await tx.execute(sql`SELECT deck_id FROM import_receipts WHERE owner_id=${ownerId} AND fingerprint=${fingerprint}`);
+      if(receipt.rows[0]) {
+        const [previous]=await tx.select().from(decks).where(and(eq(decks.id,Number(receipt.rows[0].deck_id)),eq(decks.ownerId,ownerId)));
+        if(previous)return previous;
+      }
       if (sourceFileId) {
         const [source] = await tx.select({ id: libraryFiles.id }).from(libraryFiles)
           .where(and(eq(libraryFiles.id, sourceFileId), eq(libraryFiles.ownerId, ownerId))).limit(1);
@@ -39,6 +47,7 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(deckSources).values({ deckId: created.id, fileId: sourceFileId });
         await tx.update(libraryFiles).set({ importStatus: "linked" }).where(and(eq(libraryFiles.id, sourceFileId), eq(libraryFiles.ownerId, ownerId)));
       }
+      await tx.execute(sql`INSERT INTO import_receipts(owner_id,fingerprint,deck_id) VALUES(${ownerId},${fingerprint},${created.id})`);
       return created;
     });
   }

@@ -2,13 +2,14 @@ import { inflateRawSync } from "node:zlib";
 import { parseDeckContent, MAX_DECK_FILE_BYTES, type ImportableCard } from "../client/src/lib/deck-io";
 
 export const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
-export type SourceKind = "csv" | "tsv" | "json" | "txt" | "md" | "pdf" | "docx" | "pptx" | "apkg" | "qti" | "h5p";
+export type SourceKind = "csv" | "tsv" | "json" | "txt" | "md" | "pdf" | "docx" | "pptx" | "apkg" | "qti" | "h5p" | "png" | "jpg" | "jpeg" | "webp";
 const mime: Record<SourceKind, string> = {
   csv: "text/csv", tsv: "text/tab-separated-values", json: "application/json",
   txt: "text/plain", md: "text/markdown", pdf: "application/pdf",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   apkg: "application/zip", qti: "application/xml", h5p: "application/zip",
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
 };
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -66,7 +67,7 @@ export function inspectArchive(bytes: Buffer): ZipEntry[] {
   if (offset !== bytes.readUInt32LE(end + 16) + length) throw new Error("ZIP directory length mismatch");
   return entries;
 }
-function zipText(bytes: Buffer, entry: ZipEntry): string {
+export function readArchiveMember(bytes: Buffer, entry: ZipEntry): Buffer {
   const at = entry.offset;
   if (at + 30 > bytes.length || bytes.readUInt32LE(at) !== 0x04034b50)
     throw new Error("ZIP local header missing");
@@ -75,15 +76,21 @@ function zipText(bytes: Buffer, entry: ZipEntry): string {
   const data = bytes.subarray(begin, begin + entry.compressed);
   const expanded = entry.method === 8 ? inflateRawSync(data, { maxOutputLength: MAX_SOURCE_BYTES + 1 }) : data;
   if (expanded.length !== entry.expanded) throw new Error("ZIP member size mismatch");
-  return readText(expanded);
+  return expanded;
 }
+export function zipText(bytes: Buffer, entry: ZipEntry): string { return readText(readArchiveMember(bytes, entry)); }
 
 export function identifySource(filename: string, bytes: Buffer): { kind: SourceKind; mimeType: string } {
   const safe = safeFilename(filename);
   if (!bytes.length || bytes.length > MAX_SOURCE_BYTES) throw new Error("Files must be 1 byte to 8 MB");
   const ext = safe.split(".").pop()?.toLowerCase() as SourceKind;
   if (!ext || !Object.prototype.hasOwnProperty.call(mime, ext)) throw new Error("Unsupported source extension");
-  if (ext === "pdf") {
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
+    const valid = ext === "png" ? bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+      : ext === "webp" ? bytes.toString("ascii",0,4) === "RIFF" && bytes.toString("ascii",8,12) === "WEBP"
+      : bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+    if (!valid) throw new Error("Invalid image signature");
+  } else if (ext === "pdf") {
     if (bytes.toString("ascii", 0, 5) !== "%PDF-") throw new Error("Invalid PDF signature");
   } else if (["docx", "pptx", "apkg", "h5p"].includes(ext) ||
     (ext === "qti" && bytes.toString("ascii", 0, 2) === "PK")) {
@@ -95,7 +102,7 @@ export function identifySource(filename: string, bytes: Buffer): { kind: SourceK
   return { kind: ext, mimeType: mime[ext] };
 }
 type PreviewCard = ImportableCard & { sourceRef?: string };
-function textPairs(text: string): PreviewCard[] {
+export function textPairs(text: string): PreviewCard[] {
   const cards: PreviewCard[] = [];
   const lines = text.split(/\r?\n/);
   for (let index = 0; index < lines.length; index++) {
@@ -107,7 +114,7 @@ function textPairs(text: string): PreviewCard[] {
   }
   return cards;
 }
-function xmlToText(xml: string): string {
+export function xmlToText(xml: string): string {
   if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new Error("Unsafe XML entity");
   return xml.replace(/<w:tab\s*\/>/g, "\t").replace(/<\/(?:w:p|a:p)>/g, "\n")
     .replace(/<[^>]+>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">")

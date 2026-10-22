@@ -12,6 +12,10 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
   let deckId:number|undefined;
   try {
     await page.goto(base+"/new-exam");
+    await page.getByRole("button",{name:"Need an account? Register"}).click();
+    await page.getByLabel("Email",{exact:true}).fill(`visual-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`);
+    await page.getByLabel("Password (12 characters minimum)",{exact:true}).fill("Visual-test-passphrase-2026");
+    await page.getByRole("button",{name:"Create account",exact:true}).click();
     await page.getByLabel("Title").fill("Phase 2 E2E "+Date.now());
     await page.getByRole("button",{name:"Create deck and open builder"}).click();
     await expect(page).toHaveURL(/\/exam-builder\/\d+/);
@@ -46,6 +50,7 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await page.reload();
     await expect(page.getByText("Saved questions (3)")).toBeVisible();
     await page.setViewportSize({width:375,height:812});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.getByRole("button",{name:"Practice visual questions"}).click();
 
     await page.getByLabel("Right").check();

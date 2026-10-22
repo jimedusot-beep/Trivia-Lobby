@@ -1,6 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { requireUser } from "./auth";
+import { db } from "./db";
+import { decks } from "@shared/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { rememberQuestion } from "./question-memory";
 import { universalQuestionSchema, gradeUniversalAnswer, withoutAnswerKeys } from "@shared/universal-questions";
 import {
   deckExists, listUniversalQuestions, getUniversalQuestion, addUniversalQuestion,
@@ -20,7 +25,7 @@ function failure(err: unknown, res: Response) {
   if (typeof err === "object" && err !== null && "code" in err && err.code === "23505") {
     return res.status(409).json({ message: "A question with the same prompt and type already exists in this deck" });
   }
-  console.error("Universal question API failure", err);
+  console.error("Universal question API failure", err instanceof Error ? err.name : "UnknownError");
   return res.status(500).json({ message: "Question operation failed" });
 }
 /**
@@ -29,6 +34,15 @@ function failure(err: unknown, res: Response) {
  * The /practice projection omits keys, but authoring endpoints are public.
  */
 export function registerUniversalQuestionRoutes(app: Express) {
+  app.use("/api/decks/:deckId/questions", requireUser, async (req, res, next) => {
+    try {
+      const deckId = idSchema.parse(req.params.deckId);
+      const [deck] = await db.select({ id: decks.id }).from(decks)
+        .where(and(eq(decks.id, deckId), eq(decks.ownerId, req.studyUser!.id))).limit(1);
+      if (!deck) { res.status(404).json({ message: "Deck not found" }); return; }
+      next();
+    } catch (err) { failure(err, res); }
+  });
   app.get("/api/decks/:deckId/questions", async (req, res) => {
     try {
       const { deckId } = ids(req);
@@ -41,6 +55,18 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const { deckId } = ids(req);
       if (!(await deckExists(deckId))) return res.status(404).json({ message: "Deck not found" });
       const questions = await listUniversalQuestions(deckId);
+      if(req.query.mode === "adaptive") {
+        const owner=req.studyUser!.id;
+        const states=await db.execute(sql`SELECT question_id,needs_work,due_at FROM question_schedule WHERE owner_id=${owner}`);
+        const recent=await db.execute(sql`SELECT correct FROM question_attempts WHERE owner_id=${owner} ORDER BY created_at DESC LIMIT 20`);
+        const accuracy=recent.rows.length?recent.rows.filter(r=>r.correct).length/recent.rows.length:0.5;
+        const difficulty=accuracy<0.6?"easy":accuracy>=0.85?"hard":"medium";
+        const rank=(q:typeof questions[number])=>{
+          const state=states.rows.find(s=>s.question_id===q.id);
+          return (state?.needs_work?100:!state?80:new Date(String(state.due_at)).getTime()<=Date.now()?60:0)+(q.question.difficulty===difficulty?10:0);
+        };
+        questions.sort((a,b)=>rank(b)-rank(a)||a.position-b.position);
+      }
       res.json(questions.map(q => ({ id: q.id, deckId: q.deckId, position: q.position, question: withoutAnswerKeys(q.question) })));
     } catch (err) { failure(err, res); }
   });
@@ -86,9 +112,11 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const existing = await getUniversalQuestion(deckId, questionId);
       if (!existing) return res.status(404).json({ message: "Question not found" });
       // Authoritative scoring for solo practice only; not a competitive, anti-cheat endpoint.
-      const response = z.object({ response: z.unknown() }).parse(req.body).response;
+      const {response,requestId} = z.object({ response: z.unknown(), requestId:z.string().uuid().default(randomUUID) }).parse(req.body);
       const correct = gradeUniversalAnswer(existing.question, response);
-      res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "" });
+      const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,response,correct);
+      if(saved==="conflict"){res.status(409).json({message:"This answer request was already used for a different response"});return;}
+      res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
     } catch (err) { failure(err, res); }
   });
 }

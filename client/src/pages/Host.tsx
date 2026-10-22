@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Host() {
   const { deckId } = useParams();
-  const { connected, restoring, gameState, emit } = useGameSocket("host");
+  const { connected, restoring, gameState, emit, lastError } = useGameSocket("host");
   const createRequested = useRef(false);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -56,7 +56,7 @@ export default function Host() {
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
       {/* Top Bar */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
          <Link href="/">
            <Button variant="ghost" className="text-white hover:bg-white/10">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
@@ -71,15 +71,23 @@ export default function Host() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-6xl mx-auto w-full">
+        {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/" className="underline">Return to decks</Link></p>}
         
         {/* LOBBY STATE */}
         {gameState.gameStatus === 'lobby' && (
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
+            <div className="space-y-3"><label htmlFor="game-mode" className="block">Game mode</label>
+              <select id="game-mode" className="p-3 rounded bg-slate-800 text-white border" value={gameState.mode??"classic"} disabled={!gameState.roomCode}
+                onChange={e=>emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:e.target.value})}>
+                {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+              </select>
+              <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round.</p>
+            </div>
             <div className="space-y-4">
               <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
               <div 
                 onClick={copyCode}
-                className="text-8xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
+                data-testid="room-code" className="text-5xl sm:text-7xl md:text-8xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
               >
                 {gameState.roomCode || "..."}
               </div>
@@ -97,6 +105,7 @@ export default function Host() {
                   className="bg-white/10 backdrop-blur-sm p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
                   {p.name}
+                  {gameState.mode==="teams"&&<span className="block text-sm">Team {p.teamId}</span>}
                 </motion.div>
               ))}
               {gameState.players.length === 0 && (
@@ -118,6 +127,7 @@ export default function Host() {
         {/* PLAYING STATE */}
         {gameState.gameStatus === 'playing' && (
           <div className="w-full space-y-8">
+             {gameState.mode==="teams"&&<div className="flex gap-6 justify-center">{[1,2].map(team=><p key={team}>Team {team}: {gameState.players.filter(p=>p.teamId===team).reduce((n,p)=>n+p.score,0)} pts</p>)}</div>}
              {/* Question Screen */}
              {gameState.currentQuestion && !gameState.lastAnswerResult && (
                <div className="space-y-8 animate-in zoom-in-90 duration-300">
@@ -213,7 +223,7 @@ export default function Host() {
              <div className="flex items-end justify-center gap-4 h-64 pb-4">
                 {/* 2nd Place */}
                 {gameState.leaderboard?.[1] && (
-                  <div className="w-32 bg-slate-700 rounded-t-lg h-32 flex flex-col justify-end p-4 items-center">
+                  <div className="w-24 md:w-32 break-words bg-slate-700 rounded-t-lg h-32 flex flex-col justify-end p-4 items-center">
                     <div className="font-bold text-xl mb-2">{gameState.leaderboard[1].name}</div>
                     <div className="w-8 h-8 rounded-full bg-slate-400 text-slate-900 flex items-center justify-center font-bold">2</div>
                   </div>
@@ -221,7 +231,7 @@ export default function Host() {
                 
                 {/* 1st Place */}
                 {gameState.leaderboard?.[0] && (
-                  <div className="w-32 bg-yellow-500 rounded-t-lg h-48 flex flex-col justify-end p-4 items-center shadow-lg shadow-yellow-500/20 z-10">
+                  <div className="w-24 md:w-32 break-words bg-yellow-500 rounded-t-lg h-48 flex flex-col justify-end p-4 items-center shadow-lg shadow-yellow-500/20 z-10">
                     <div className="font-bold text-2xl mb-2 text-yellow-900">{gameState.leaderboard[0].name}</div>
                     <div className="w-10 h-10 rounded-full bg-yellow-200 text-yellow-900 flex items-center justify-center font-bold text-xl">1</div>
                   </div>
@@ -229,7 +239,7 @@ export default function Host() {
 
                 {/* 3rd Place */}
                 {gameState.leaderboard?.[2] && (
-                  <div className="w-32 bg-slate-800 rounded-t-lg h-24 flex flex-col justify-end p-4 items-center">
+                  <div className="w-24 md:w-32 break-words bg-slate-800 rounded-t-lg h-24 flex flex-col justify-end p-4 items-center">
                     <div className="font-bold text-lg mb-2">{gameState.leaderboard[2].name}</div>
                     <div className="w-8 h-8 rounded-full bg-orange-700 text-orange-100 flex items-center justify-center font-bold">3</div>
                   </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { Link, useParams } from "wouter";
+import { useAuthorDraft } from "@/hooks/use-author-draft";
 import { useDeck } from "@/hooks/use-decks";
 import { normalizedHotspotPoint } from "@/lib/hotspots";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
@@ -47,6 +48,13 @@ export default function ExamBuilder() {
   const [targets, setTargets] = useState<Target[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const draftStatus = useAuthorDraft(deckId, { selectedId,kind,prompt,explanation,options,pairs,correctId,imageUrl,imageAlt,targets }, value => {
+    if(typeof value.prompt!=="string" || !["multiple_choice","matching","image_hotspot"].includes(String(value.kind)))return;
+    setSelectedId(typeof value.selectedId==="number"?value.selectedId:null);setKind(value.kind as Kind);setPrompt(value.prompt);
+    setExplanation(String(value.explanation??""));setOptions(Array.isArray(value.options)?value.options as Option[]:newOptions());
+    setPairs(Array.isArray(value.pairs)?value.pairs as Pair[]:newPairs());setCorrectId(String(value.correctId??"A"));
+    setImageUrl(String(value.imageUrl??""));setImageAlt(String(value.imageAlt??""));setTargets(Array.isArray(value.targets)?value.targets as Target[]:[]);
+  });
   const endpoint = `/api/decks/${deckId}/questions`;
   const reload = useCallback(async () => {
     if (!Number.isSafeInteger(deckId) || deckId < 1) return;
@@ -130,6 +138,7 @@ export default function ExamBuilder() {
 
   return <main className="min-h-screen bg-muted/30 p-4 md:p-8">
     <section className="max-w-5xl mx-auto space-y-6">
+      <p role="status" className="text-sm text-muted-foreground">{draftStatus}</p>
       <Link href="/"><Button variant="ghost">Back to decks</Button></Link>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — Exam Builder</h1>
       <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded" role="note">

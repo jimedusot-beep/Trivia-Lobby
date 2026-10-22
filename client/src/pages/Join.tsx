@@ -44,20 +44,20 @@ export default function Join() {
         </CardHeader>
         <CardContent className="space-y-6 pb-8">
           <div className="space-y-2">
-            <Label className="text-lg">Room Code</Label>
+            <Label htmlFor="room-code" className="text-lg">Room Code</Label>
             <Input 
               className="h-14 text-center text-2xl font-mono uppercase tracking-widest bg-muted/50 border-2 focus:border-primary" 
-              placeholder="ABC234"
+              id="room-code" placeholder="ABC234"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
               maxLength={6}
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-lg">Your Name</Label>
+            <Label htmlFor="player-name" className="text-lg">Your Name</Label>
             <Input 
               className="h-14 text-center text-xl font-bold bg-muted/50 border-2 focus:border-primary" 
-              placeholder="Enter nickname"
+              id="player-name" placeholder="Enter nickname"
               value={name}
               onChange={e => setName(e.target.value)}
               maxLength={24}

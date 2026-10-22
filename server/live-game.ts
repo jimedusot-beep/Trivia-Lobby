@@ -7,6 +7,8 @@ import {
   type AnswerResult, type RoomState,
 } from "@shared/game-protocol";
 import type { IStorage } from "./storage";
+import { scoreRound, UPGRADE_COST, type GameMode } from "./game-modes";
+import { consumeRate } from "./rate-limit";
 
 const MAX_PLAYERS = 100;
 const QUESTION_MS = 30_000;
@@ -14,13 +16,14 @@ const ROOM_TTL_MS = 10 * 60_000;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 type Player = {
   id: string; name: string; score: number; streak: number;
-  tokenHash: Buffer; ws: WebSocket; connected: boolean;
+  tokenHash: Buffer; ws: WebSocket; connected: boolean; teamId:number; coins:number; focus:number; guard:number;
 };
 type Room = {
+  mode:GameMode; buzzedPlayerId:string|null; buzzTimer?:ReturnType<typeof setTimeout>;
   code: string; hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
   players: Map<string, Player>; questions: Card[]; state: RoomState;
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
-  answers: Map<string, { answer: string; correct: boolean; awarded: number }>;
+  answers: Map<string, { answer: string; correct: boolean; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
 };
 
@@ -47,7 +50,7 @@ function send(ws: WebSocket, type: string, payload: unknown) {
 }
 function publicPlayers(room: Room): PublicPlayer[] {
   return [...room.players.values()].map(p => ({
-    playerId: p.id, name: p.name, score: p.score, connected: p.connected,
+    playerId: p.id, name: p.name, score: p.score, connected: p.connected, ...(room.mode==="teams"?{teamId:p.teamId}:{}),
   })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 }
 function broadcast(room: Room, type: string, payload: unknown) {
@@ -63,13 +66,13 @@ function resultFor(room: Room, playerId?: string): AnswerResult {
     questionIndex: room.questionIndex,
     correctLetter: room.questions[room.questionIndex].correctOption as "A" | "B" | "C" | "D",
     isCorrect: record ? record.correct : playerId ? false : null,
-    awarded: record?.awarded ?? 0,
+    awarded: record?.awarded ?? 0, explanation:room.questions[room.questionIndex].back,
   };
 }
 function snapshot(room: Room, ws: WebSocket, player?: Player) {
   send(ws, WS_EVENTS.SYNC_SNAPSHOT, {
-    roomCode: room.code, state: room.state, players: publicPlayers(room),
-    ...(player ? { playerId: player.id, score: player.score } : {}),
+    roomCode: room.code, state: room.state, players: publicPlayers(room), mode:room.mode, buzzedPlayerId:room.buzzedPlayerId,
+    ...(player ? { playerId: player.id, score: player.score, answered:room.answers.has(player.id),status:{coins:player.coins,focus:player.focus,guard:player.guard} } : {}),
     ...(room.question && room.state !== "lobby" ? { question: room.question } : {}),
     ...(room.state === "reveal" || room.state === "leaderboard" || room.state === "finished"
       ? { answerResult: resultFor(room, player?.id), leaderboard: publicPlayers(room) } : {}),
@@ -79,14 +82,21 @@ function reveal(room: Room) {
   if (room.state !== "playing") return;
   if (room.timer) clearTimeout(room.timer);
   room.state = "reveal";
+  clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
+  for(const [id,record] of room.answers){
+    const player=room.players.get(id)!;player.score=Math.max(0,player.score+record.awarded);player.streak=record.streak;player.coins+=record.coins;player.focus=record.focus;player.guard=record.guard;
+  }
+  lobbyUpdate(room);
   send(room.hostWs, WS_EVENTS.ANSWER_RESULT, resultFor(room));
   for (const p of room.players.values()) if (p.connected) {
     send(p.ws, WS_EVENTS.ANSWER_RESULT, resultFor(room, p.id));
+    send(p.ws,WS_EVENTS.PLAYER_STATUS,{coins:p.coins,focus:p.focus,guard:p.guard});
   }
 }
 function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.state = "playing";
-  room.answers.clear();
+  room.answers.clear();room.buzzedPlayerId=null;clearTimeout(room.buzzTimer);
+  broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
   const card = room.questions[room.questionIndex];
   const now = Date.now();
   room.deadlineTs = now + durationMs;
@@ -119,12 +129,12 @@ function allActiveAnswered(room: Room) {
 }
 function eligible(card: Card) {
   return card.type === "multiple_choice" && Array.isArray(card.options)
-    && card.options.length === 4 && card.options.every(x => typeof x === "string")
-    && ["A", "B", "C", "D"].includes(card.correctOption ?? "");
+    && card.options.length >= 2 && card.options.length <= 4 && card.options.every(x => typeof x === "string")
+    && ["A", "B", "C", "D"].slice(0,card.options.length).includes(card.correctOption ?? "");
 }
 
 /** In-memory match authority: per-room state, deadline, single answer, credentials. */
-export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null> } = {}) {
+export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<Card[]> } = {}) {
   const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
   const createLimits = new Map<string, { count: number; resetAt: number }>();
@@ -134,7 +144,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
     for (const [code, room] of rooms) {
       if (now - room.touchedAt > ROOM_TTL_MS) {
         if (room.timer) clearTimeout(room.timer);
-        rooms.delete(code);
+        clearTimeout(room.buzzTimer);rooms.delete(code);
         if (isOpen(room.hostWs)) room.hostWs.close(1001, "Room expired");
         for (const p of room.players.values()) if (isOpen(p.ws)) p.ws.close(1001, "Room expired");
       }
@@ -157,6 +167,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       }
     }
     const ip = req.socket.remoteAddress ?? "unknown";
+    if(wss.clients.size>2000||!consumeRate(`connect:${ip}`,200,60_000)){ws.close(1008,"Connection capacity reached");return;}
     let room: Room | undefined;
     let role: "host" | "player" | undefined;
     let playerId: string | undefined;
@@ -176,6 +187,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       try {
         if (msg.type === WS_EVENTS.CREATE_ROOM) {
           if (role) { error("Already in a room"); return; }
+          if (rooms.size >= 500) { error("Room capacity reached"); return; }
           const limit = createLimits.get(ip) ?? { count: 0, resetAt: now + 60_000 };
           if (now > limit.resetAt) { limit.count = 0; limit.resetAt = now + 60_000; }
           if (++limit.count > 5) { error("Room creation rate limit"); return; }
@@ -183,14 +195,17 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           const ownerId = await options.authorizeHost?.(req);
           if (!ownerId) { error("Sign in required to host a private deck"); return; }
           const deck = await storage.getDeck(msg.payload.deckId, ownerId);
-          const questions = deck?.cards.filter(eligible) ?? [];
-          if (!questions.length) { error("Deck requires a four-choice multiple-choice question"); return; }
+          const extra=deck?await options.extraQuestions?.(msg.payload.deckId)??[]:[];
+          const questions = [...(deck?.cards??[]),...extra].filter(eligible);
+          if (!questions.length) { error("Deck requires a multiple-choice question with two to four choices"); return; }
           // Check again after asynchronous database access, before taking socket ownership.
           if (role || !isOpen(ws)) return;
+          if (rooms.size >= 500) { error("Room capacity reached"); return; }
+          if(!consumeRate(`host:${ownerId}`,5,60_000)){error("Room creation rate limit");return;}
           const code = makeRoomCode(rooms);
           const hostToken = mintToken();
           room = {
-            code, hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
+            mode:"classic",buzzedPlayerId:null,code, hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
           };
@@ -200,6 +215,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         }
         if (msg.type === WS_EVENTS.JOIN_ROOM) {
           if (role) { error("Already in a room"); return; }
+          if (!consumeRate(`join:${ip}`, 30, 60_000)) { error("Joining too often; try again shortly"); return; }
           const target = rooms.get(msg.payload.roomCode);
           if (!target || target.state === "finished") { error("Room unavailable"); return; }
           if (target.state !== "lobby") { error("Game started; reconnect with your credential"); return; }
@@ -208,7 +224,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           const id = randomUUID();
           const player: Player = {
             id, name: msg.payload.playerName, score: 0, streak: 0,
-            tokenHash: tokenHash(token), ws, connected: true,
+            tokenHash: tokenHash(token), ws, connected: true, teamId:target.players.size%2+1,coins:60,focus:0,guard:0,
           };
           target.players.set(id, player);
           room = target; role = "player"; playerId = id; target.touchedAt = now;
@@ -218,6 +234,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         }
         if (msg.type === WS_EVENTS.REJOIN_ROOM) {
           if (role) { error("Already in a room"); return; }
+          if (!consumeRate(`rejoin:${ip}`, 30, 60_000)) { error("Reconnect rate limit"); return; }
           const target = rooms.get(msg.payload.roomCode);
           const player = target?.players.get(msg.payload.playerId);
           if (!target || !player || !tokenMatches(msg.payload.token, player.tokenHash)) {
@@ -252,6 +269,25 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         if (msg.payload.roomCode && msg.payload.roomCode !== room.code) {
           error("Room mismatch"); return;
         }
+        if(msg.type===WS_EVENTS.CONFIGURE_GAME){
+          if(role!=="host"||room.hostWs!==ws||room.state!=="lobby"){error("Host can select the mode only in the lobby");return;}
+          room.mode=msg.payload.mode;broadcast(room,WS_EVENTS.GAME_CONFIGURED,{mode:room.mode});lobbyUpdate(room);return;
+        }
+        if(msg.type===WS_EVENTS.BUY_UPGRADE){
+          const player=playerId?room.players.get(playerId):undefined;
+          if(role!=="player"||player?.ws!==ws||room.mode!=="workshop"||!["reveal","leaderboard"].includes(room.state)){error("Workshop purchases are available to players between rounds");return;}
+          const upgrade=msg.payload.upgrade,cost=UPGRADE_COST[upgrade];
+          if(player[upgrade]>0||player.coins<cost){error("Upgrade unavailable or not enough coins");return;}
+          player.coins-=cost;player[upgrade]++;send(ws,WS_EVENTS.PLAYER_STATUS,{coins:player.coins,focus:player.focus,guard:player.guard});return;
+        }
+        if(msg.type===WS_EVENTS.BUZZ){
+          if(role!=="player"||!playerId||room.players.get(playerId)?.ws!==ws||room.mode!=="buzzer"||room.state!=="playing"||now>=room.deadlineTs||msg.payload.questionIndex!==room.questionIndex||room.answers.has(playerId)){error("Cannot buzz now");return;}
+          if(room.buzzedPlayerId){error("Another player has the buzzer");return;}
+          room.buzzedPlayerId=playerId;broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId});
+          const questionIndex=room.questionIndex,activeRoom=room;
+          room.buzzTimer=setTimeout(()=>{if(activeRoom.state==="playing"&&activeRoom.questionIndex===questionIndex){activeRoom.buzzedPlayerId=null;broadcast(activeRoom,WS_EVENTS.BUZZ_STATE,{playerId:null});}},5000);
+          room.buzzTimer.unref?.();return;
+        }
         if (msg.type === WS_EVENTS.START_GAME) {
           if (role !== "host" || room.hostWs !== ws || room.state !== "lobby") {
             error("Host must start from lobby"); return;
@@ -278,15 +314,23 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           }
           if (room.answers.has(playerId)) { error("Answer already submitted"); return; }
           const player = room.players.get(playerId)!;
-          const correct = msg.payload.answer === room.questions[room.questionIndex].correctOption;
-          const awarded = correct ? 100 + player.streak * 10 : 0;
-          if (correct) { player.score += awarded; player.streak++; } else player.streak = 0;
-          room.answers.set(playerId, { answer: msg.payload.answer, correct, awarded });
+          const current=room.questions[room.questionIndex];
+          if(["A","B","C","D"].indexOf(msg.payload.answer)>=(current.options as string[]).length){error("Invalid answer choice");return;}
+          if(room.mode==="buzzer"&&room.buzzedPlayerId!==playerId){error("Buzz in before answering");return;}
+          const correct = msg.payload.answer === current.correctOption;
+          const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex});
+          room.answers.set(playerId, { answer:msg.payload.answer,correct,...scored });
+          send(ws,WS_EVENTS.ANSWER_ACCEPTED,{questionIndex:room.questionIndex});
+          if(room.mode==="buzzer"){
+            clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
+            broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
+            if(correct){reveal(room);return;}
+          }
           if (allActiveAnswered(room)) reveal(room);
         }
       } catch (err) {
-        console.error("Game socket handler failed", err);
-        error("Game request failed");
+        console.error("Game socket handler failed", err instanceof Error ? err.name : "UnknownError");
+        error(err instanceof Error && err.message.startsWith("Wager") ? err.message : "Game request failed");
       }
     });
     ws.on("close", () => {
@@ -298,5 +342,6 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       }
     });
   });
+  wss.on("close",()=>{clearInterval(cleanup);for(const room of rooms.values()){clearTimeout(room.timer);clearTimeout(room.buzzTimer);}rooms.clear();});
   return wss;
 }

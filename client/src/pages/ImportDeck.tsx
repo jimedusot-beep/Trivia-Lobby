@@ -18,6 +18,8 @@ export default function ImportDeck() {
   const [deckInfo, setDeckInfo] = useState({ title: "", description: "", category: "General" });
   const [csvContent, setCsvContent] = useState("");
   const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
+  const [backup,setBackup] = useState<Record<string,unknown>|null>(null);
+  const [restoringBackup,setRestoringBackup] = useState(false);
   const [parsedCards, setParsedCards] = useState<ImportableCard[]>([]);
 
   const importDeck = useImportDeck();
@@ -51,6 +53,14 @@ export default function ImportDeck() {
   const handleParse = () => {
     try {
       const sourceName = selectedFilename || (csvContent.includes("\t") ? "paste.tsv" : "paste.csv");
+      if(csvContent.trim().startsWith("{")){
+        const candidate=JSON.parse(csvContent);
+        if(candidate.format==="trivia-lobby-deck"&&candidate.version===2&&candidate.deck&&Array.isArray(candidate.cards)&&Array.isArray(candidate.questions)){
+          setBackup(candidate);setDeckInfo({title:candidate.deck.title??"",description:candidate.deck.description??"",category:candidate.deck.category??"General"});
+          setParsedCards(candidate.cards);setStep(2);return;
+        }
+      }
+      setBackup(null);
       const parsed = parseDeckContent(csvContent, sourceName);
       if (parsed.title) {
         setDeckInfo(prev => ({
@@ -73,6 +83,12 @@ export default function ImportDeck() {
   const handleImport = async () => {
     if (isPending) return;
     try {
+      if(backup){
+        setRestoringBackup(true);
+        const response=await fetch("/api/decks/restore",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...backup,deck:deckInfo})});
+        if(!response.ok)throw new Error((await response.json()).message??"Backup restore failed");
+        toast({title:"Backup restored",description:"Cards and visual questions saved."});setLocation("/");return;
+      }
       await importDeck.mutateAsync({
         deck: {
           title: deckInfo.title,
@@ -86,10 +102,10 @@ export default function ImportDeck() {
       setLocation("/");
     } catch (err) {
       toast({ title: "Import failed", description: err instanceof Error ? err.message : "Something went wrong.", variant: "destructive" });
-    }
+    } finally { setRestoringBackup(false); }
   };
 
-  const isPending = importDeck.isPending;
+  const isPending = importDeck.isPending || restoringBackup;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
@@ -108,6 +124,7 @@ export default function ImportDeck() {
           </div>
         </div>
 
+        {backup&&step===2&&<p role="status">Full backup: {parsedCards.length} cards and {(backup.questions as unknown[]).length} visual questions will be restored.</p>}
         {step === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-right-4">
             <Card className="rounded-2xl border-none shadow-lg">

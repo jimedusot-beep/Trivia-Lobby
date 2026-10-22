@@ -1,3 +1,4 @@
+import { consumeRate } from "./rate-limit";
 import { randomBytes } from "node:crypto";
 import { hashSessionToken, hashPassword, verifyPassword, getCookie } from "./auth-crypto";
 import type { Request, Response, NextFunction, Express } from "express";
@@ -58,15 +59,8 @@ export function requireSameOrigin(req: Request, res: Response, next: NextFunctio
   }
   next();
 }
-const attempts = new Map<string, { count: number; reset: number }>();
 export function loginRateLimit(req: Request, res: Response, next: NextFunction): void {
-  const key = req.ip || "unknown";
-  const now = Date.now();
-  if (attempts.size > 5000) attempts.clear();
-  const value = attempts.get(key);
-  const nextValue = !value || value.reset <= now ? { count: 1, reset: now + 15 * 60_000 } : { count: value.count + 1, reset: value.reset };
-  attempts.set(key, nextValue);
-  if (nextValue.count > 20) { res.status(429).json({ message: "Too many attempts; retry later" }); return; }
+  if(!consumeRate(`login:${req.ip??"unknown"}`,20,15*60_000)){res.status(429).json({message:"Too many attempts; retry later"});return;}
   next();
 }
 async function issueSession(res: Response, userId: string) {

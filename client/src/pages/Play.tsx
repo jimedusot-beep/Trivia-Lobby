@@ -17,7 +17,8 @@ const colors = [
 
 export default function Play() {
   const [, setLocation] = useLocation();
-  const { connected, gameState, emit } = useGameSocket("player");
+  const { connected, gameState, emit, lastError } = useGameSocket("player");
+  const [wager,setWager]=useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const question = gameState.currentQuestion;
@@ -38,13 +39,13 @@ export default function Play() {
 
   const seconds = question ? Math.max(0, Math.ceil((question.deadlineTs - now) / 1000)) : 0;
   const score = gameState.players.find(p => p.playerId === gameState.playerId)?.score ?? gameState.score ?? 0;
-  const canAnswer = connected && gameState.phase === "playing" && !selectedAnswer && seconds > 0;
+  const canAnswer = connected && gameState.phase === "playing" && !selectedAnswer && !gameState.answered && seconds > 0 && (gameState.mode!=="buzzer"||gameState.buzzedPlayerId===gameState.playerId);
 
   const submitAnswer = (answer: typeof letters[number]) => {
     if (!canAnswer || !question) return;
     setSelectedAnswer(answer);
     emit(WS_EVENTS.SUBMIT_ANSWER, {
-      roomCode: gameState.roomCode, questionIndex: question.questionIndex, answer,
+      roomCode: gameState.roomCode, questionIndex: question.questionIndex, answer, wager:gameState.mode==="wager"?Math.min(wager,score,100):0,
     });
   };
 
@@ -61,11 +62,14 @@ export default function Play() {
         <div className="font-bold text-xl text-primary">{score} pts</div>
       </div>
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full space-y-6">
-        {gameState.gameStatus === "lobby" && (
+        {lastError&&<p role="alert" className="bg-white border p-3 rounded">{lastError} <Button variant="outline" onClick={()=>{localStorage.removeItem("trivia_player");setLocation("/join");}}>Return to join</Button></p>}
+        {!gameState.roomCode&&<p role="status">Joining game…</p>}
+        {gameState.roomCode && gameState.gameStatus === "lobby" && (
           <div className="text-center space-y-6">
             <div className="text-6xl">👋</div>
             <h2 className="text-2xl font-bold">Joined lobby</h2>
             <p className="text-muted-foreground">Waiting for the host to start…</p>
+            <p>Mode: {gameState.mode??"classic"}{gameState.mode==="teams"?` · Team ${gameState.players.find(p=>p.playerId===gameState.playerId)?.teamId}`:""}</p>
           </div>
         )}
         {gameState.gameStatus === "playing" && gameState.phase === "playing" && question && (
@@ -74,8 +78,11 @@ export default function Play() {
               Question {question.questionIndex + 1} · {seconds}s remaining
             </div>
             <div className="text-center text-lg font-semibold">{question.prompt}</div>
+            {gameState.mode==="buzzer"&&<Button disabled={!!gameState.buzzedPlayerId||!!selectedAnswer||!!gameState.answered||seconds===0} onClick={()=>emit(WS_EVENTS.BUZZ,{roomCode:gameState.roomCode,questionIndex:question.questionIndex})}>Buzz in</Button>}
+            {gameState.mode==="buzzer"&&gameState.buzzedPlayerId&&<p role="status">{gameState.buzzedPlayerId===gameState.playerId?"Your buzzer: answer within five seconds":"Another player has the buzzer"}</p>}
+            {gameState.mode==="wager"&&<label>Wager earned points (0–{Math.min(score,100)})<input className="border p-3 w-full rounded" type="number" min={0} max={Math.min(score,100)} value={wager} disabled={!canAnswer} onChange={e=>setWager(Math.max(0,Math.min(100,score,Math.trunc(Number(e.target.value)))))} /></label>}
             <div className="grid grid-cols-2 gap-4 h-80">
-              {letters.map((letter, i) => (
+              {letters.slice(0,question.choices.length).map((letter, i) => (
                 <button
                   key={letter}
                   type="button"
@@ -89,7 +96,7 @@ export default function Play() {
                 </button>
               ))}
             </div>
-            {selectedAnswer && <p role="status" className="text-center">Answer received. Waiting for reveal…</p>}
+            {(selectedAnswer||gameState.answered) && <p role="status" className="text-center">Answer received. Waiting for reveal…</p>}
           </>
         )}
         {gameState.gameStatus === "playing" && ["reveal", "leaderboard"].includes(gameState.phase) && result && (
@@ -107,6 +114,13 @@ export default function Play() {
               </>
             )}
             <p>Correct answer: <strong>{question?.choices[letters.indexOf(result.correctLetter)]}</strong></p>
+            {result.explanation&&<p>{result.explanation}</p>}
+            {result.awarded<0&&<p>{result.awarded} pts</p>}
+            {gameState.mode==="workshop"&&<section className="border bg-white rounded p-4 space-y-3" aria-label="Workshop shop"><h3 className="font-bold">Workshop · {gameState.status?.coins??0} coins</h3>
+              <p>Focus: +50 on your next correct answer. Second wind: preserve a streak after one miss. Upgrades are consumed by the server.</p>
+              <Button disabled={(gameState.status?.coins??0)<60||!!gameState.status?.focus} onClick={()=>emit(WS_EVENTS.BUY_UPGRADE,{roomCode:gameState.roomCode,upgrade:"focus"})}>Focus charge · 60 coins</Button>
+              <Button disabled={(gameState.status?.coins??0)<40||!!gameState.status?.guard} onClick={()=>emit(WS_EVENTS.BUY_UPGRADE,{roomCode:gameState.roomCode,upgrade:"guard"})}>Second wind · 40 coins</Button>
+            </section>}
             {gameState.phase === "leaderboard" && (
               <ol className="text-left bg-white rounded-xl p-4 space-y-2">
                 {(gameState.leaderboard ?? []).slice(0, 5).map(p => (

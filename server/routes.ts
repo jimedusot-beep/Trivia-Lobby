@@ -8,6 +8,10 @@ import { requireUser, requireSameOrigin, registerAuthRoutes, resolveUser } from 
 import { registerUniversalQuestionRoutes } from "./universal-question-routes";
 import { registerStudyRoutes } from "./study-routes";
 import { registerLibraryRoutes } from "./library";
+import { registerBackupRoutes } from "./backup-routes";
+import { registerAuthorDraftRoutes } from "./author-drafts";
+import { universalGameCards } from "./live-question-adapter";
+import { apiAbuseLimit } from "./rate-limit";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -16,6 +20,7 @@ export async function registerRoutes(
   
   // Require authenticated ownership for every deck/card request.
   app.use("/api", requireSameOrigin);
+  app.use("/api", apiAbuseLimit);
   registerAuthRoutes(app);
   app.get(api.decks.list.path, requireUser, async (req, res, next) => {
     try { res.json(await storage.getDecks(req.studyUser!.id)); } catch (e) { next(e); }
@@ -54,12 +59,13 @@ export async function registerRoutes(
     } catch (e) { next(e); }
   });
   registerLibraryRoutes(app);
+  registerBackupRoutes(app);
+  registerAuthorDraftRoutes(app);
   app.use("/api/study", requireUser);
   registerStudyRoutes(app);
-  app.use("/api/decks/:deckId/questions", requireUser);
   registerUniversalQuestionRoutes(app);
 
-  attachGameSocket(httpServer, storage, { authorizeHost: async (request) => {
+  attachGameSocket(httpServer, storage, { extraQuestions:universalGameCards, authorizeHost: async (request) => {
     const user = await resolveUser(request.headers.cookie);
     return user?.id ?? null;
   } });

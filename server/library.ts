@@ -1,37 +1,25 @@
 import express, { type Express } from "express";
 import { randomUUID, createHash } from "node:crypto";
-import { readFile, mkdir, writeFile, unlink } from "node:fs/promises";
-import { isAbsolute, join, resolve, sep } from "node:path";
 import { and, eq, desc, ilike, sum, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
-import { libraryFiles } from "@shared/schema";
+import { libraryFiles, studySources } from "@shared/schema";
 import { api } from "@shared/routes";
 import { storage } from "./storage";
+import { putPrivateObject, getPrivateObject, deletePrivateObject } from "./object-storage";
+import { extractSource, sourcePreview } from "./source-extraction";
+import { parseApkg, parseQtiFile } from "./portable-formats";
 import { requireUser } from "./auth";
 import { identifySource, previewSource, safeFilename, MAX_SOURCE_BYTES } from "./library-parse";
 
 const MAX_ACCOUNT_BYTES = 100 * 1024 * 1024;
 const libraryId = z.string().uuid();
 const fileDetails = z.object({
+  course: z.string().trim().max(100).optional(),
   folder: z.string().trim().min(1).max(100).optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
 }).strict();
 
-// Private, durable, shared volume required. Never use the Vite public tree or deployment build output.
-function privateRoot(): string {
-  const value = process.env.PRIVATE_STORAGE_DIR;
-  if (!value || !isAbsolute(value)) throw new Error("PRIVATE_STORAGE_DIR must be an absolute path on a persistent, private volume");
-  const root = resolve(value);
-  const cwd = resolve(process.cwd());
-  if (root === cwd || root.startsWith(cwd + sep) || cwd.startsWith(root + sep))
-    throw new Error("PRIVATE_STORAGE_DIR must be outside the application tree");
-  return root;
-}
-function objectPath(key: string): string {
-  if (!/^[a-f0-9-]{36}\/[a-f0-9-]{36}\.blob$/.test(key)) throw new Error("Unsafe object key");
-  return join(privateRoot(), key);
-}
 async function ownedFile(ownerId: string, fileId: string) {
   if (!libraryId.safeParse(fileId).success) return undefined;
   const [file] = await db.select().from(libraryFiles)
@@ -39,13 +27,13 @@ async function ownedFile(ownerId: string, fileId: string) {
   return file;
 }
 async function original(file: typeof libraryFiles.$inferSelect): Promise<Buffer> {
-  const content = await readFile(objectPath(file.objectKey));
+  const content = await getPrivateObject(file.objectKey);
   if (content.length !== file.sizeBytes || createHash("sha256").update(content).digest("hex") !== file.sha256)
     throw new Error("Source file integrity check failed");
   return content;
 }
 function publicMetadata(file: typeof libraryFiles.$inferSelect) {
-  const { objectKey: _key, ...safe } = file;
+  const { objectKey: _key, extractedText: _text, ...safe } = file;
   return safe;
 }
 function invalid(err: unknown, res: express.Response): boolean {
@@ -62,7 +50,8 @@ export function registerLibraryRoutes(app: Express): void {
       const pattern = "%" + q + "%";
       const condition = q ? and(eq(libraryFiles.ownerId, req.studyUser!.id), or(
         ilike(libraryFiles.originalName, pattern), ilike(libraryFiles.folder, pattern),
-        sql`array_to_string(${libraryFiles.tags}, ' ') ILIKE ${pattern}`,
+        sql`array_to_string(${libraryFiles.tags}, ' ') ILIKE ${pattern}`, ilike(libraryFiles.course, pattern),
+        sql`to_tsvector('simple', ${libraryFiles.extractedText}) @@ websearch_to_tsquery('simple', ${q})`,
       )) : eq(libraryFiles.ownerId, req.studyUser!.id);
       const files = await db.select().from(libraryFiles).where(condition).orderBy(desc(libraryFiles.createdAt)).limit(500);
       res.json(files.map(publicMetadata));
@@ -88,17 +77,24 @@ export function registerLibraryRoutes(app: Express): void {
         res.status(413).json({ message: "Account source quota is 100 MB" }); return;
       }
       const key = ownerId + "/" + randomUUID() + ".blob";
-      path = objectPath(key);
-      await mkdir(join(privateRoot(), ownerId), { recursive: true, mode: 0o700 });
-      await writeFile(path, bytes, { flag: "wx", mode: 0o600 });
-      const [file] = await db.insert(libraryFiles).values({
-        ownerId, originalName: filename, mimeType, sizeBytes: bytes.length, sha256, objectKey: key,
-        importStatus: "uploaded",
-      }).returning();
+      const extraction = await extractSource(filename, bytes).catch(() => ({ text: "", status: "unsupported" }));
+      const file=await db.transaction(async tx=>{
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerId}),713)`);
+        const [currentUsage]=await tx.select({total:sum(libraryFiles.sizeBytes)}).from(libraryFiles).where(eq(libraryFiles.ownerId,ownerId));
+        if(Number(currentUsage?.total??0)+bytes.length>MAX_ACCOUNT_BYTES)throw Object.assign(new Error("Account source quota is 100 MB"),{status:413});
+        path=key;
+        await putPrivateObject(key,bytes,sha256);
+        const [created]=await tx.insert(libraryFiles).values({
+          ownerId,originalName:filename,mimeType,sizeBytes:bytes.length,sha256,objectKey:key,
+          importStatus:"uploaded",extractedText:extraction.text,extractionStatus:extraction.status,
+        }).returning();
+        return created;
+      });
       path = undefined;
       res.status(201).json(publicMetadata(file));
     } catch (err) {
-      if (path) await unlink(path).catch(() => {});
+      if (path) await deletePrivateObject(path).catch(() => {});
+      if(err && typeof err==="object" && "status" in err && err.status===413){res.status(413).json({message:"Account source quota is 100 MB"});return;}
       if (err && typeof err === "object" && "code" in err && err.code === "23505") {
         res.status(409).json({ message: "Identical source already uploaded" }); return;
       }
@@ -124,7 +120,20 @@ export function registerLibraryRoutes(app: Express): void {
     try {
       const file = await ownedFile(req.studyUser!.id, String(req.params.id));
       if (!file) { res.status(404).json({ message: "File not found" }); return; }
-      const preview = previewSource(file.originalName, await original(file));
+      const bytes = await original(file);
+      const kind = identifySource(file.originalName,bytes).kind;
+      let preview;
+      if (kind === "pdf") preview = await sourcePreview(file.originalName,bytes);
+      else if (kind === "apkg") preview = { cards:await parseApkg(bytes), support:"basic-anki-text" };
+      else if (kind === "qti") preview = { cards:parseQtiFile(bytes).map(q=>{
+        const a=q.answer;
+        if(a.kind==="multiple_choice"){
+          if(a.options.length>4) throw new Error("Unsupported QTI option count; up to four choices are supported by this importer");
+          return {front:q.prompt,back:q.explanation||a.options.find(o=>o.id===a.correctOptionIds[0])!.label,type:"multiple_choice",options:a.options.map(o=>o.label),correctOption:String.fromCharCode(65+a.options.findIndex(o=>o.id===a.correctOptionIds[0]))};
+        }
+        return {front:q.prompt,back:"acceptedAnswers" in a ? a.acceptedAnswers[0] : "",type:"flashcard",options:[],correctOption:null};
+      }), support:"qti-2.1-single-choice-short-answer" };
+      else preview = previewSource(file.originalName,bytes);
       res.setHeader("Cache-Control", "private, no-store");
       res.json(preview);
     } catch (e) { if (!invalid(e, res)) next(e); }
@@ -146,6 +155,18 @@ export function registerLibraryRoutes(app: Express): void {
     } catch (e) { if (!invalid(e, res)) next(e); }
   });
 
+  app.post("/api/library/files/:id/study-source", requireUser, async (req,res,next)=>{
+    try {
+      const file=await ownedFile(req.studyUser!.id,String(req.params.id));
+      if(!file){res.status(404).json({message:"File not found"});return;}
+      if(file.extractedText.trim().length<80){res.status(422).json({message:"This document needs at least 80 characters of extracted text. Add an accessible text source or transcribe the scan."});return;}
+      const [existing]=await db.select().from(studySources).where(and(eq(studySources.userId,req.studyUser!.id),eq(studySources.fileId,file.id)));
+      if(existing){res.json(existing);return;}
+      const [source]=await db.insert(studySources).values({id:randomUUID(),userId:req.studyUser!.id,fileId:file.id,title:file.originalName.slice(0,120),body:file.extractedText.slice(0,20000)}).returning();
+      res.status(201).json(source);
+    }catch(e){next(e);}
+  });
+
   app.patch("/api/library/files/:id", requireUser, async (req, res, next) => {
     try {
       if (!libraryId.safeParse(String(req.params.id)).success) { res.status(404).json({ message: "File not found" }); return; }
@@ -164,7 +185,7 @@ export function registerLibraryRoutes(app: Express): void {
         .where(and(eq(libraryFiles.id, String(req.params.id)), eq(libraryFiles.ownerId, req.studyUser!.id))).returning();
       if (!deleted) { res.status(404).json({ message: "File not found" }); return; }
       // Database-first delete can leave an orphan object after a crash; reconcile in operations runbook.
-      await unlink(objectPath(deleted.objectKey)).catch(err => console.error("Orphan object cleanup needed:", err));
+      await deletePrivateObject(deleted.objectKey).catch(() => console.error("Orphan object cleanup needed"));
       res.status(204).send();
     } catch (e) { next(e); }
   });

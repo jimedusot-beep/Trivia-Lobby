@@ -50,6 +50,9 @@ export const libraryFiles = pgTable("library_files", {
   importStatus: text("import_status").notNull().default("uploaded"),
   folder: text("folder").notNull().default("Unfiled"),
   tags: text("tags").array().notNull().default([]),
+  course: text("course").notNull().default(""),
+  extractedText: text("extracted_text").notNull().default(""),
+  extractionStatus: text("extraction_status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("library_files_owner_hash_idx").on(table.ownerId, table.sha256),
@@ -67,8 +70,15 @@ export const cardsRelations = relations(cards, ({ one }) => ({
 }));
 
 // Clients cannot select or change ownership.
-export const insertDeckSchema = createInsertSchema(decks).omit({ id: true, ownerId: true, createdAt: true });
-export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true });
+export const insertDeckSchema = createInsertSchema(decks).omit({ id: true, ownerId: true, createdAt: true }).extend({
+  title: z.string().trim().min(1).max(200), description: z.string().max(4000).nullable().optional(), category: z.string().trim().min(1).max(100).nullable().optional(),
+});
+export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true }).extend({
+  type: z.enum(["flashcard", "multiple_choice"]).default("flashcard"),
+  front: z.string().trim().min(1).max(10000), back: z.string().trim().min(1).max(10000),
+  options: z.array(z.string().trim().min(1).max(1000)).max(4).nullable().optional(),
+  correctOption: z.string().regex(/^[A-D]$/).nullable().optional(),
+});
 
 export type Deck = typeof decks.$inferSelect;
 export type InsertDeck = z.infer<typeof insertDeckSchema>;
@@ -101,6 +111,8 @@ export const WS_EVENTS = {
   GAME_OVER: 'game_over',
   ERROR: 'error',
   SYNC_SNAPSHOT: 'sync_snapshot', // Added for reliability
+  CONFIGURE_GAME:'configure_game', GAME_CONFIGURED:'game_configured',
+  BUZZ:'buzz', BUZZ_STATE:'buzz_state', BUY_UPGRADE:'buy_upgrade', PLAYER_STATUS:'player_status', ANSWER_ACCEPTED:'answer_accepted',
 } as const;
 
 // Define payload types for better type safety in socket handlers
@@ -161,6 +173,7 @@ export const studyEvents = pgTable("study_events", {
 }, (table) => [uniqueIndex("study_events_user_request_idx").on(table.userId, table.requestId), index("study_events_user_time_idx").on(table.userId, table.reviewedAt)]);
 
 export const studySources = pgTable("study_sources", {
+  fileId: uuid("file_id").references(() => libraryFiles.id, { onDelete: "set null" }),
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
@@ -169,6 +182,7 @@ export const studySources = pgTable("study_sources", {
 });
 
 export const studyDrafts = pgTable("study_drafts", {
+  publishedQuestionId: integer("published_question_id").references(() => universalQuestions.id, { onDelete: "set null" }),
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   sourceId: uuid("source_id").notNull().references(() => studySources.id, { onDelete: "cascade" }),

@@ -9,7 +9,7 @@ type User = { id: string; email: string };
 type CardRow = { id: number; front: string; back: string; dueAt: string | null; needsWork: boolean };
 type DeckStat = { deckId: number; title: string; subject: string; total: number; learned: number; due: number; mastered: number; attempts: number; correct: number; accuracy: number | null };
 type SubjectProgress = { subject: string; attempts: number; accuracy: number; weakCards: number; improvementPoints: number | null };
-type Dashboard = { attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
+type Dashboard = { visual:{attempts:number;correct:number;due:number}; attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
 type WrongEvent = { id: string; cardId: number; deckId: number; front: string; subject: string; reviewedAt: string; rating: number };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -35,7 +35,7 @@ function AccountGate({ onReady }: { onReady: (user: User) => void }) {
   };
   return <Card className="max-w-md mx-auto mt-16"><CardHeader><CardTitle>Save your learning across devices</CardTitle></CardHeader>
     <CardContent className="space-y-4">
-      <p className="text-sm text-muted-foreground">Create a study account or sign in. Game scores and public decks stay separate from your private review history.</p>
+      <p className="text-sm text-muted-foreground">Sign in to your private library to save reviews.</p>
       <form onSubmit={submit} className="space-y-4">
         <div><label htmlFor="study-email" className="block font-medium mb-1">Email</label>
           <Input id="study-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></div>
@@ -91,6 +91,7 @@ export default function Learning() {
       </header>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {dashboard && <>
+        <p className="p-4 border rounded">Visual exams: {dashboard.visual.attempts} attempts · {dashboard.visual.correct} correct · {dashboard.visual.due} due reviews. Open a deck’s Visual Exam for adaptive practice.</p>
         <section aria-label="Learning statistics" className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {([["Due reviews", dashboard.dueReviews], ["Accuracy", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study sessions", dashboard.sessions]] as const).map(([label, value]) =>
             <Card key={label}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p></CardContent></Card>)}

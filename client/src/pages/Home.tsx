@@ -101,7 +101,7 @@ export default function Home() {
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2">
+                        <Button aria-label={`Delete ${deck.title}`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive -mr-2 -mt-2">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -134,7 +134,7 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 grid grid-cols-2 gap-3">
-                  <Link href={`/study/${deck.id}`}>
+                  <Link href={`/learning/review/${deck.id}?mode=due`}>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
                       <Brain className="mr-2 h-4 w-4" /> Study
                     </Button>
@@ -159,6 +159,8 @@ export default function Home() {
                       <Users className="mr-2 h-4 w-4" /> Host
                     </Button>
                   </Link>
+                  <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup`}>Download full backup</a>
+                  <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup?format=anki`}>Export Anki text</a>
                 </CardContent>
               </Card>
             ))}

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Trash2, Download } from "lucide-react";
 
 type Source = { id: string; originalName: string; mimeType: string; sizeBytes: number; sha256: string;
-  importStatus: string; folder: string; tags: string[]; createdAt: string };
+  importStatus: string; folder: string; course: string; tags: string[]; createdAt: string };
 type DraftCard = { front: string; back: string; type: "flashcard" | "multiple_choice";
   options: string[]; correctOption: string | null; sourceRef?: string };
 type Preview = { cards: DraftCard[]; support: string };
@@ -25,6 +25,7 @@ export default function Library() {
   const [cards, setCards] = useState<DraftCard[]>([]);
   const [support, setSupport] = useState("");
   const [folder, setFolder] = useState("Unfiled");
+  const [course, setCourse] = useState("");
   const [tags, setTags] = useState("");
   const [title, setTitle] = useState("");
   const [q, setQ] = useState("");
@@ -37,7 +38,7 @@ export default function Library() {
   useEffect(() => { void refresh(""); }, []);
   async function choose(source: Source) {
     setSelected(source); setTitle(source.originalName.replace(/\.[^.]+$/, ""));
-    setFolder(source.folder); setTags(source.tags.join(", ")); setCards([]); setSupport(""); setError("");
+    setFolder(source.folder); setCourse(source.course||""); setTags(source.tags.join(", ")); setCards([]); setSupport(""); setError("");
     try {
       const result: Preview = await jsonRequest("/api/library/files/" + source.id + "/preview");
       setCards(result.cards); setSupport(result.support);
@@ -81,7 +82,7 @@ export default function Library() {
     try {
       const result: Source = await jsonRequest("/api/library/files/" + selected.id, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folder, tags: tags.split(",").map(s => s.trim()).filter(Boolean) }),
+        body: JSON.stringify({ folder, course, tags: tags.split(",").map(s => s.trim()).filter(Boolean) }),
       });
       setSelected(result); await refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed"); }
@@ -102,22 +103,23 @@ export default function Library() {
     <div className="flex flex-wrap gap-3 items-center justify-between">
       <h1 className="text-3xl font-bold">Private source library</h1>
       <Link href="/"><Button variant="outline">Back to decks</Button></Link>
+      <Button disabled={!selected||busy} variant="outline" onClick={async()=>{if(!selected)return;setBusy(true);try{await jsonRequest(`/api/library/files/${selected.id}/study-source`,{method:"POST"});navigate("/learning/sources");}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Use selected document for source-backed drafts</Button>
     </div>
     <p className="text-sm text-muted-foreground">
       Originals are retained in private server storage and linked to approved decks. Files must be 8 MB or smaller.
-      CSV/TSV/JSON previews and TXT/Markdown/DOCX/PPTX question-answer pairs are supported.
-      PDF, APKG, QTI, and H5P originals can be retained, but need manually entered questions.
+      Search saved text from PDF, DOCX, PPTX and text files. Review suggested pairs before saving. Basic two-field legacy Anki packages and QTI 2.1 single-choice/short-answer items are supported; scanned PDFs and complex packages need manual review.
     </p>
     {error && <p role="alert" className="text-destructive bg-destructive/10 p-3 rounded">{error}</p>}
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
         <CardHeader><CardTitle>Original documents</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <Label htmlFor="course">Course</Label><Input id="course" value={course} onChange={e=>setCourse(e.target.value)} maxLength={100}/>
           <Label htmlFor="source-upload">Upload original (private)</Label>
           <Input id="source-upload" type="file" disabled={busy}
-            accept=".csv,.tsv,.json,.txt,.md,.pdf,.docx,.pptx,.apkg,.qti,.h5p"
+            accept=".csv,.tsv,.json,.txt,.md,.pdf,.docx,.pptx,.apkg,.qti,.h5p,.png,.jpg,.jpeg,.webp"
             onChange={e => void upload(e.target.files?.[0])} />
-          <Input aria-label="Find a source" placeholder="Search filenames" value={q} onChange={e => { setQ(e.target.value); void refresh(e.target.value); }} />
+          <Input aria-label="Find a source" placeholder="Search names, courses, tags and document contents" value={q} onChange={e => { setQ(e.target.value); void refresh(e.target.value); }} />
           <ul className="space-y-2">
             {files.map(source => <li key={source.id} className="border rounded-lg p-3 flex gap-2 justify-between items-start">
               <button type="button" onClick={() => void choose(source)} className="text-left min-w-0 flex-1">

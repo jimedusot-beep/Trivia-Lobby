@@ -81,11 +81,13 @@ export const universalQuestionSchema = z.object({
   id: identifier,
   prompt: z.string().trim().min(1).max(2000),
   explanation: z.string().max(4000).optional(),
+  difficulty: z.enum(["easy","medium","hard"]).default("medium"),
   tags: z.array(short).max(20).default([]),
   source: z.object({
     documentId: identifier.optional(),
     page: z.number().int().positive().optional(),
     attribution: short.optional(),
+    passage: z.string().max(2000).optional(),
   }).optional(),
   answer: z.union([textAnswer, multipleChoice, imageHotspot, matching,
     flashcard, multipleSelect, trueFalse, shortAnswer, ordering, dragDropLabels, diagramIdentification]),
@@ -134,11 +136,11 @@ export function gradeUniversalAnswer(question: UniversalQuestion, response: unkn
 }
 /** Player-facing projection only; does not expose answer keys, matches or text answers. */
 export function withoutAnswerKeys(question: UniversalQuestion) {
-  const { answer, explanation: _hiddenExplanation, ...base } = question;
+  const { answer, explanation: _hiddenExplanation, source: _hiddenSource, ...base } = question;
   switch (answer.kind) {
     case "multiple_choice": case "multiple_select":
       return { ...base, answer: { kind: answer.kind, options: answer.options } };
-    case "matching": return { ...base, answer: { kind: answer.kind, prompts: answer.pairs.map(p => ({ id: p.id, prompt: p.prompt })), matches: answer.pairs.map(p => ({ id: p.match, label: p.match })).reverse() } };
+    case "matching": return { ...base, answer: { kind: answer.kind, prompts: answer.pairs.map(p => ({ id: p.id, prompt: p.prompt })), matches: answer.pairs.map(p => ({ id: p.match, label: p.match })).sort((a,b)=>a.label.localeCompare(b.label)) } };
     case "ordering": {
       const items = [...answer.items];
       for (let i = items.length - 1; i > 0; i--) {
@@ -149,7 +151,7 @@ export function withoutAnswerKeys(question: UniversalQuestion) {
     }
     case "image_hotspot": case "diagram_identification":
       return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})) } };
-    case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.label,label:t.label})).reverse() } };
+    case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.label,label:t.label})).sort((a,b)=>a.label.localeCompare(b.label)) } };
     case "true_false": return { ...base, answer: { kind: answer.kind } };
     default: return { ...base, answer: { kind: answer.kind } };
   }

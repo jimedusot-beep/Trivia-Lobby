@@ -175,7 +175,9 @@ export function registerStudyRoutes(app: Express) {
     }).sort((a, b) => a.accuracy - b.accuracy);
     const correct = events.filter(e => e.correct).length;
     const totalDue = Array.from(stats.values()).reduce((n, x) => n + x.due, 0);
-    res.json({
+    const visualStats=await db.execute(sql`SELECT count(*)::int attempts,count(*) FILTER(WHERE correct)::int correct FROM question_attempts WHERE owner_id=${user.id}`);
+    const visualDue=await db.execute(sql`SELECT count(*)::int due FROM question_schedule WHERE owner_id=${user.id} AND due_at<=now()`);
+    res.json({ visual:{...visualStats.rows[0],due:visualDue.rows[0]?.due??0},
       attempts: events.length, correct, accuracy: events.length ? Math.round(100 * correct / events.length) : 0,
       sessions: sessionCount, studyDays: activeDays.size, subjectProgress, dueReviews: totalDue, studyStreak: streak, xp: events.length + correct * 4,
       achievements: [
@@ -195,8 +197,10 @@ export function registerStudyRoutes(app: Express) {
       db.select().from(studySchedule).where(eq(studySchedule.userId, user.id)),
       db.select().from(studyEvents).where(eq(studyEvents.userId, user.id)).orderBy(studyEvents.reviewedAt),
     ]);
+    const questionStates=await db.execute(sql`SELECT * FROM question_schedule WHERE owner_id=${user.id}`);
+    const questionAttempts=await db.execute(sql`SELECT * FROM question_attempts WHERE owner_id=${user.id} ORDER BY created_at`);
     res.setHeader("Content-Disposition", "attachment; filename=trivia-lobby-study-progress.json");
-    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events });
+    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events, questionStates:questionStates.rows, questionAttempts:questionAttempts.rows });
   }));
 
   registerStudyDraftRoutes(app, safe, findStudyUser);

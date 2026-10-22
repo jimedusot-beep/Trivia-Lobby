@@ -14,7 +14,7 @@ type AnswerView = {
   items?: Named[]; imageUrl?: string; imageAlt?: string;
 };
 type PracticeItem = { id: number; position: number; question: {prompt: string;answer: AnswerView} };
-type Graded = { correct: boolean; answer?: unknown; explanation: string };
+type Graded = { correct: boolean; answer?: unknown; explanation: string; source?:{attribution?:string;page?:number;passage?:string} };
 function answerDescription(answer: unknown): string {
   if (!answer || typeof answer !== "object" || !("kind" in answer)) return "";
   const a = answer as { kind:string; correctOptionIds?:string[]; correctTargetIds?:string[]; pairs?: {prompt:string;match:string}[];
@@ -38,10 +38,12 @@ export default function VisualPractice() {
   const [items, setItems] = useState<PracticeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [requestId,setRequestId] = useState(()=>crypto.randomUUID());
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [targetId, setTargetId] = useState("");
+  const [dragged, setDragged] = useState("");
   const [matchIds, setMatchIds] = useState<Record<string,string>>({});
   const [orderIds, setOrderIds] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
@@ -55,7 +57,7 @@ export default function VisualPractice() {
     if (!Number.isSafeInteger(deckId) || deckId<=0) return;
     let active = true;
     setLoading(true);
-    fetch(`/api/decks/${deckId}/questions/practice`)
+    fetch(`/api/decks/${deckId}/questions/practice${new URLSearchParams(window.location.search).get("mode")==="adaptive"?"?mode=adaptive":""}`)
       .then(async response => {if (!response.ok) throw new Error("Failed to load exam");return response.json();})
       .then(data => {if(active)setItems(data);})
       .catch(err=>{if(active)setError(err instanceof Error?err.message:"Failed to load exam");})
@@ -73,7 +75,7 @@ export default function VisualPractice() {
     }
   }, [timed,current,seconds,result,busy]);
   function resetResponse() {
-    setSelectedIds([]);setTargetId("");setMatchIds({});setOrderIds([]);setTyped("");setTruth(null);
+    setRequestId(crypto.randomUUID());setSelectedIds([]);setTargetId("");setMatchIds({});setOrderIds([]);setTyped("");setTruth(null);
     setResult(null);setSeconds(30);setError("");
   }
   function next() {setIndex(i=>i+1);resetResponse();}
@@ -92,7 +94,7 @@ export default function VisualPractice() {
     setBusy(true);setError("");
     try {
       const reply = await fetch(`/api/decks/${deckId}/questions/${current.id}/check`,{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response}),
+        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response,requestId}),
       });
       if(!reply.ok) throw new Error((await reply.json().catch(()=>({}))).message??"Answer validation failed");
       const graded:Graded = await reply.json();
@@ -114,7 +116,9 @@ export default function VisualPractice() {
     <section className="max-w-3xl mx-auto space-y-5">
       <Link href="/"><Button variant="ghost">Back to library</Button></Link>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":"Visual Practice"}</h1>
-      <p className="text-sm text-muted-foreground">Solo session only. Answers are graded by the server; results are not saved to an account.</p>
+      <p className="text-sm text-muted-foreground">Answers and review schedules are saved to your account. Choose timed, untimed or adaptive practice.</p>
+      <div className="flex flex-wrap gap-3"><a href={`/visual-practice/${deckId}`} className="underline">Untimed</a><a href={`/visual-practice/${deckId}?mode=timed`} className="underline">Timed</a><a href={`/visual-practice/${deckId}?mode=adaptive`} className="underline">Adaptive</a></div>
+      {result?.source&&<aside className="p-4 border rounded" aria-label="Source citation"><strong>{result.source.attribution??"Source"}{result.source.page?` · page ${result.source.page}`:""}</strong>{result.source.passage&&<blockquote>{result.source.passage}</blockquote>}</aside>}
       <Progress value={items.length ? Math.min(100,index/items.length*100):0} aria-label="Question progress"/>
       {!items.length?<Card><CardContent className="p-6">This deck has no visual questions yet. <Link href={`/exam-builder/${deckId}`}><Button>Add questions</Button></Link></CardContent></Card>
       :index>=items.length?<Card><CardContent className="p-8 text-center space-y-4">
@@ -138,8 +142,15 @@ export default function VisualPractice() {
             </label>)}
           </fieldset>}
           {(answer?.kind==="matching"||answer?.kind==="drag_drop_labels")&&<div className="space-y-3">
-            <p>Choose the matching label for each prompt or region.</p>
-            {(answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]).map(p=><label className="flex flex-col gap-1" key={p.id}>
+            <p>Drag a label onto a prompt, tap a label then its prompt, or use the menus.</p>
+            <div className="flex flex-wrap gap-2" aria-label="Matching labels">
+              {(answer.matches??answer.labels??[]).map(m=><Button key={m.id} type="button" variant={dragged===m.id?"default":"outline"} draggable disabled={!!result}
+                onDragStart={e=>{e.dataTransfer.setData("text/plain",m.id);setDragged(m.id);}} onClick={()=>setDragged(m.id)}>{m.label}</Button>)}
+            </div>
+            {(answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]).map(p=><label className="flex flex-col gap-1 border rounded p-3" key={p.id}
+              onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const label=e.dataTransfer.getData("text/plain");if(!result&&(answer.matches??answer.labels??[]).some(m=>m.id===label))setMatchIds(old=>({...old,[p.id]:label}));}}>
+              <Button type="button" variant="ghost" className="justify-start min-h-11" disabled={!!result||!dragged} aria-label={`Place selected label at ${p.prompt}`}
+                onClick={()=>{setMatchIds(old=>({...old,[p.id]:dragged}));setDragged("");}}>Place selected label here</Button>
               <span>{p.prompt}</span>
               <select className="border rounded p-3 bg-background" disabled={!!result}
                 value={matchIds[p.id]??""} onChange={e=>setMatchIds(old=>({...old,[p.id]:e.target.value}))}>
@@ -156,7 +167,7 @@ export default function VisualPractice() {
                   aria-label={`Select region ${i+1}`} aria-pressed={targetId===t.id}
                   onClick={()=>setTargetId(t.id)}
                   className={`absolute rounded-full border-2 border-white focus-visible:outline outline-4 outline-primary ${targetId===t.id?"bg-blue-700":"bg-red-600"}`}
-                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"28px",height:"28px",transform:"translate(-50%,-50%)"}}/>)}
+                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"44px",height:"44px",transform:"translate(-50%,-50%)"}}/>)}
               </div>:<p role="note">The source image is unavailable; ask the author to add an HTTPS image URL.</p>}
               {answer.kind!=="drag_drop_labels"&&<fieldset className="flex flex-wrap gap-2">
                 <legend className="mb-2">Keyboard-accessible region choices</legend>

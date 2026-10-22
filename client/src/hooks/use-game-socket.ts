@@ -7,6 +7,10 @@ import {
 } from "@shared/game-protocol";
 
 export type GameState = {
+  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party";
+  status?:{coins:number;focus:number;guard:number};
+  buzzedPlayerId?:string|null;
+  answered?:boolean;
   roomCode?: string;
   playerId?: string;
   score?: number;
@@ -34,6 +38,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
   const { toast } = useToast();
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [lastError,setLastError]=useState("");
   const [restoring, setRestoring] = useState(
     () => role === "host" && !!safeRead<HostSession>(sessionStorage, "trivia_host"),
   );
@@ -95,6 +100,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
             break;
           }
           case WS_EVENTS.ROOM_JOINED: {
+            setLastError("");
             const saved = safeRead<PlayerSession>(localStorage, "trivia_player");
             if (saved) localStorage.setItem("trivia_player", JSON.stringify({
               ...saved, playerId: payload.playerId, token: payload.token,
@@ -108,10 +114,18 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.GAME_STARTED:
             setGameState(prev => ({ ...prev, gameStatus: "playing", phase: "playing" }));
             break;
+          case WS_EVENTS.GAME_CONFIGURED:
+            setGameState(prev=>({...prev,mode:payload.mode}));break;
+          case WS_EVENTS.BUZZ_STATE:
+            setGameState(prev=>({...prev,buzzedPlayerId:payload.playerId}));break;
+          case WS_EVENTS.PLAYER_STATUS:
+            setGameState(prev=>({...prev,status:payload}));break;
+          case WS_EVENTS.ANSWER_ACCEPTED:
+            setGameState(prev=>({...prev,answered:true}));break;
           case WS_EVENTS.QUESTION_START:
             setGameState(prev => ({
               ...prev, currentQuestion: payload, lastAnswerResult: undefined,
-              phase: "playing", gameStatus: "playing",
+              phase: "playing", gameStatus: "playing", answered:false,
               serverStartTs: payload.serverStartTs, timeRemainingMs: payload.timeLimitMs,
             }));
             break;
@@ -127,13 +141,14 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.SYNC_SNAPSHOT:
             setGameState(prev => ({
               ...prev, roomCode: payload.roomCode, playerId: payload.playerId ?? prev.playerId,
-              players: payload.players, score: payload.score ?? prev.score,
+              players: payload.players, score: payload.score ?? prev.score, answered:payload.answered,
               phase: payload.state, gameStatus: statusFrom(payload.state),
               currentQuestion: payload.question,
               lastAnswerResult: payload.answerResult,
               leaderboard: payload.leaderboard,
               serverStartTs: payload.question?.serverStartTs,
               timeRemainingMs: payload.question?.timeLimitMs,
+              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,
             }));
             break;
           case WS_EVENTS.GAME_OVER:
@@ -143,6 +158,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
             }));
             break;
           case WS_EVENTS.ERROR:
+            setLastError(payload.message);
             if (role === "host" && payload.message === "Invalid host credentials") {
               sessionStorage.removeItem("trivia_host");
               setRestoring(false);
@@ -168,5 +184,5 @@ export function useGameSocket(role: "host" | "player" = "player") {
     };
   }, [role, toast]);
 
-  return { connected, restoring, gameState, emit };
+  return { connected, restoring, gameState, emit, lastError };
 }
