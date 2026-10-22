@@ -2,10 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { registerStudyRoutes } from "./study-routes";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { registerUniversalQuestionRoutes } from "./universal-question-routes";
+import { registerStudyRoutes } from "./study-routes";
 
 // === GAME STATE TYPES ===
 type Player = {
@@ -38,9 +39,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  registerStudyRoutes(app);
-
   // === HTTP API ROUTES ===
+  registerUniversalQuestionRoutes(app);
+  registerStudyRoutes(app);
 
   app.get(api.decks.list.path, async (req, res) => {
     const decks = await storage.getDecks();

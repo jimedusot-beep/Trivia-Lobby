@@ -173,7 +173,7 @@ export default function ImportDeck() {
                 <Button 
                   className="w-full rounded-xl" 
                   onClick={handleParse}
-                  disabled={!deckInfo.title || !csvContent}
+                  disabled={!csvContent || (!deckInfo.title && !selectedFilename?.toLowerCase().endsWith(".json"))}
                 >
                   Preview & Validate <Upload className="ml-2 h-4 w-4" />
                 </Button>
@@ -186,7 +186,7 @@ export default function ImportDeck() {
           <Card className="rounded-2xl border-none shadow-lg animate-in slide-in-from-right-4">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Preview ({parsedCards.length} Cards)</CardTitle>
-              <Button variant="outline" onClick={() => setStep(1)}>Edit CSV</Button>
+              <Button variant="outline" onClick={() => setStep(1)}>Edit import</Button>
             </CardHeader>
             <CardContent>
               <div className="max-h-[500px] overflow-auto rounded-lg border">

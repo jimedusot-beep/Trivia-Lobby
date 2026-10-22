@@ -46,6 +46,11 @@ export default function Home() {
               <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
             </Button>
           </Link>
+          <Link href="/new-exam">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2">
+              <ClipboardList className="mr-3 h-6 w-6" /> New Exam Deck
+            </Button>
+          </Link>
           <Link href="/learning"><Button size="lg" variant="secondary" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl"><Brain className="mr-3 h-6 w-6" /> My Learning</Button></Link>
           <Link href="/import">
             <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">
@@ -126,10 +131,10 @@ export default function Home() {
                     </span>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Link href={`/learning/review/${deck.id}?mode=due`}>
+                <CardContent className="pt-6 grid grid-cols-2 gap-3">
+                  <Link href={`/study/${deck.id}`}>
                     <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
-                      <Brain className="mr-2 h-4 w-4" /> Adaptive
+                      <Brain className="mr-2 h-4 w-4" /> Study
                     </Button>
                   </Link>
                   <Link href={`/practice/${deck.id}`}>
@@ -137,6 +142,17 @@ export default function Home() {
                       <ClipboardList className="mr-2 h-4 w-4" /> Practice
                     </Button>
                   </Link>
+                  <Link href={`/exam-builder/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Exam Builder
+                    </Button>
+                  </Link>
+                  <Link href={`/visual-practice/${deck.id}`}>
+                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                      <ClipboardList className="mr-2 h-4 w-4" /> Visual Exam
+                    </Button>
+                  </Link>
+                  <Link href={`/learning/review/${deck.id}?mode=due`}><Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2"><Brain className="mr-2 h-4 w-4" /> Adaptive</Button></Link>
                   <Link href={`/host/${deck.id}`}>
                     <Button className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                       <Users className="mr-2 h-4 w-4" /> Host

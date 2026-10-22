@@ -8,12 +8,15 @@ import Home from "@/pages/Home";
 import ImportDeck from "@/pages/ImportDeck";
 import Study from "@/pages/Study";
 import Practice from "@/pages/Practice";
-import Learning, { AdaptiveReview } from "@/pages/Learning";
-import LearningSources from "@/pages/LearningSources";
 import Host from "@/pages/Host";
 import Join from "@/pages/Join";
 import Play from "@/pages/Play";
 import NotFound from "@/pages/not-found";
+import ExamBuilder from "@/pages/ExamBuilder";
+import NewExamDeck from "@/pages/NewExamDeck";
+import VisualPractice from "@/pages/VisualPractice";
+import Learning, { AdaptiveReview } from "@/pages/Learning";
+import LearningSources from "@/pages/LearningSources";
 
 function Router() {
   return (
@@ -22,6 +25,9 @@ function Router() {
       <Route path="/import" component={ImportDeck} />
       <Route path="/study/:id" component={Study} />
       <Route path="/practice/:id" component={Practice} />
+      <Route path="/new-exam" component={NewExamDeck} />
+      <Route path="/exam-builder/:id" component={ExamBuilder} />
+      <Route path="/visual-practice/:id" component={VisualPractice} />
       <Route path="/learning/review/:deckId" component={AdaptiveReview} />
       <Route path="/learning/sources" component={LearningSources} />
       <Route path="/learning" component={Learning} />

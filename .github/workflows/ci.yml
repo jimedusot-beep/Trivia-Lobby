@@ -35,7 +35,10 @@ jobs:
       - run: npm run check
       - name: Create isolated CI schema
         run: npx drizzle-kit push --force
+      - name: Verify additive Phase 2 migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0001_universal_questions.sql
       - name: Verify additive study migration parses
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0004_phase4_study.sql
       - run: npm run test
       - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
