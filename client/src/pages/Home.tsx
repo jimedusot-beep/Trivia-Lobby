@@ -141,7 +141,7 @@ export default function Home() {
                   <Button asChild className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"><Link href={`/host/${deck.id}`}>
                       <Users className="mr-2 h-4 w-4" /> Host
                     </Link></Button>
-                  <Button asChild variant="outline"><Link href={`/flashcards/${deck.id}`}>Flashcard preview</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/flashcards/${deck.id}`}>Flashcards</Link></Button>
                   <Button asChild variant="outline"><Link href={`/card-editor/${deck.id}`}>Edit saved cards</Link></Button>
                   <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup`}>Download full backup</a>
                   <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup?format=anki`}>Export Anki text</a>

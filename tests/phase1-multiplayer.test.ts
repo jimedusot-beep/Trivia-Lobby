@@ -62,6 +62,21 @@ test("protocol rejects unknown version, events and fields", () => {
   assert.equal(serverMessageSchema.safeParse({ v: 1, type: "game_over", payload: { leaderboard: [{ name: "A", score: 1, ws: {} }] } }).success, false);
 });
 
+test("an unanswered deadline resets the streak before the next scored round", async t => {
+  const storage={async getDeck(){const deck=await fakeStorage.getDeck(1,"owner");assert(deck);return {...deck,cards:[...deck.cards,{...deck.cards[0],id:3}]};}} as IStorage;
+  const server=createServer(),wss=attachGameSocket(server,storage,{questionMs:500,authorizeHost:async()=>"owner"});
+  server.listen(0,"127.0.0.1");await once(server,"listening");const address=server.address();assert(address&&typeof address!=="string");
+  const sockets:WebSocket[]=[],url=`ws://127.0.0.1:${address.port}/ws`;
+  const open=async()=>{const ws=new WebSocket(url);sockets.push(ws);const inbox=client(ws);await once(ws,"open");return inbox;};
+  t.after(async()=>{for(const ws of sockets)ws.terminate();await new Promise<void>(resolve=>wss.close(()=>server.close(()=>resolve())));});
+  const host=await open(),player=await open();host.send(WS_EVENTS.CREATE_ROOM,{deckId:1});const {roomCode}=(await host.take(WS_EVENTS.ROOM_CREATED)).payload;
+  player.send(WS_EVENTS.JOIN_ROOM,{roomCode,playerName:"Recall player"});await player.take(WS_EVENTS.ROOM_JOINED);host.send(WS_EVENTS.START_GAME,{roomCode});await player.take(WS_EVENTS.QUESTION_START);
+  player.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:0,answer:"B"});assert.equal((await player.take(WS_EVENTS.ANSWER_RESULT)).payload.awarded,100);
+  const advance=async()=>{host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await host.take(WS_EVENTS.LEADERBOARD);host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await player.take(WS_EVENTS.QUESTION_START);};
+  await advance();assert.equal((await player.take(WS_EVENTS.ANSWER_RESULT)).payload.isCorrect,false);
+  await advance();player.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:2,answer:"B"});assert.equal((await player.take(WS_EVENTS.ANSWER_RESULT)).payload.awarded,100);
+});
+
 test("secure room codes are valid and avoid occupied values", () => {
   const occupied = new Map<string, unknown>();
   for (let i = 0; i < 1000; i++) {
