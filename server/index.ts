@@ -14,13 +14,23 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "4mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: "32kb" }));
+app.disable("x-powered-by");
+app.get("/health/live", (_req, res) => res.json({ status: "ok" }));
+app.get("/health/ready", async (_req, res) => {
+  try {
+    const { pool } = await import("./db");
+    await pool.query("SELECT 1 FROM users LIMIT 1");
+    res.json({ status: "ready" });
+  } catch { res.status(503).json({ status: "unavailable" }); }
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -36,12 +46,10 @@ export function log(message: string, source = "express") {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  // Never record response bodies: they may contain study sources, passwords,
-  // exported history, generated evidence or unrevealed game answers.
+  // Do not log response bodies: private decks, answers and account data live in /api.
   res.on("finish", () => {
     if (path.startsWith("/api")) {
-      const duration = Date.now() - start;
-      log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
+      log(`${req.method} ${path} ${res.statusCode} in ${Date.now() - start}ms`);
     }
   });
 
@@ -53,9 +61,9 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = status >= 500 ? "Internal Server Error" : (err.message || "Request failed");
 
-    console.error("Internal Server Error:", err);
+    console.error("Request error:", err instanceof Error ? err.name : "UnknownError");
 
     if (res.headersSent) {
       return next(err);

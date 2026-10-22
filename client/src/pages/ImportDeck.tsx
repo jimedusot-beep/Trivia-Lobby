@@ -18,6 +18,8 @@ export default function ImportDeck() {
   const [deckInfo, setDeckInfo] = useState({ title: "", description: "", category: "General" });
   const [csvContent, setCsvContent] = useState("");
   const [selectedFilename, setSelectedFilename] = useState<string | null>(null);
+  const [backup,setBackup] = useState<Record<string,unknown>|null>(null);
+  const [restoringBackup,setRestoringBackup] = useState(false);
   const [parsedCards, setParsedCards] = useState<ImportableCard[]>([]);
 
   const importDeck = useImportDeck();
@@ -51,6 +53,14 @@ export default function ImportDeck() {
   const handleParse = () => {
     try {
       const sourceName = selectedFilename || (csvContent.includes("\t") ? "paste.tsv" : "paste.csv");
+      if(csvContent.trim().startsWith("{")){
+        const candidate=JSON.parse(csvContent);
+        if(candidate.format==="trivia-lobby-deck"&&candidate.version===2&&candidate.deck&&Array.isArray(candidate.cards)&&Array.isArray(candidate.questions)){
+          setBackup(candidate);setDeckInfo({title:candidate.deck.title??"",description:candidate.deck.description??"",category:candidate.deck.category??"General"});
+          setParsedCards(candidate.cards);setStep(2);return;
+        }
+      }
+      setBackup(null);
       const parsed = parseDeckContent(csvContent, sourceName);
       if (parsed.title) {
         setDeckInfo(prev => ({
@@ -73,6 +83,12 @@ export default function ImportDeck() {
   const handleImport = async () => {
     if (isPending) return;
     try {
+      if(backup){
+        setRestoringBackup(true);
+        const response=await fetch("/api/decks/restore",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...backup,deck:deckInfo})});
+        if(!response.ok)throw new Error((await response.json()).message??"Backup restore failed");
+        toast({title:"Backup restored",description:"Cards and visual questions saved."});setLocation("/");return;
+      }
       await importDeck.mutateAsync({
         deck: {
           title: deckInfo.title,
@@ -86,19 +102,17 @@ export default function ImportDeck() {
       setLocation("/");
     } catch (err) {
       toast({ title: "Import failed", description: err instanceof Error ? err.message : "Something went wrong.", variant: "destructive" });
-    }
+    } finally { setRestoringBackup(false); }
   };
 
-  const isPending = importDeck.isPending;
+  const isPending = importDeck.isPending || restoringBackup;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Link href="/">
-          <Button variant="ghost" className="pl-0 hover:pl-2 transition-all">
+        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all"><Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
-          </Button>
-        </Link>
+          </Link></Button>
 
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-display font-bold">Import New Deck</h1>
@@ -108,6 +122,7 @@ export default function ImportDeck() {
           </div>
         </div>
 
+        {backup&&step===2&&<p role="status">Full backup: {parsedCards.length} cards and {(backup.questions as unknown[]).length} visual questions will be restored.</p>}
         {step === 1 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-right-4">
             <Card className="rounded-2xl border-none shadow-lg">
@@ -148,6 +163,8 @@ export default function ImportDeck() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                  <Link href="/library" className="underline font-semibold">Save an original file in your private source library instead</Link>. This quick importer stores derived cards only.
+                  <br />
                   <strong>CSV/TSV headers:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption. Or use a Trivia Lobby JSON backup.
                 </div>
                 <div className="space-y-2">
@@ -161,7 +178,7 @@ export default function ImportDeck() {
                   />
                   <p id="upload-help" className="text-xs text-muted-foreground">
                     Up to 2 MB. CSV/TSV and Trivia Lobby JSON backups supported. {selectedFilename ? `Selected: ${selectedFilename}` : "Or paste CSV/TSV text below."}
-                    The imported cards are saved to the configured PostgreSQL database. The original file is not yet archived.
+                    Quick imports save cards. Upload through the source library to retain the original file.
                   </p>
                 </div>
                 <Textarea

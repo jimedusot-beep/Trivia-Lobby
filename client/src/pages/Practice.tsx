@@ -15,20 +15,31 @@ export default function Practice() {
   const [revealed, setRevealed] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
+  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
+  const [memory,setMemory]=useState<"idle"|"saving"|"saved"|"failed">("idle");
+  const [saveError,setSaveError]=useState("");
   const question = questions[index];
+  const saveAnswer=async(value:boolean)=>{
+    setMemory("saving");setSaveError("");
+    try{const response=await fetch("/api/study/review",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json"},body:JSON.stringify({cardId:question.id,rating:value?3:1,requestId})});if(!response.ok)throw new Error((await response.json().catch(()=>({}))).message??"Could not save review");setMemory("saved");}
+    catch(e){setMemory("failed");setSaveError((e as Error).message);}
+  };
   const answer = (value: boolean) => {
     if (marked !== null) return;
     setMarked(value);
     if (value) setCorrect(n => n + 1);
+    void saveAnswer(value);
   };
   const next = () => {
+    if(memory!=="saved")return;
     if (index === questions.length - 1) setDone(true);
     else setIndex(i => i + 1);
     setMarked(null);
     setRevealed(false);
+    setRequestId(crypto.randomUUID());setMemory("idle");setSaveError("");
   };
   const restart = () => {
-    setIndex(0); setMarked(null); setRevealed(false); setCorrect(0); setDone(false);
+    setIndex(0); setMarked(null); setRevealed(false); setCorrect(0); setDone(false);setRequestId(crypto.randomUUID());setMemory("idle");setSaveError("");
   };
 
   if (isLoading) return <main className="p-8">Loading study deck...</main>;
@@ -36,9 +47,9 @@ export default function Practice() {
   return (
     <main className="min-h-screen bg-muted/30 p-4 md:p-8">
       <section className="max-w-3xl mx-auto space-y-6">
-        <Link href="/"><Button variant="ghost">Back to library</Button></Link>
+        <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
         <h1 className="text-3xl font-bold">{deck.title} — Practice</h1>
-        <p className="text-muted-foreground">Session-only results. Account-based study history is not implemented.</p>
+        <p className="text-muted-foreground">Results save to your study history and update the next review.</p>
         <Progress value={done ? 100 : questions.length ? 100 * index / questions.length : 0} />
         {!questions.length ? <p>No cards in this deck yet.</p> : done ? (
           <Card><CardContent className="p-8 space-y-4 text-center">
@@ -50,7 +61,7 @@ export default function Practice() {
           <Card>
             <CardHeader>
               <p className="text-muted-foreground">Question {index + 1} of {questions.length}</p>
-              <CardTitle className="text-2xl">{question.front}</CardTitle>
+              <CardTitle><h2 className="text-2xl">{question.front}</h2></CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {question.answerIndex !== null ? (
@@ -77,7 +88,10 @@ export default function Practice() {
               {marked !== null && <div role="status" className="space-y-3 p-4 border rounded">
                 <p className="font-semibold">{marked ? "Correct!" : "Not quite."}</p>
                 <p><strong>Answer:</strong> {question.back}</p>
-                <Button onClick={next}>{index + 1 === questions.length ? "Show results" : "Next question"}</Button>
+                <p>{memory==="saved"?"Review saved":memory==="saving"?"Saving review…":"Review needs saving"}</p>
+                {saveError&&<p role="alert">{saveError}</p>}
+                {memory==="failed"&&<Button variant="outline" onClick={()=>void saveAnswer(marked)}>Retry saving review</Button>}
+                <Button disabled={memory!=="saved"} onClick={next}>{index + 1 === questions.length ? "Show results" : "Next question"}</Button>
               </div>}
             </CardContent>
           </Card>

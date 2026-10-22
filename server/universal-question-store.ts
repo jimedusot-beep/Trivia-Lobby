@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { decks, universalQuestions } from "@shared/schema";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
@@ -34,6 +34,7 @@ export async function getUniversalQuestion(deckId: number, questionId: number) {
 }
 export async function addUniversalQuestion(deckId: number, question: UniversalQuestion) {
   return db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(8091, ${deckId})`);
     const current = await tx.select({ position: universalQuestions.position })
       .from(universalQuestions).where(eq(universalQuestions.deckId, deckId));
     if (current.length >= 500) throw new Error("Deck question limit is 500");
@@ -59,6 +60,7 @@ export async function removeUniversalQuestion(deckId: number, questionId: number
 }
 export async function reorderUniversalQuestions(deckId: number, orderedIds: number[]) {
   return db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(8091, ${deckId})`);
     const rows = await tx.select({ id: universalQuestions.id })
       .from(universalQuestions).where(eq(universalQuestions.deckId, deckId));
     const existing = rows.map(r => r.id).sort((a,b) => a-b);

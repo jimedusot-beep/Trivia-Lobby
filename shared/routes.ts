@@ -1,5 +1,12 @@
 import { z } from 'zod';
 import { insertDeckSchema, insertCardSchema, decks, cards } from './schema';
+const cardInput=insertCardSchema.omit({deckId:true}).superRefine((card,ctx)=>{
+  if(card.type!=="multiple_choice")return;
+  const options=card.options??[];
+  if(options.length<2||options.length>4||!["A","B","C","D"].slice(0,options.length).includes(card.correctOption??"")){
+    ctx.addIssue({code:z.ZodIssueCode.custom,message:"Multiple-choice cards require 2–4 options and a valid correct letter"});
+  }
+});
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -51,7 +58,7 @@ export const api = {
       path: '/api/decks/import' as const,
       input: z.object({
         deck: insertDeckSchema,
-        cards: z.array(insertCardSchema.omit({ deckId: true })).min(1).max(5000),
+        cards: z.array(cardInput).min(1).max(5000),
       }),
       responses: {
         201: z.custom<typeof decks.$inferSelect>(),
@@ -71,7 +78,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/decks/:id/cards' as const,
-      input: z.array(insertCardSchema), // Bulk create for imports
+      input: z.array(cardInput).min(1).max(5000), // Server supplies deckId
       responses: {
         201: z.array(z.custom<typeof cards.$inferSelect>()),
         400: errorSchemas.validation,

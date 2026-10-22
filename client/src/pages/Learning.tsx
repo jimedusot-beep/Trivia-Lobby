@@ -9,7 +9,7 @@ type User = { id: string; email: string };
 type CardRow = { id: number; front: string; back: string; dueAt: string | null; needsWork: boolean };
 type DeckStat = { deckId: number; title: string; subject: string; total: number; learned: number; due: number; mastered: number; attempts: number; correct: number; accuracy: number | null };
 type SubjectProgress = { subject: string; attempts: number; accuracy: number; weakCards: number; improvementPoints: number | null };
-type Dashboard = { attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
+type Dashboard = { visual:{attempts:number;correct:number;due:number}; attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
 type WrongEvent = { id: string; cardId: number; deckId: number; front: string; subject: string; reviewedAt: string; rating: number };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -29,13 +29,13 @@ function AccountGate({ onReady }: { onReady: (user: User) => void }) {
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError("");
     try {
-      const user = await api<User>(`/api/study/auth/${register ? "register" : "login"}`, "POST", { email, password });
+      const user = await api<User>(`/api/auth/${register ? "register" : "login"}`, "POST", { email, password });
       setPassword(""); onReady(user);
     } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   };
   return <Card className="max-w-md mx-auto mt-16"><CardHeader><CardTitle>Save your learning across devices</CardTitle></CardHeader>
     <CardContent className="space-y-4">
-      <p className="text-sm text-muted-foreground">Create a study account or sign in. Game scores and public decks stay separate from your private review history.</p>
+      <p className="text-sm text-muted-foreground">Sign in to your private library to save reviews.</p>
       <form onSubmit={submit} className="space-y-4">
         <div><label htmlFor="study-email" className="block font-medium mb-1">Email</label>
           <Input id="study-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></div>
@@ -54,7 +54,7 @@ export function useStudyUser() {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
-    api<User>("/api/study/auth/me").then(x => { if (active) setUser(x); }).catch(() => {}).finally(() => { if (active) setLoading(false); });
+    api<User>("/api/auth/me").then(x => { if (active) setUser(x); }).catch(() => {}).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
   return { user, setUser, loading };
@@ -85,12 +85,13 @@ export default function Learning() {
     <div className="max-w-5xl mx-auto space-y-7">
       <header className="flex flex-wrap justify-between items-center gap-3">
         <div><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
-        <div className="flex gap-2 flex-wrap"><Link href="/learning/sources"><Button variant="outline">Source drafts</Button></Link>
+        <div className="flex gap-2 flex-wrap"><Button asChild variant="outline"><Link href="/learning/sources">Source drafts</Link></Button>
           <Button variant="outline" onClick={() => { window.location.href = "/api/study/export"; }}>Export progress</Button>
-          <Button variant="outline" onClick={async () => { await api("/api/study/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>
+          <Button variant="outline" onClick={async () => { await api("/api/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>
       </header>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {dashboard && <>
+        <p className="p-4 border rounded">Visual exams: {dashboard.visual.attempts} attempts · {dashboard.visual.correct} correct · {dashboard.visual.due} due reviews. Open a deck’s Visual Exam for adaptive practice.</p>
         <section aria-label="Learning statistics" className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {([["Due reviews", dashboard.dueReviews], ["Self-rated recall", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study sessions", dashboard.sessions]] as const).map(([label, value]) =>
             <Card key={label}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p></CardContent></Card>)}
@@ -123,9 +124,9 @@ export default function Learning() {
                   <li>{deck.total > 0 && deck.mastered >= Math.ceil(0.8 * deck.total) ? "✓" : "○"} Retain: achieve 21-day intervals for 80% of cards</li>
                 </ol>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/learning/review/${deck.deckId}?mode=due`}><Button>Review due</Button></Link>
-                  <Link href={`/learning/review/${deck.deckId}?mode=missed`}><Button variant="outline">Retry weak cards</Button></Link>
-                  <Link href={`/learning/review/${deck.deckId}?mode=all`}><Button variant="outline">Study all</Button></Link>
+                  <Button asChild><Link href={`/learning/review/${deck.deckId}?mode=due`}>Review due</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/learning/review/${deck.deckId}?mode=missed`}>Retry weak cards</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/learning/review/${deck.deckId}?mode=all`}>Study all</Link></Button>
                 </div>
               </CardContent></Card>)}</div>
         </section>
@@ -139,7 +140,7 @@ export default function Learning() {
           <ul className="space-y-2">{unique.slice(0, 100).map(item =>
             <li key={item.cardId} className="p-3 rounded border bg-card flex justify-between gap-3 items-center">
               <div><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · Missed {new Date(item.reviewedAt).toLocaleDateString()}</p></div>
-              <Link href={`/learning/review/${item.deckId}?mode=missed`}><Button variant="outline">Retry</Button></Link>
+              <Button asChild variant="outline"><Link href={`/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
             </li>)}</ul>}
       </section>
     </div>
@@ -151,6 +152,7 @@ export function AdaptiveReview() {
   const { user, setUser, loading } = useStudyUser();
   const mode = new URLSearchParams(window.location.search).get("mode");
   const validMode = mode === "all" || mode === "missed" ? mode : "due";
+  const [queueLoading,setQueueLoading] = useState(true);
   const [queue, setQueue] = useState<CardRow[]>([]);
   const [total, setTotal] = useState(0);
   const [index, setIndex] = useState(0);
@@ -160,10 +162,10 @@ export function AdaptiveReview() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   useEffect(() => {
     if (!user) return;
-    let active = true;
+    let active = true;setQueueLoading(true);
     api<{ cards: CardRow[]; totalMatching: number }>(`/api/study/queue?deckId=${encodeURIComponent(deckId)}&mode=${validMode}`)
       .then(result => { if (active) { setQueue(result.cards); setTotal(result.totalMatching); setIndex(0); setShown(false); } })
-      .catch(err => { if (active) setError(err.message); });
+      .catch(err => { if (active) setError(err.message); }).finally(()=>{if(active)setQueueLoading(false);});
     return () => { active = false; };
   }, [user, deckId, validMode]);
   const card = queue[index];
@@ -184,9 +186,9 @@ export function AdaptiveReview() {
       <p className="text-muted-foreground">Due queue · {validMode} · Card {Math.min(index + 1, queue.length)} of {queue.length}{total > 100 ? " (first 100)" : ""}</p>
       <Progress value={queue.length ? 100 * index / queue.length : 100} aria-label="Review progress" />
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      {!card ? <Card><CardContent className="p-8 text-center space-y-3"><h2 className="text-2xl font-bold">Queue complete</h2>
-        <p>Reviews are saved. Come back when cards are due, including from another device.</p><Link href="/learning"><Button>View dashboard</Button></Link></CardContent></Card> :
-        <Card><CardHeader><h2 className="text-2xl font-semibold leading-none tracking-tight">{card.front}</h2></CardHeader>
+      {queueLoading?<p role="status">Loading saved review queue…</p>:!card ? <Card><CardContent className="p-8 text-center space-y-3"><h2 className="text-2xl font-bold">Queue complete</h2>
+        <p>Reviews are saved. Come back when cards are due, including from another device.</p><Button asChild><Link href="/learning">View dashboard</Link></Button></CardContent></Card> :
+        <Card><CardHeader><CardTitle><h2 className="text-2xl">{card.front}</h2></CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {!shown ? <Button className="w-full" onClick={() => setShown(true)}>Reveal answer</Button> :
               <><div aria-live="polite" className="p-4 rounded bg-muted"><strong>Answer</strong><p className="mt-2 whitespace-pre-wrap">{card.back}</p></div>

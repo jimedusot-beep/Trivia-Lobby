@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
+import { useDecks } from "@/hooks/use-decks";
 import { useStudyUser } from "./Learning";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 type Source = { id: string; title: string; body: string };
-type Draft = { id: string; sourceId: string; front: string; back: string; explanation: string | null; evidence: string; approved: boolean };
+type Draft = { id: string; sourceId: string; front: string; back: string; explanation: string | null; evidence: string; approved: boolean; publishedQuestionId:number|null };
 const request = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   const result = await response.json().catch(() => ({}));
@@ -16,6 +17,8 @@ const request = async <T,>(url: string, method = "GET", body?: unknown): Promise
 };
 
 export default function LearningSources() {
+  const {data:decks} = useDecks();
+  const [publishDeck,setPublishDeck] = useState("");
   const { user, loading } = useStudyUser();
   const [sources, setSources] = useState<Source[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -74,17 +77,21 @@ export default function LearningSources() {
           <Button disabled={busy} onClick={() => void generate(s.id)}>Suggest cards</Button>
         </CardContent></Card>)}
       </div></section>
+      <label htmlFor="publish-deck">Publish approved questions to your deck</label><select id="publish-deck" className="border p-3 rounded" value={publishDeck} onChange={e=>setPublishDeck(e.target.value)}><option value="">Choose a deck</option>{decks?.map(d=><option key={d.id} value={d.id}>{d.title}</option>)}</select>
       <section className="space-y-3"><h2 className="text-2xl font-bold">Suggested cards — human review</h2>
         {drafts.length === 0 ? <p>No AI draft suggestions yet. AI is optional and may not be configured.</p> : drafts.map(d =>
           <Card key={d.id}><CardContent className="p-4 space-y-3">
             <label htmlFor={`front-${d.id}`}>Question</label>
             <Input id={`front-${d.id}`} value={d.front} maxLength={400} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, front: e.target.value } : x))} />
             <label htmlFor={`back-${d.id}`}>Answer</label>
-            <Textarea id={`back-${d.id}`} rows={2} maxLength={1000} value={d.back} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, back: e.target.value } : x))} />
+            <Textarea id={`back-${d.id}`} rows={2} maxLength={500} value={d.back} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, back: e.target.value } : x))} />
             <label htmlFor={`explanation-${d.id}`}>Explanation (editable)</label>
             <Textarea id={`explanation-${d.id}`} rows={3} maxLength={1500} value={d.explanation ?? ""} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, explanation: e.target.value } : x))} />
             <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">Evidence: “{d.evidence}”</blockquote>
             <Button disabled={busy} variant={d.approved ? "outline" : "default"} onClick={() => void update(d)}>{d.approved ? "Return to pending" : "Save edits and approve"}</Button>
+            <Button variant="outline" disabled={busy||!d.approved||!publishDeck||!!d.publishedQuestionId} onClick={async()=>{
+              setBusy(true);setError("");try{await request(`/api/study/drafts/${d.id}/publish`,"POST",{deckId:Number(publishDeck)});await refresh();setNotice("Approved question published with its evidence.");}catch(e){setError((e as Error).message);}finally{setBusy(false);}
+            }}>{d.publishedQuestionId?"Published":"Publish approved question"}</Button>
             <span className="ml-3 text-sm">{d.approved ? "Approved (private)" : "Not approved"}</span>
           </CardContent></Card>)}
       </section>

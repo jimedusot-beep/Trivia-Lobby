@@ -1,5 +1,7 @@
 # Evidence-linked room-state reconstruction: first implemented slice
 
+Integration note (2026-10-22): this document records the original PR #7 slice. The secured match engine now lives in `server/live-game.ts`, reuses `publicPlayerView` and `canSubmitAnswer`, and retains the pure projection tests in `npm test`. Full player lists use the versioned protocol rather than the original top-five legacy payload. Rotating reconnect credentials, cryptographic codes, deadlines and live socket/browser tests supersede the corresponding gaps listed below. See [the combined review](../INTEGRATION_REVIEW.md) for current evidence and remaining limits.
+
 This implementation uses a **methodological** pattern from documented reverse-engineering case studies: infer a narrow observable contract, implement it independently, then verify invariants with repeatable tests. It does **not** include decompiled or copied proprietary game code.
 
 ## Architectural source and scope

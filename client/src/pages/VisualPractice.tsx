@@ -14,7 +14,7 @@ type AnswerView = {
   items?: Named[]; imageUrl?: string; imageAlt?: string;
 };
 type PracticeItem = { id: number; position: number; question: {prompt: string;answer: AnswerView} };
-type Graded = { correct: boolean; answer?: unknown; explanation: string };
+type Graded = { correct: boolean; answer?: unknown; explanation: string; source?:{attribution?:string;page?:number;passage?:string} };
 function answerDescription(answer: unknown): string {
   if (!answer || typeof answer !== "object" || !("kind" in answer)) return "";
   const a = answer as { kind:string; correctOptionIds?:string[]; correctTargetIds?:string[]; pairs?: {prompt:string;match:string}[];
@@ -38,10 +38,12 @@ export default function VisualPractice() {
   const [items, setItems] = useState<PracticeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [requestId,setRequestId] = useState(()=>crypto.randomUUID());
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [targetId, setTargetId] = useState("");
+  const [dragged, setDragged] = useState("");
   const [matchIds, setMatchIds] = useState<Record<string,string>>({});
   const [orderIds, setOrderIds] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
@@ -49,13 +51,14 @@ export default function VisualPractice() {
   const [result, setResult] = useState<Graded | null>(null);
   const [busy, setBusy] = useState(false);
   const [seconds, setSeconds] = useState(30);
+  const [expiredSent,setExpiredSent]=useState(false);
   const current = items[index];
   const answer = current?.question.answer;
   useEffect(() => {
     if (!Number.isSafeInteger(deckId) || deckId<=0) return;
     let active = true;
     setLoading(true);
-    fetch(`/api/decks/${deckId}/questions/practice`)
+    fetch(`/api/decks/${deckId}/questions/practice${new URLSearchParams(window.location.search).get("mode")==="adaptive"?"?mode=adaptive":""}`)
       .then(async response => {if (!response.ok) throw new Error("Failed to load exam");return response.json();})
       .then(data => {if(active)setItems(data);})
       .catch(err=>{if(active)setError(err instanceof Error?err.message:"Failed to load exam");})
@@ -68,20 +71,20 @@ export default function VisualPractice() {
     return ()=>window.clearInterval(timer);
   },[timed,current,result]);
   useEffect(() => {
-    if (timed && current && seconds===0 && !result && !busy) {
-      setResult({correct:false,explanation:"The local 30-second timer expired. This is not an authoritative multiplayer deadline."});
+    if (timed && current && seconds===0 && !result && !busy && !expiredSent) {
+      setExpiredSent(true);void submit(true);
     }
-  }, [timed,current,seconds,result,busy]);
+  }, [timed,current,seconds,result,busy,expiredSent]);
   function resetResponse() {
-    setSelectedIds([]);setTargetId("");setMatchIds({});setOrderIds([]);setTyped("");setTruth(null);
-    setResult(null);setSeconds(30);setError("");
+    setRequestId(crypto.randomUUID());setSelectedIds([]);setTargetId("");setMatchIds({});setOrderIds([]);setTyped("");setTruth(null);
+    setResult(null);setSeconds(30);setError("");setExpiredSent(false);
   }
   function next() {setIndex(i=>i+1);resetResponse();}
   function restart() {setIndex(0);setCorrect(0);resetResponse();}
-  async function submit() {
+  async function submit(skipped=false) {
     if (!current || !answer || result || busy) return;
     let response: unknown;
-    switch(answer.kind) {
+    if(!skipped)switch(answer.kind) {
       case "multiple_choice": case "multiple_select": response={selectedIds};break;
       case "image_hotspot": case "diagram_identification": response={targetId};break;
       case "matching": case "drag_drop_labels": response={matchIds};break;
@@ -92,7 +95,7 @@ export default function VisualPractice() {
     setBusy(true);setError("");
     try {
       const reply = await fetch(`/api/decks/${deckId}/questions/${current.id}/check`,{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response}),
+        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response,requestId,skipped}),
       });
       if(!reply.ok) throw new Error((await reply.json().catch(()=>({}))).message??"Answer validation failed");
       const graded:Graded = await reply.json();
@@ -112,11 +115,13 @@ export default function VisualPractice() {
   if(error&&!items.length)return <main className="p-8" role="alert">{error} <Link href="/">Back</Link></main>;
   return <main className="min-h-screen p-4 md:p-8 bg-muted/30">
     <section className="max-w-3xl mx-auto space-y-5">
-      <Link href="/"><Button variant="ghost">Back to library</Button></Link>
+      <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":"Visual Practice"}</h1>
-      <p className="text-sm text-muted-foreground">Solo session only. Answers are graded by the server; results are not saved to an account.</p>
+      <p className="text-sm text-muted-foreground">Answers and review schedules are saved to your account. Choose timed, untimed or adaptive practice.</p>
+      <div className="flex flex-wrap gap-3"><a href={`/visual-practice/${deckId}`} className="underline">Untimed</a><a href={`/visual-practice/${deckId}?mode=timed`} className="underline">Timed</a><a href={`/visual-practice/${deckId}?mode=adaptive`} className="underline">Adaptive</a></div>
+      {result?.source&&<aside className="p-4 border rounded" aria-label="Source citation"><strong>{result.source.attribution??"Source"}{result.source.page?` · page ${result.source.page}`:""}</strong>{result.source.passage&&<blockquote>{result.source.passage}</blockquote>}</aside>}
       <Progress value={items.length ? Math.min(100,index/items.length*100):0} aria-label="Question progress"/>
-      {!items.length?<Card><CardContent className="p-6">This deck has no visual questions yet. <Link href={`/exam-builder/${deckId}`}><Button>Add questions</Button></Link></CardContent></Card>
+      {!items.length?<Card><CardContent className="p-6">This deck has no visual questions yet. <Button asChild><Link href={`/exam-builder/${deckId}`}>Add questions</Link></Button></CardContent></Card>
       :index>=items.length?<Card><CardContent className="p-8 text-center space-y-4">
         <h2 className="text-2xl font-bold">Session complete</h2>
         <p>{correct} of {items.length} graded correct.</p>
@@ -125,7 +130,7 @@ export default function VisualPractice() {
       :<Card>
         <CardHeader>
           <p>Question {index+1} of {items.length}{timed?` · ${seconds}s remaining (local timer)`:""}</p>
-          <CardTitle>{current.question.prompt}</CardTitle>
+          <CardTitle><h2>{current.question.prompt}</h2></CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {(answer?.kind==="multiple_choice"||answer?.kind==="multiple_select")&&<fieldset className="space-y-3">
@@ -138,15 +143,22 @@ export default function VisualPractice() {
             </label>)}
           </fieldset>}
           {(answer?.kind==="matching"||answer?.kind==="drag_drop_labels")&&<div className="space-y-3">
-            <p>Choose the matching label for each prompt or region.</p>
-            {(answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]).map(p=><label className="flex flex-col gap-1" key={p.id}>
-              <span>{p.prompt}</span>
-              <select className="border rounded p-3 bg-background" disabled={!!result}
+            <p>Drag a label onto a prompt, tap a label then its prompt, or use the menus.</p>
+            <div className="flex flex-wrap gap-2" aria-label="Matching labels">
+              {(answer.matches??answer.labels??[]).map(m=><Button key={m.id} type="button" variant={dragged===m.id?"default":"outline"} draggable disabled={!!result}
+                onDragStart={e=>{e.dataTransfer.setData("text/plain",m.id);setDragged(m.id);}} onClick={()=>setDragged(m.id)}>{m.label}</Button>)}
+            </div>
+            {(answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]).map(p=><div className="flex flex-col gap-1 border rounded p-3" key={p.id}
+              onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const label=e.dataTransfer.getData("text/plain");if(!result&&(answer.matches??answer.labels??[]).some(m=>m.id===label))setMatchIds(old=>({...old,[p.id]:label}));}}>
+              <Button type="button" variant="ghost" className="justify-start min-h-11" disabled={!!result||!dragged} aria-label={`Place selected label at ${p.prompt}`}
+                onClick={()=>{setMatchIds(old=>({...old,[p.id]:dragged}));setDragged("");}}>Place selected label here</Button>
+              <label htmlFor={`match-${p.id}`}>{p.prompt}</label>
+              <select id={`match-${p.id}`} className="border rounded p-3 bg-background" disabled={!!result}
                 value={matchIds[p.id]??""} onChange={e=>setMatchIds(old=>({...old,[p.id]:e.target.value}))}>
                 <option value="">Choose a label</option>
                 {(answer.matches??answer.labels??[]).map(m=><option value={m.id} key={m.id}>{m.label}</option>)}
               </select>
-            </label>)}
+            </div>)}
           </div>}
           {(answer?.kind==="image_hotspot"||answer?.kind==="diagram_identification"||answer?.kind==="drag_drop_labels")&&
             <div className="space-y-3">
@@ -156,7 +168,7 @@ export default function VisualPractice() {
                   aria-label={`Select region ${i+1}`} aria-pressed={targetId===t.id}
                   onClick={()=>setTargetId(t.id)}
                   className={`absolute rounded-full border-2 border-white focus-visible:outline outline-4 outline-primary ${targetId===t.id?"bg-blue-700":"bg-red-600"}`}
-                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"28px",height:"28px",transform:"translate(-50%,-50%)"}}/>)}
+                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"44px",height:"44px",transform:"translate(-50%,-50%)"}}/>)}
               </div>:<p role="note">The source image is unavailable; ask the author to add an HTTPS image URL.</p>}
               {answer.kind!=="drag_drop_labels"&&<fieldset className="flex flex-wrap gap-2">
                 <legend className="mb-2">Keyboard-accessible region choices</legend>
@@ -185,7 +197,7 @@ export default function VisualPractice() {
               <Input value={typed} disabled={!!result} maxLength={500} onChange={e=>setTyped(e.target.value)}/>
             </label>}
           {error&&<p role="alert" className="text-destructive">{error}</p>}
-          {!result?<Button disabled={busy||timed&&seconds===0} onClick={()=>void submit()}>{busy?"Checking…":"Check answer"}</Button>:
+          {!result?<Button disabled={busy} onClick={()=>void submit(timed&&seconds===0)}>{busy?"Checking…":timed&&seconds===0?"Save missed answer":"Check answer"}</Button>:
             <div role="status" className="border p-4 rounded space-y-2">
               <p className="font-semibold">{result.correct?"Correct!":"Not quite."}</p>
               {result.answer !== undefined && result.answer !== null && <p><strong>Answer:</strong> {answerDescription(result.answer)}</p>}

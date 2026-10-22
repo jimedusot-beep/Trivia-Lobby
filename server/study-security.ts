@@ -4,6 +4,7 @@
  */
 export function trustedStudyOrigin(origin: string | undefined, host: string | undefined, fetchSite: string | undefined): boolean {
   if (fetchSite === "cross-site") return false;
+  if ((origin?.length ?? 0) > 2048 || (host?.length ?? 0) > 255) return false;
   if (!origin) return true; // Non-browser clients; SameSite=Strict also protects browser cookies.
   if (!host) return false;
   try {

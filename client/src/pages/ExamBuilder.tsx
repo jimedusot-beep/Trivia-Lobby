@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { Link, useParams } from "wouter";
+import { useAuthorDraft } from "@/hooks/use-author-draft";
 import { useDeck } from "@/hooks/use-decks";
 import { normalizedHotspotPoint } from "@/lib/hotspots";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-type Kind = "multiple_choice" | "matching" | "image_hotspot";
+type Kind = "multiple_choice" | "matching" | "image_hotspot" | "short_answer" | "flashcard" | "true_false";
 type Option = { id: string; label: string };
 type Pair = { id: string; prompt: string; match: string };
 type Target = { id: string; label: string; x: number; y: number; radius: number };
@@ -37,16 +38,35 @@ export default function ExamBuilder() {
   const [saved, setSaved] = useState<Saved[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [kind, setKind] = useState<Kind>("multiple_choice");
+  const [answerText,setAnswerText]=useState("");
+  const [caseSensitive,setCaseSensitive]=useState(false);
+  const [correctTruth,setCorrectTruth]=useState(true);
   const [prompt, setPrompt] = useState("");
   const [explanation, setExplanation] = useState("");
   const [options, setOptions] = useState<Option[]>(newOptions);
   const [pairs, setPairs] = useState<Pair[]>(newPairs);
   const [correctId, setCorrectId] = useState("A");
+  const [files,setFiles]=useState<{id:string;originalName:string;mimeType:string}[]>([]);
+  const [imageAssetId,setImageAssetId]=useState("");
+  const [sourceFileId,setSourceFileId]=useState("");
+  const [sourceAttribution,setSourceAttribution]=useState("");
+  const [sourcePage,setSourcePage]=useState("");
+  const [sourcePassage,setSourcePassage]=useState("");
+  useEffect(()=>{request("/api/library/files").then(setFiles).catch(()=>{});},[]);
   const [imageUrl, setImageUrl] = useState("");
   const [imageAlt, setImageAlt] = useState("");
   const [targets, setTargets] = useState<Target[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const draftStatus = useAuthorDraft(deckId, { selectedId,kind,prompt,explanation,options,pairs,correctId,imageUrl,imageAlt,targets,imageAssetId,sourceFileId,sourceAttribution,sourcePage,sourcePassage,answerText,caseSensitive,correctTruth }, value => {
+    if(typeof value.prompt!=="string" || !["multiple_choice","matching","image_hotspot","short_answer","flashcard","true_false"].includes(String(value.kind)))return;
+    setAnswerText(String(value.answerText??""));setCaseSensitive(value.caseSensitive===true);setCorrectTruth(value.correctTruth!==false);
+    setSelectedId(typeof value.selectedId==="number"?value.selectedId:null);setKind(value.kind as Kind);setPrompt(value.prompt);
+    setExplanation(String(value.explanation??""));setOptions(Array.isArray(value.options)?value.options as Option[]:newOptions());
+    setPairs(Array.isArray(value.pairs)?value.pairs as Pair[]:newPairs());setCorrectId(String(value.correctId??"A"));
+    setImageAssetId(String(value.imageAssetId??""));setSourceFileId(String(value.sourceFileId??""));setSourceAttribution(String(value.sourceAttribution??""));setSourcePage(String(value.sourcePage??""));setSourcePassage(String(value.sourcePassage??""));
+    setImageUrl(String(value.imageUrl??""));setImageAlt(String(value.imageAlt??""));setTargets(Array.isArray(value.targets)?value.targets as Target[]:[]);
+  });
   const endpoint = `/api/decks/${deckId}/questions`;
   const reload = useCallback(async () => {
     if (!Number.isSafeInteger(deckId) || deckId < 1) return;
@@ -55,24 +75,31 @@ export default function ExamBuilder() {
   }, [deckId, endpoint]);
   useEffect(() => { void reload(); }, [reload]);
   function reset() {
+    setAnswerText("");setCaseSensitive(false);setCorrectTruth(true);
     setSelectedId(null); setKind("multiple_choice"); setPrompt(""); setExplanation("");
     setOptions(newOptions()); setPairs(newPairs()); setCorrectId("A");
+    setImageAssetId("");setSourceFileId("");setSourceAttribution("");setSourcePage("");setSourcePassage("");
     setImageUrl(""); setImageAlt(""); setTargets([]); setNotice("");
   }
   function edit(item: Saved) {
     const q = item.question;
-    if (!["multiple_choice","matching","image_hotspot"].includes(q.answer.kind)) {
+    if (!["multiple_choice","matching","image_hotspot","text","short_answer","flashcard","true_false"].includes(q.answer.kind)) {
       setNotice(`This question format (${q.answer.kind}) is supported by the model but not by this visual editor yet.`);
       return;
     }
-    setSelectedId(item.id); setKind(q.answer.kind as Kind); setPrompt(q.prompt);
+    setSelectedId(item.id); setKind(q.answer.kind==="text"?"short_answer":q.answer.kind as Kind); setPrompt(q.prompt);
+    setSourceFileId(q.source?.documentId??"");setSourceAttribution(q.source?.attribution??"");setSourcePage(q.source?.page?String(q.source.page):"");setSourcePassage(q.source?.passage??"");
     setExplanation(q.explanation ?? "");
+    if(q.answer.kind==="short_answer"||q.answer.kind==="text"){setAnswerText(q.answer.acceptedAnswers.join("\n"));setCaseSensitive(q.answer.caseSensitive);}
+    if(q.answer.kind==="flashcard")setAnswerText(q.answer.back);
+    if(q.answer.kind==="true_false")setCorrectTruth(q.answer.correct);
     setNotice("");
     if (q.answer.kind === "multiple_choice") {
       setOptions(q.answer.options); setCorrectId(q.answer.correctOptionIds[0]);
     }
     if (q.answer.kind === "matching") setPairs(q.answer.pairs);
     if (q.answer.kind === "image_hotspot") {
+      setImageAssetId(q.answer.imageAssetId??"");
       setImageUrl(q.answer.imageUrl ?? ""); setImageAlt(q.answer.imageAlt ?? "");
       setTargets(q.answer.targets); setCorrectId(q.answer.correctTargetIds[0]);
     }
@@ -93,17 +120,21 @@ export default function ExamBuilder() {
         answer = {kind, options, correctOptionIds:[correctId]};
       } else if (kind === "matching") {
         answer = {kind, pairs};
+      } else if(kind==="short_answer"){answer={kind,acceptedAnswers:answerText.split("\n").map(s=>s.trim()).filter(Boolean),caseSensitive};
+      } else if(kind==="flashcard"){answer={kind,back:answerText};
+      } else if(kind==="true_false"){answer={kind,correct:correctTruth};
       } else {
-        answer = {kind, imageUrl, imageAlt, targets, correctTargetIds:[correctId]};
+        answer = {kind, ...(imageAssetId?{imageAssetId}:{imageUrl}), imageAlt, targets, correctTargetIds:[correctId]};
       }
       const question = universalQuestionSchema.omit({ id: true }).parse({
         schemaVersion:1, prompt, explanation, tags:[], answer,
+        ...(sourceFileId||sourceAttribution||sourcePassage?{source:{documentId:sourceFileId||undefined,attribution:sourceAttribution||files.find(f=>f.id===sourceFileId)?.originalName,page:sourcePage?Number(sourcePage):undefined,passage:sourcePassage||undefined}}:{}),
       });
       await request(selectedId === null ? endpoint : `${endpoint}/${selectedId}`,
         selectedId === null ? "POST" : "PATCH", question);
       setNotice("Question saved to the database.");
       setSelectedId(null);
-      setPrompt(""); setExplanation("");
+      setPrompt(""); setExplanation(""); setAnswerText(""); setCaseSensitive(false); setCorrectTruth(true);
       setOptions(newOptions()); setPairs(newPairs()); setTargets([]); setCorrectId("A");
       await reload();
     } catch (err) { setNotice(messageFrom(err)); }
@@ -130,16 +161,16 @@ export default function ExamBuilder() {
 
   return <main className="min-h-screen bg-muted/30 p-4 md:p-8">
     <section className="max-w-5xl mx-auto space-y-6">
-      <Link href="/"><Button variant="ghost">Back to decks</Button></Link>
+      <p role="status" className="text-sm text-muted-foreground">{draftStatus}</p>
+      <Button asChild variant="ghost"><Link href="/">Back to decks</Link></Button>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — Exam Builder</h1>
       <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded" role="note">
-        Current decks are public and editable without accounts. Do not add private exams or student data.
-        Linked images are external HTTPS URLs, not uploaded or permanently archived files.
+        Questions are private to your account. Add explanations and source passages for review, and choose saved diagrams from your private source library.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={reset}>New question</Button>
-        <Link href={`/visual-practice/${deckId}`}><Button>Practice visual questions</Button></Link>
-        <Link href={`/visual-practice/${deckId}?mode=timed`}><Button variant="outline">Timed test</Button></Link>
+        <Button asChild><Link href={`/visual-practice/${deckId}`}>Practice visual questions</Link></Button>
+        <Button asChild variant="outline"><Link href={`/visual-practice/${deckId}?mode=timed`}>Timed test</Link></Button>
       </div>
       {notice && <p role="status" className="rounded border p-3">{notice}</p>}
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6">
@@ -167,6 +198,7 @@ export default function ExamBuilder() {
               <select id="format" className="w-full border rounded p-3 bg-background" value={kind}
                 onChange={e=>setKind(e.target.value as Kind)}>
                 <option value="multiple_choice">Multiple choice</option>
+                <option value="short_answer">Short answer</option><option value="flashcard">Flashcard</option><option value="true_false">True / false</option>
                 <option value="matching">Matching</option>
                 <option value="image_hotspot">Image hotspot</option>
               </select>
@@ -185,6 +217,8 @@ export default function ExamBuilder() {
               </div>)}
               <Button variant="outline" disabled={options.length>=12} onClick={()=>setOptions(old=>[...old,{id:crypto.randomUUID(),label:""}])}>Add choice</Button>
             </fieldset>}
+            {(kind==="short_answer"||kind==="flashcard")&&<div className="space-y-2"><Label htmlFor="text-answer">{kind==="short_answer"?"Accepted answers (one per line)":"Card answer"}</Label><Textarea id="text-answer" value={answerText} onChange={e=>setAnswerText(e.target.value)} maxLength={10000}/>{kind==="short_answer"&&<label className="flex gap-2"><input type="checkbox" checked={caseSensitive} onChange={e=>setCaseSensitive(e.target.checked)}/>Match case</label>}</div>}
+            {kind==="true_false"&&<fieldset><legend>Correct answer</legend>{[true,false].map(value=><label className="inline-flex p-3 gap-2" key={String(value)}><input type="radio" name="correct-truth" checked={correctTruth===value} onChange={()=>setCorrectTruth(value)}/>{String(value)}</label>)}</fieldset>}
             {kind==="matching" && <fieldset className="space-y-3">
               <legend className="font-semibold">Matching pairs</legend>
               {pairs.map((p,i)=><div className="border rounded p-2 space-y-2" key={p.id}>
@@ -203,13 +237,14 @@ export default function ExamBuilder() {
                 <Input id="image-url" type="url" placeholder="https://..." value={imageUrl} onChange={e=>setImageUrl(e.target.value)}/></div>
               <div><Label htmlFor="image-alt">Diagram description (for accessibility)</Label>
                 <Input id="image-alt" value={imageAlt} onChange={e=>setImageAlt(e.target.value)}/></div>
-              {imageUrl.startsWith("https://") && <div className="relative w-full border rounded overflow-hidden">
-                <img src={imageUrl} alt={imageAlt || "Editable diagram"} className="w-full h-auto block"/>
+              {(imageAssetId||imageUrl.startsWith("https://")) && <div className="relative w-full border rounded overflow-hidden">
+                <img src={imageAssetId?`/api/library/files/${imageAssetId}/media`:imageUrl} alt={imageAlt || "Editable diagram"} className="w-full h-auto block"/>
                 <button type="button" aria-label="Add a target at the clicked diagram position, or at center using keyboard"
                   className="absolute inset-0 cursor-crosshair" onClick={addHotspot}/>
                 {targets.map(t=><span key={t.id} aria-hidden="true" className="absolute rounded-full bg-red-600 border-2 border-white pointer-events-none"
                   style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:14,height:14,transform:"translate(-50%,-50%)"}} />)}
               </div>}
+              <div><Label htmlFor="saved-image">Or choose a private saved diagram</Label><select id="saved-image" className="w-full border rounded p-3" value={imageAssetId} onChange={e=>setImageAssetId(e.target.value)}><option value="">Use HTTPS image URL</option>{files.filter(f=>f.mimeType.startsWith("image/")).map(f=><option key={f.id} value={f.id}>{f.originalName}</option>)}</select></div>
               <Button variant="outline" disabled={targets.length>=40}
                 onClick={()=>{const id=crypto.randomUUID();setTargets(old=>[...old,{id,label:"New region",x:0.5,y:0.5,radius:0.07}]);setCorrectId(id);}}>Add target at center</Button>
               <fieldset className="space-y-3">
@@ -233,6 +268,12 @@ export default function ExamBuilder() {
                 </div>)}
               </fieldset>
             </div>}
+            <fieldset className="space-y-3 border rounded p-3"><legend>Source citation (optional)</legend>
+              <Label htmlFor="source-file">Saved source document</Label><select id="source-file" className="w-full border rounded p-3" value={sourceFileId} onChange={e=>setSourceFileId(e.target.value)}><option value="">No linked file</option>{files.map(f=><option key={f.id} value={f.id}>{f.originalName}</option>)}</select>
+              <Label htmlFor="source-attribution">Source title or attribution</Label><Input id="source-attribution" maxLength={500} value={sourceAttribution} onChange={e=>setSourceAttribution(e.target.value)}/>
+              <Label htmlFor="source-page">Page</Label><Input id="source-page" type="number" min={1} value={sourcePage} onChange={e=>setSourcePage(e.target.value)}/>
+              <Label htmlFor="source-passage">Supporting passage (shown after answering)</Label><Textarea id="source-passage" maxLength={2000} value={sourcePassage} onChange={e=>setSourcePassage(e.target.value)}/>
+            </fieldset>
             <div><Label htmlFor="explanation">Explanation (shown after answering)</Label>
               <Textarea id="explanation" value={explanation} onChange={e=>setExplanation(e.target.value)} maxLength={4000}/></div>
             <Button disabled={busy} onClick={()=>void save()}>{busy?"Saving…":selectedId===null?"Save question":"Save changes"}</Button>

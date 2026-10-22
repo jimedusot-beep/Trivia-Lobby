@@ -1,17 +1,14 @@
 -- Phase 4 standalone PostgreSQL migration. Run after existing decks/cards tables exist.
 -- Safe to run on a populated database: old public decks/cards remain unchanged.
 BEGIN;
-CREATE TABLE IF NOT EXISTS study_accounts (
-  id uuid PRIMARY KEY, email text NOT NULL UNIQUE, password_hash text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS study_auth_tokens (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
-  token_hash text NOT NULL UNIQUE, expires_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+-- A separately deployed experimental study_accounts database needs an operator-reviewed identity migration.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid=to_regclass('study_schedule') AND c.confrelid=to_regclass('study_accounts')) THEN
+    RAISE EXCEPTION 'Experimental study account identities require explicit migration to users before proceeding';
+  END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS study_schedule (
-  user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   card_id integer NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
   fsrs_state jsonb NOT NULL,
   due_at timestamptz NOT NULL,
@@ -23,7 +20,7 @@ CREATE TABLE IF NOT EXISTS study_schedule (
 );
 CREATE INDEX IF NOT EXISTS study_schedule_user_due_idx ON study_schedule(user_id, due_at);
 CREATE TABLE IF NOT EXISTS study_events (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   card_id integer NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
   request_id uuid NOT NULL, rating integer NOT NULL CHECK(rating BETWEEN 1 AND 4),
   correct boolean NOT NULL,
@@ -34,12 +31,12 @@ CREATE TABLE IF NOT EXISTS study_events (
 CREATE UNIQUE INDEX IF NOT EXISTS study_events_user_request_idx ON study_events(user_id,request_id);
 CREATE INDEX IF NOT EXISTS study_events_user_time_idx ON study_events(user_id,reviewed_at);
 CREATE TABLE IF NOT EXISTS study_sources (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title text NOT NULL, body text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS study_drafts (
-  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES study_accounts(id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   source_id uuid NOT NULL REFERENCES study_sources(id) ON DELETE CASCADE,
   front text NOT NULL, back text NOT NULL, explanation text, evidence text NOT NULL,
   approved boolean NOT NULL DEFAULT false,

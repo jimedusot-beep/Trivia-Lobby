@@ -1,62 +1,15 @@
-import { randomBytes, randomUUID, createHash, scrypt as callbackScrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { and, eq, gt, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
-import { cards, decks, studyAccounts, studyAuthTokens, studySchedule, studyEvents } from "@shared/schema";
+import { cards, decks, studySchedule, studyEvents } from "@shared/schema";
 import { calculateReview, isStudyRating, normalizedPrompt } from "./study-scheduler";
+import { resolveUser } from "./auth";
 import { registerStudyDraftRoutes } from "./study-drafts";
-import { trustedStudyOrigin } from "./study-security";
 
-const scrypt = promisify(callbackScrypt);
-const TOKEN_NAME = "tl_study";
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const passwordPolicy = z.string().min(12).max(128);
-const credentials = z.object({ email: z.string().email().max(254).transform(x => x.trim().toLowerCase()), password: passwordPolicy }).strict();
 const reviewBody = z.object({ cardId: z.number().int().positive(), rating: z.number().int().min(1).max(4), requestId: z.string().uuid() }).strict();
-const authWindow = new Map<string, { count: number; expires: number }>();
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
-
-async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("hex");
-  const key = await scrypt(password, salt, 64) as Buffer;
-  return `scrypt:${salt}:${key.toString("hex")}`;
-}
-
-async function comparePassword(password: string, value: string) {
-  const parts = value.split(":");
-  if (parts.length !== 3 || parts[0] !== "scrypt" || !/^[a-f0-9]{32}$/.test(parts[1]) || !/^[a-f0-9]{128}$/.test(parts[2])) return false;
-  const key = await scrypt(password, parts[1], 64) as Buffer;
-  return timingSafeEqual(key, Buffer.from(parts[2], "hex"));
-}
-
-export async function findStudyUser(req: Request) {
-  const cookie = req.headers.cookie?.split(";").map(s => s.trim()).find(s => s.startsWith(TOKEN_NAME + "="));
-  const token = cookie?.slice(TOKEN_NAME.length + 1);
-  if (!token || !/^[a-zA-Z0-9_-]{43}$/.test(token)) return null;
-  const [user] = await db.select({ id: studyAccounts.id, email: studyAccounts.email })
-    .from(studyAuthTokens).innerJoin(studyAccounts, eq(studyAuthTokens.userId, studyAccounts.id))
-    .where(and(eq(studyAuthTokens.tokenHash, hashToken(token)), gt(studyAuthTokens.expiresAt, new Date()))).limit(1);
-  return user ?? null;
-}
-
-async function issueToken(res: Response, userId: string) {
-  const token = randomBytes(32).toString("base64url");
-  await db.insert(studyAuthTokens).values({ id: randomUUID(), userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + WEEK_MS) });
-  res.setHeader("Set-Cookie", `${TOKEN_NAME}=${token}; Path=/api/study; HttpOnly; SameSite=Strict; Max-Age=604800${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
-}
-
-function checkRate(req: Request, res: Response) {
-  // Conservative single-process protection; use a shared limiter at larger scale.
-  const key = req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  const window = authWindow.get(key);
-  const next = !window || window.expires < now ? { count: 1, expires: now + 15 * 60_000 } : { count: window.count + 1, expires: window.expires };
-  authWindow.set(key, next);
-  if (next.count > 10) { res.status(429).json({ message: "Too many authentication requests" }); return false; }
-  return true;
-}
+export async function findStudyUser(req: Request) { return req.studyUser ?? await resolveUser(req.headers.cookie); }
 
 function failure(res: Response, err: unknown) {
   if (err instanceof z.ZodError) { res.status(400).json({ message: "Invalid request", issues: err.issues }); return; }
@@ -71,57 +24,6 @@ const safe = (handler: Handler) => async (req: Request, res: Response) => {
 };
 
 export function registerStudyRoutes(app: Express) {
-  app.use("/api/study", (req, res, next) => {
-    res.setHeader("Cache-Control", "private, no-store");
-    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
-      if (!trustedStudyOrigin(req.get("Origin"), req.get("Host"), req.get("Sec-Fetch-Site"))) {
-        res.status(403).json({ message: "Cross-site request rejected" }); return;
-      }
-    }
-    next();
-  });
-
-  app.post("/api/study/auth/register", safe(async (req, res) => {
-    if (!checkRate(req, res)) return;
-    const input = credentials.parse(req.body);
-    const [existing] = await db.select({ id: studyAccounts.id }).from(studyAccounts).where(eq(studyAccounts.email, input.email));
-    if (existing) { res.status(409).json({ message: "Account already exists" }); return; }
-    const id = randomUUID();
-    try {
-      await db.insert(studyAccounts).values({ id, email: input.email, passwordHash: await hashPassword(input.password) });
-    } catch (err) {
-      if ((err as { code?: string }).code === "23505") { res.status(409).json({ message: "Account already exists" }); return; }
-      throw err;
-    }
-    await issueToken(res, id);
-    res.status(201).json({ id, email: input.email });
-  }));
-
-  app.post("/api/study/auth/login", safe(async (req, res) => {
-    if (!checkRate(req, res)) return;
-    const input = credentials.parse(req.body);
-    const [account] = await db.select().from(studyAccounts).where(eq(studyAccounts.email, input.email)).limit(1);
-    if (!account || !await comparePassword(input.password, account.passwordHash)) {
-      res.status(401).json({ message: "Incorrect email or password" }); return;
-    }
-    await issueToken(res, account.id);
-    res.json({ id: account.id, email: account.email });
-  }));
-
-  app.get("/api/study/auth/me", safe(async (req, res) => {
-    const user = await findStudyUser(req);
-    if (!user) { res.status(401).json({ message: "Sign in to save study progress" }); return; }
-    res.json(user);
-  }));
-
-  app.post("/api/study/auth/logout", safe(async (req, res) => {
-    const cookie = req.headers.cookie?.split(";").map(s => s.trim()).find(s => s.startsWith(TOKEN_NAME + "="));
-    const token = cookie?.slice(TOKEN_NAME.length + 1);
-    if (token) await db.delete(studyAuthTokens).where(eq(studyAuthTokens.tokenHash, hashToken(token)));
-    res.setHeader("Set-Cookie", `${TOKEN_NAME}=; Path=/api/study; HttpOnly; SameSite=Strict; Max-Age=0${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
-    res.status(204).end();
-  }));
-
   app.get("/api/study/queue", safe(async (req, res) => {
     const user = await findStudyUser(req);
     if (!user) { res.status(401).json({ message: "Authentication required" }); return; }
@@ -131,7 +33,7 @@ export function registerStudyRoutes(app: Express) {
       type: cards.type, options: cards.options, correctOption: cards.correctOption,
       dueAt: studySchedule.dueAt, needsWork: studySchedule.needsWork, lastRating: studySchedule.lastRating,
     }).from(cards).leftJoin(studySchedule, and(eq(studySchedule.cardId, cards.id), eq(studySchedule.userId, user.id)))
-      .where(eq(cards.deckId, input.deckId)).orderBy(cards.id).limit(5000);
+      .innerJoin(decks, eq(cards.deckId, decks.id)).where(and(eq(cards.deckId, input.deckId), eq(decks.ownerId, user.id))).orderBy(cards.id).limit(5000);
     const now = Date.now();
     const selected = rows.filter(row => input.mode === "all" || (input.mode === "missed" ? row.needsWork : !row.dueAt || row.dueAt.getTime() <= now));
     selected.sort((a, b) => (a.dueAt?.getTime() ?? 0) - (b.dueAt?.getTime() ?? 0) || a.id - b.id);
@@ -144,6 +46,7 @@ export function registerStudyRoutes(app: Express) {
     const input = reviewBody.parse(req.body);
     if (!isStudyRating(input.rating)) { res.status(400).json({ message: "Invalid rating" }); return; }
     const answer = await db.transaction(async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}),hashtext(${input.requestId}))`);
       // Lock per user/card, including before the first schedule row exists.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), ${input.cardId})`);
       const [existing] = await tx.select().from(studyEvents)
@@ -152,7 +55,7 @@ export function registerStudyRoutes(app: Express) {
         if (existing.cardId !== input.cardId || existing.rating !== input.rating) return { conflict: true as const };
         return { event: existing, replay: true };
       }
-      const [card] = await tx.select({ id: cards.id }).from(cards).where(eq(cards.id, input.cardId)).limit(1);
+      const [card] = await tx.select({ id: cards.id }).from(cards).innerJoin(decks, eq(cards.deckId, decks.id)).where(and(eq(cards.id, input.cardId), eq(decks.ownerId, user.id))).limit(1);
       if (!card) return null;
       const [previous] = await tx.select().from(studySchedule)
         .where(and(eq(studySchedule.userId, user.id), eq(studySchedule.cardId, input.cardId))).limit(1);
@@ -212,7 +115,7 @@ export function registerStudyRoutes(app: Express) {
     const user = await findStudyUser(req);
     if (!user) { res.status(401).json({ message: "Authentication required" }); return; }
     const subjects = await db.select({ id: cards.id, deckId: cards.deckId, category: decks.category, title: decks.title })
-      .from(cards).innerJoin(decks, eq(cards.deckId, decks.id)).limit(20000);
+      .from(cards).innerJoin(decks, eq(cards.deckId, decks.id)).where(eq(decks.ownerId, user.id)).limit(20000);
     const states = await db.select().from(studySchedule).where(eq(studySchedule.userId, user.id));
     const events = await db.select({ cardId: studyEvents.cardId, correct: studyEvents.correct, reviewedAt: studyEvents.reviewedAt })
       .from(studyEvents).where(eq(studyEvents.userId, user.id)).orderBy(desc(studyEvents.reviewedAt)).limit(10000);
@@ -273,7 +176,9 @@ export function registerStudyRoutes(app: Express) {
     }).sort((a, b) => a.accuracy - b.accuracy);
     const correct = events.filter(e => e.correct).length;
     const totalDue = Array.from(stats.values()).reduce((n, x) => n + x.due, 0);
-    res.json({
+    const visualStats=await db.execute(sql`SELECT count(*)::int attempts,count(*) FILTER(WHERE correct)::int correct FROM question_attempts WHERE owner_id=${user.id}`);
+    const visualDue=await db.execute(sql`SELECT count(*)::int due FROM question_schedule WHERE owner_id=${user.id} AND due_at<=now()`);
+    res.json({ visual:{...visualStats.rows[0],due:visualDue.rows[0]?.due??0},
       attempts: events.length, correct, accuracy: events.length ? Math.round(100 * correct / events.length) : 0,
       sessions: sessionCount, studyDays: activeDays.size, subjectProgress, dueReviews: totalDue, studyStreak: streak, xp: events.length + correct * 4,
       achievements: [
@@ -293,8 +198,10 @@ export function registerStudyRoutes(app: Express) {
       db.select().from(studySchedule).where(eq(studySchedule.userId, user.id)),
       db.select().from(studyEvents).where(eq(studyEvents.userId, user.id)).orderBy(studyEvents.reviewedAt),
     ]);
+    const questionStates=await db.execute(sql`SELECT * FROM question_schedule WHERE owner_id=${user.id}`);
+    const questionAttempts=await db.execute(sql`SELECT * FROM question_attempts WHERE owner_id=${user.id} ORDER BY created_at`);
     res.setHeader("Content-Disposition", "attachment; filename=trivia-lobby-study-progress.json");
-    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events });
+    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events, questionStates:questionStates.rows, questionAttempts:questionAttempts.rows });
   }));
 
   registerStudyDraftRoutes(app, safe, findStudyUser);
