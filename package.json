@@ -8,7 +8,7 @@
     "build": "node --import tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "test": "node --import tsx --test client/src/lib/*.test.ts server/library-parse.test.ts server/study-scheduler.test.ts tests/phase1-multiplayer.test.ts tests/room-projections.test.ts tests/universal-questions.test.ts tests/platform-unit.test.ts tests/research-manifest.test.mjs",
+    "test": "node --import tsx --test client/src/lib/*.test.ts server/library-parse.test.ts server/study-scheduler.test.ts server/study-security.test.ts server/bounded-response.test.ts server/backup-crypto.test.ts tests/phase1-multiplayer.test.ts tests/room-projections.test.ts tests/universal-questions.test.ts tests/platform-unit.test.ts tests/research-manifest.test.mjs",
     "db:push": "drizzle-kit push",
     "test:integration": "node --import tsx --test --test-force-exit tests/private-library.integration.test.ts tests/universal-questions-db.test.ts tests/phase1-postgres.test.ts server/study-api.test.ts tests/platform.integration.test.ts",
     "db:migrate:phase3": "node --import tsx script/migrate-phase3.ts",
@@ -17,7 +17,9 @@
     "smoke": "node --import tsx script/smoke.ts",
     "backup:db": "bash script/backup-db.sh",
     "restore:db": "bash script/restore-db.sh",
-    "audit:licenses": "node --import tsx script/license-audit.ts"
+    "audit:licenses": "node --import tsx script/license-audit.ts",
+    "backup:encrypted": "node --import tsx script/backup.ts",
+    "backup:drill": "node --import tsx --test --test-force-exit tests/recovery/backup-restore.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1155.0",

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useId } from "react";
 
 interface AnimatedCardProps {
   front: React.ReactNode;
@@ -9,8 +10,12 @@ interface AnimatedCardProps {
 }
 
 export function AnimatedCard({ front, back, isFlipped, onFlip, className }: AnimatedCardProps) {
+  const id=useId();
   return (
-    <div className={`relative w-full h-96 cursor-pointer group perspective-1000 ${className}`} onClick={onFlip}>
+    <div role="button" tabIndex={0} aria-label="Flip flashcard" aria-pressed={isFlipped}
+      aria-describedby={id+(isFlipped?"-back":"-front")}
+      className={`relative w-full h-96 cursor-pointer group perspective-1000 focus-visible:outline focus-visible:outline-primary ${className}`} onClick={onFlip}
+      onKeyDown={event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();onFlip();}}}>
       <motion.div
         className="w-full h-full relative transform-style-3d transition-transform duration-500"
         initial={false}
@@ -18,13 +23,13 @@ export function AnimatedCard({ front, back, isFlipped, onFlip, className }: Anim
         transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
       >
         {/* Front Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-white border-2 border-primary/20 shadow-xl flex flex-col items-center justify-center p-8 text-center">
+        <div id={id+"-front"} aria-hidden={isFlipped} className="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-white border-2 border-primary/20 shadow-xl flex flex-col items-center justify-center p-8 text-center">
           <div className="absolute top-4 left-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Question</div>
           {front}
         </div>
 
         {/* Back Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary shadow-xl flex flex-col items-center justify-center p-8 text-center">
+        <div id={id+"-back"} aria-hidden={!isFlipped} className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary shadow-xl flex flex-col items-center justify-center p-8 text-center">
           <div className="absolute top-4 left-4 text-xs font-bold text-primary uppercase tracking-widest">Answer</div>
           {back}
         </div>

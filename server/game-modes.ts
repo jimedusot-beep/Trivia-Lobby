@@ -9,6 +9,6 @@ export function scoreRound(input:{mode:GameMode;correct:boolean;streak:number;sc
  const multiplier=mode==="party"&&round%3===2?2:1;
  return {awarded:correct?(100+streak*10+bonus)*multiplier+wager:-wager,
   streak:correct?streak+1:mode==="workshop"&&guard>0?streak:0,
-  coins:correct?20:0,focus:mode==="workshop"?Math.max(0,focus-1):focus,
+  coins:correct?20:0,focus:mode==="workshop"&&correct?Math.max(0,focus-1):focus,
   guard:mode==="workshop"&&!correct?Math.max(0,guard-1):guard};
 }

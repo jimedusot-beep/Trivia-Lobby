@@ -7,6 +7,7 @@ import { cards, decks, universalQuestions, studyDrafts, studySources } from "@sh
 import { universalQuestionSchema } from "@shared/universal-questions";
 import { createHash } from "node:crypto";
 import { normalizedPrompt } from "./study-scheduler";
+import { readBoundedJson } from "./bounded-response";
 
 type Guarded = (handler: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response) => Promise<void>;
 type FindUser = (req: Request) => Promise<{ id: string; email: string } | null>;
@@ -64,9 +65,7 @@ export function registerStudyDraftRoutes(app: Express, safe: Guarded, findUser: 
       }),
     });
     if (!upstream.ok) { res.status(502).json({ message: "AI draft provider failed" }); return; }
-    const raw=await upstream.text();
-    if(raw.length>100000){res.status(502).json({message:"AI provider response exceeded the size limit"});return;}
-    const payload = generatedSchema.parse(JSON.parse(raw));
+    const payload = generatedSchema.parse(await readBoundedJson(upstream,100000));
     const existing = await db.select({ front: studyDrafts.front }).from(studyDrafts).where(eq(studyDrafts.userId, user.id)).limit(10000);
     const liveCards = await db.select({ front: cards.front }).from(cards).innerJoin(decks,eq(cards.deckId,decks.id)).where(eq(decks.ownerId,user.id)).limit(10000);
     const used = new Set([...existing, ...liveCards].map(x => normalizedPrompt(x.front)));

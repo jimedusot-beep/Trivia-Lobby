@@ -87,6 +87,10 @@ function reveal(room: Room) {
   for(const [id,record] of room.answers){
     const player=room.players.get(id)!;player.score=Math.max(0,player.score+record.awarded);player.streak=record.streak;player.coins+=record.coins;player.focus=record.focus;player.guard=record.guard;
   }
+  for (const player of room.players.values()) if (!room.answers.has(player.id)) {
+    const missed = scoreRound({mode:room.mode,correct:false,streak:player.streak,score:player.score,wager:0,focus:player.focus,guard:player.guard,round:room.questionIndex});
+    player.streak=missed.streak;player.focus=missed.focus;player.guard=missed.guard;
+  }
   lobbyUpdate(room);
   send(room.hostWs, WS_EVENTS.ANSWER_RESULT, resultFor(room));
   for (const p of room.players.values()) if (p.connected) {
@@ -155,6 +159,8 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
   cleanup.unref?.();
 
   wss.on("connection", (ws, req) => {
+    // Protocol/frame errors close this connection without crashing the match server.
+    ws.on("error", () => {});
     const origin = req.headers.origin;
     if (origin) {
       try {

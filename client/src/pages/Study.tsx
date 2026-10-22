@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import confetti from "canvas-confetti";
+import { useSaveReview } from "@/hooks/use-save-review";
 import { useDeck } from "@/hooks/use-decks";
 import { AnimatedCard } from "@/components/AnimatedCard";
 import { downloadDeck } from "@/lib/deck-io";
@@ -27,11 +28,13 @@ export default function Study() {
     }
   }, [deck]);
 
+  const review = useSaveReview();
   const currentCard = queue[currentIndex];
   const progress = queue.length > 0 ? (currentIndex / queue.length) * 100 : 0;
 
-  const handleNext = (correct: boolean) => {
-    if (!currentCard || completed) return;
+  const handleNext = async (correct: boolean) => {
+    if (!currentCard || completed || review.busy || !isFlipped) return;
+    if (!await review.save(currentCard.id,correct?3:1)) return;
     // Missed cards are added to the back so they return before the session ends.
     const nextQueue = correct ? queue : [...queue, currentCard];
     const nextIndex = currentIndex + 1;
@@ -39,7 +42,7 @@ export default function Study() {
     setIsFlipped(false);
     if (nextIndex >= nextQueue.length) {
       setCompleted(true);
-      confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
     } else {
       setCurrentIndex(nextIndex);
     }
@@ -75,6 +78,8 @@ export default function Study() {
           </div>
         </div>
 
+        <p className="text-sm text-muted-foreground">Your recall ratings and next review dates save to your account.</p>
+        {review.error && <p role="alert">{review.error}</p>}
         <Progress value={completed ? 100 : progress} className="h-3 rounded-full" aria-label="Study progress" />
 
         <div className="flex-1 flex flex-col justify-center">
@@ -84,7 +89,7 @@ export default function Study() {
                 <Trophy className="h-12 w-12" />
               </div>
               <h1 className="text-4xl font-display font-bold">Session Complete!</h1>
-              <p className="text-muted-foreground text-lg">You've previewed all cards in this deck. Open Learning & memory to save recall reviews.</p>
+              <p className="text-muted-foreground text-lg">Your recall ratings and next review dates are saved.</p>
               <Button onClick={handleRestart} size="lg" className="rounded-xl text-lg px-8">
                 <RotateCcw className="mr-2 h-5 w-5" /> Start Over
               </Button>
@@ -104,14 +109,16 @@ export default function Study() {
                   variant="outline" 
                   size="lg" 
                   className="h-16 text-lg border-2 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 rounded-2xl transition-all"
-                  onClick={() => handleNext(false)}
+                  disabled={review.busy || !isFlipped}
+                  onClick={() => void handleNext(false)}
                 >
                   <ThumbsDown className="mr-2 h-6 w-6" /> Needs Review
                 </Button>
                 <Button 
                   size="lg" 
                   className="h-16 text-lg bg-green-500 hover:bg-green-600 text-white rounded-2xl shadow-green-200 shadow-lg transition-all"
-                  onClick={() => handleNext(true)}
+                  disabled={review.busy || !isFlipped}
+                  onClick={() => void handleNext(true)}
                 >
                   <ThumbsUp className="mr-2 h-6 w-6" /> Got It!
                 </Button>

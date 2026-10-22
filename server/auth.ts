@@ -62,6 +62,7 @@ async function issueSession(res: Response, userId: string) {
   await db.insert(userSessions).values({ tokenHash: hashSessionToken(token), userId, expiresAt: new Date(Date.now() + DURATION_MS) });
   setCookie(res, token);
 }
+const dummyHash = hashPassword("Unused-account-timing-sentinel");
 export function registerAuthRoutes(app: Express): void {
   app.post("/api/auth/register", loginRateLimit, async (req, res, next) => {
     try {
@@ -83,7 +84,8 @@ export function registerAuthRoutes(app: Express): void {
       const parsed = credentials.safeParse(req.body);
       if (!parsed.success) { res.status(401).json({ message: "Invalid email or password" }); return; }
       const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
-      if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      const valid = await verifyPassword(parsed.data.password, user?.passwordHash ?? await dummyHash);
+      if (!user || !valid) {
         res.status(401).json({ message: "Invalid email or password" }); return;
       }
       await issueSession(res, user.id);

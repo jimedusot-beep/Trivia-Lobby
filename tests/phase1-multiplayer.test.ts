@@ -46,6 +46,15 @@ const fakeStorage = {
   },
 } as unknown as IStorage;
 
+test("oversized WebSocket frames close only the offending connection", async t => {
+  const server=createServer(),wss=attachGameSocket(server,fakeStorage,{authorizeHost:async()=>"owner"});
+  server.listen(0,"127.0.0.1");await once(server,"listening");const address=server.address();assert(address&&typeof address!=="string");
+  const url=`ws://127.0.0.1:${address.port}/ws`,sockets:WebSocket[]=[];
+  t.after(async()=>{for(const ws of sockets)ws.terminate();await new Promise<void>(resolve=>wss.close(()=>server.close(()=>resolve())));});
+  const bad=new WebSocket(url);sockets.push(bad);await once(bad,"open");const closed=once(bad,"close");bad.send("x".repeat(5000));assert.equal((await closed)[0],1009);
+  const healthy=new WebSocket(url);sockets.push(healthy);const inbox=client(healthy);await once(healthy,"open");inbox.send(WS_EVENTS.CREATE_ROOM,{deckId:1});assert.ok((await inbox.take(WS_EVENTS.ROOM_CREATED)).payload.roomCode);
+});
+
 test("protocol rejects unknown version, events and fields", () => {
   assert.equal(clientMessageSchema.safeParse({ v: 2, type: "start_game", payload: {} }).success, false);
   assert.equal(clientMessageSchema.safeParse({ v: 1, type: "destroy_room", payload: {} }).success, false);

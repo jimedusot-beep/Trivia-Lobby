@@ -81,8 +81,12 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageA.getByRole("button",{name:"Reveal answer",exact:true}).click();
     await pageA.getByRole("button",{name:"I knew it",exact:true}).click();
     await expect(pageA.getByText("Review saved",{exact:true})).toBeVisible();
+    await pageA.goto(base+`/flashcards/${deckId}`);
+    const flip=pageA.getByRole("button",{name:"Flip flashcard",exact:true});await flip.focus();await pageA.keyboard.press("Enter");
+    await expect(flip).toHaveAttribute("aria-pressed","true");
+    await Promise.all([pageA.waitForResponse(r=>r.url().endsWith("/api/study/review")&&r.request().method()==="POST"),pageA.getByRole("button",{name:"Got It!",exact:true}).click()]);
     const savedPractice=await pageA.request.get(base+"/api/study/history");
-    expect((await savedPractice.json()).events.length).toBe(3);
+    expect((await savedPractice.json()).events.length).toBe(4);
     const blocked = await pageA.request.post(base+"/api/study/review",{headers:{Origin:"https://untrusted.example"},data:{cardId:1,rating:1,requestId:randomUUID()}});
     expect(blocked.status()).toBe(403);
     const history=await pageOther.request.get(base+"/api/study/history");
