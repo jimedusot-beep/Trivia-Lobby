@@ -73,15 +73,6 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageOther.goto(base + `/learning/review/${deckId}?mode=missed`);
     await expect(pageOther.getByRole("heading", { name: "Queue complete" })).toBeVisible();
 
-    // Untrusted cross-origin client requests cannot mutate saved progress.
-    const blocked = await pageOther.evaluate(async () => {
-      try {
-        await fetch("/api/study/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        return false;
-      } catch { return true; }
-    });
-    // Browser same-origin requests are allowed to reach validation, but can't claim another account's history.
-    expect(typeof blocked).toBe("boolean");
   } finally {
     if (deckId !== null) await pageA.request.delete(base + `/api/decks/${deckId}`).catch(() => {});
     await first.close(); await second.close(); await other.close();
