@@ -60,7 +60,7 @@ export default function LearningSources() {
   return <main className="min-h-screen bg-muted/20 p-4 md:p-8"><div className="max-w-4xl mx-auto space-y-6">
     <Link href="/learning" className="underline">← My learning</Link>
     <h1 className="text-3xl font-bold">Source-backed study drafts</h1>
-    <p className="text-muted-foreground">Save your own text; optionally ask an administrator-configured AI provider to suggest cards. A draft must cite an exact excerpt. Nothing is published automatically, and you can edit every suggestion.</p>
+    <p className="text-muted-foreground">Save your own text; selecting Suggest cards sends that source text to the configured AI provider. A draft must cite an exact excerpt. Nothing is published automatically, and you can edit every suggestion.</p>
     {loading ? <p>Checking your account...</p> : !user ? <p role="alert">Sign in from <Link href="/learning" className="underline">My learning</Link> to save private sources.</p> : <>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {notice && <p role="status">{notice}</p>}
@@ -84,7 +84,7 @@ export default function LearningSources() {
             <label htmlFor={`front-${d.id}`}>Question</label>
             <Input id={`front-${d.id}`} value={d.front} maxLength={400} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, front: e.target.value } : x))} />
             <label htmlFor={`back-${d.id}`}>Answer</label>
-            <Textarea id={`back-${d.id}`} rows={2} maxLength={1000} value={d.back} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, back: e.target.value } : x))} />
+            <Textarea id={`back-${d.id}`} rows={2} maxLength={500} value={d.back} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, back: e.target.value } : x))} />
             <label htmlFor={`explanation-${d.id}`}>Explanation (editable)</label>
             <Textarea id={`explanation-${d.id}`} rows={3} maxLength={1500} value={d.explanation ?? ""} onChange={e => setDrafts(v => v.map(x => x.id === d.id ? { ...x, explanation: e.target.value } : x))} />
             <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">Evidence: “{d.evidence}”</blockquote>

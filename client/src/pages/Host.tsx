@@ -19,6 +19,7 @@ export default function Host() {
 
   // Auto-create room on mount
   useEffect(() => {
+    if(!connected)createRequested.current=false;
     if (connected && deckId && !gameState.roomCode && !restoring && !createRequested.current) {
       createRequested.current = true;
       sessionStorage.setItem("trivia_host_deck_id", deckId);
@@ -50,7 +51,7 @@ export default function Host() {
 
   if (!connected) return (
     <div className="h-screen flex items-center justify-center bg-background">
-      <div className="animate-pulse text-2xl font-bold text-primary">Connecting to server...</div>
+      <div className="text-center space-y-4"><p role="status" className="text-2xl font-bold text-primary">{gameState.error??"Connecting to server..."}</p><Link href="/"><Button variant="outline">Back to decks</Button></Link></div>
     </div>
   );
 

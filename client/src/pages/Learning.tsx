@@ -10,6 +10,7 @@ type CardRow = { id: number; front: string; back: string; dueAt: string | null; 
 type DeckStat = { deckId: number; title: string; subject: string; total: number; learned: number; due: number; mastered: number; attempts: number; correct: number; accuracy: number | null };
 type SubjectProgress = { subject: string; attempts: number; accuracy: number; weakCards: number; improvementPoints: number | null };
 type Dashboard = { attempts: number; correct: number; accuracy: number; sessions: number; studyDays: number; subjectProgress: SubjectProgress[]; dueReviews: number; studyStreak: number; xp: number; achievements: string[]; decks: DeckStat[]; historyLimited: boolean };
+type VisualSummary={decks:{deckId:number;title:string;total:number;due:number;weak:number;mastered:number;attempts:number;correct:number}[];weakQuestions:{id:number;deckId:number;prompt:string}[];limited:boolean};
 type WrongEvent = { id: string; cardId: number; deckId: number; front: string; subject: string; reviewedAt: string; rating: number };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
@@ -19,35 +20,6 @@ const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> 
   }
   return response.status === 204 ? undefined as T : response.json();
 };
-
-function AccountGate({ onReady }: { onReady: (user: User) => void }) {
-  const [register, setRegister] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const submit = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setError("");
-    try {
-      const user = await api<User>(`/api/auth/${register ? "register" : "login"}`, "POST", { email, password });
-      setPassword(""); onReady(user);
-    } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
-  };
-  return <Card className="max-w-md mx-auto mt-16"><CardHeader><CardTitle>Save your learning across devices</CardTitle></CardHeader>
-    <CardContent className="space-y-4">
-      <p className="text-sm text-muted-foreground">Create a study account or sign in. Game scores and public decks stay separate from your private review history.</p>
-      <form onSubmit={submit} className="space-y-4">
-        <div><label htmlFor="study-email" className="block font-medium mb-1">Email</label>
-          <Input id="study-email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} /></div>
-        <div><label htmlFor="study-password" className="block font-medium mb-1">Password (12 characters minimum)</label>
-          <Input id="study-password" type="password" required minLength={12} maxLength={128} autoComplete={register ? "new-password" : "current-password"} value={password} onChange={e => setPassword(e.target.value)} /></div>
-        {error && <p role="alert" className="text-destructive">{error}</p>}
-        <Button type="submit" disabled={busy} className="w-full">{busy ? "Saving..." : register ? "Create study account" : "Sign in"}</Button>
-      </form>
-      <Button variant="ghost" className="w-full" onClick={() => { setRegister(!register); setError(""); }}>{register ? "Already have an account? Sign in" : "Need an account? Register"}</Button>
-    </CardContent>
-  </Card>;
-}
 
 export function useStudyUser() {
   const [user, setUser] = useState<User | null>(null);
@@ -62,22 +34,24 @@ export function useStudyUser() {
 
 export default function Learning() {
   const { user, setUser, loading } = useStudyUser();
+  const [visual,setVisual]=useState<VisualSummary|null>(null);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [wrong, setWrong] = useState<WrongEvent[]>([]);
   const [error, setError] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const load = useCallback(async () => {
     try {
-      const [summary, history] = await Promise.all([
+      const [summary, history, visualSummary] = await Promise.all([
         api<Dashboard>("/api/study/dashboard"),
         api<{ wrongAnswers: WrongEvent[] }>("/api/study/history"),
+        api<VisualSummary>("/api/study/question-dashboard"),
       ]);
-      setDashboard(summary); setWrong(history.wrongAnswers); setError("");
+      setVisual(visualSummary);setDashboard(summary); setWrong(history.wrongAnswers); setError("");
     } catch (err) { setError((err as Error).message); }
   }, []);
   useEffect(() => { if (user) void load(); }, [user, load]);
   if (loading) return <main className="p-8" role="status">Loading account...</main>;
-  if (!user) return <main className="p-4"><Link href="/">← Library</Link><AccountGate onReady={setUser} /></main>;
+  if (!user) return <main className="p-4"><Link href="/">← Library</Link><p>Your session expired. <Button onClick={()=>window.location.reload()}>Sign in again</Button></p></main>;
   const subjects = Array.from(new Set(wrong.map(x => x.subject || "General"))).sort();
   const filtered = wrong.filter(x => subjectFilter === "all" || (x.subject || "General") === subjectFilter);
   const unique = filtered.filter((x, i, all) => all.findIndex(y => y.cardId === x.cardId) === i);
@@ -87,7 +61,7 @@ export default function Learning() {
         <div><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
         <div className="flex gap-2 flex-wrap"><Link href="/learning/sources"><Button variant="outline">Source drafts</Button></Link>
           <Button variant="outline" onClick={() => { window.location.href = "/api/study/export"; }}>Export progress</Button>
-          <Button variant="outline" onClick={async () => { await api("/api/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>
+</div>
       </header>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {dashboard && <>
@@ -130,6 +104,11 @@ export default function Learning() {
               </CardContent></Card>)}</div>
         </section>
       </>}
+      {visual&&<section className="space-y-3"><h2 className="text-2xl font-bold">Visual question memory</h2><p>Graded question attempts schedule the next review. Missed questions return first in adaptive practice.</p>
+        <div className="grid md:grid-cols-2 gap-3">{visual.decks.map(d=><Card key={d.deckId}><CardContent className="p-4 space-y-2"><h3 className="font-bold">{d.title}</h3><p>{d.total} questions · {d.due} due · {d.weak} need practice · {d.mastered} at 21-day intervals</p><p>{d.correct}/{d.attempts} correct attempts</p><Link href={`/visual-practice/${d.deckId}?mode=adaptive`}><Button>Adaptive practice</Button></Link>{" "}<Link href={`/visual-practice/${d.deckId}?mode=due`}><Button variant="outline">Due questions</Button></Link></CardContent></Card>)}</div>
+        {visual.weakQuestions.length>0&&<ul className="space-y-2">{visual.weakQuestions.slice(0,50).map(q=><li className="border rounded p-3" key={q.id}>{q.prompt} <Link className="underline" href={`/visual-practice/${q.deckId}?mode=adaptive`}>Retry</Link></li>)}</ul>}
+        {visual.limited&&<p>Showing the first 20,000 saved questions.</p>}
+      </section>}
       <section className="space-y-4"><h2 className="text-2xl font-bold">Wrong-answer notebook</h2>
         <label htmlFor="subject-filter">Filter subject</label>
         <select id="subject-filter" className="border rounded p-2 block bg-background" value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}>
@@ -176,7 +155,7 @@ export function AdaptiveReview() {
     } catch (err) { setError((err as Error).message); } finally { setBusy(false); }
   };
   if (loading) return <main className="p-8">Loading...</main>;
-  if (!user) return <main className="p-4"><Link href="/learning">← My learning</Link><AccountGate onReady={setUser} /></main>;
+  if (!user) return <main className="p-4"><Link href="/learning">← My learning</Link><p>Your session expired. <Button onClick={()=>window.location.reload()}>Sign in again</Button></p></main>;
   return <main className="min-h-screen bg-muted/20 p-4 md:p-8">
     <div className="max-w-xl mx-auto space-y-6">
       <Link href="/learning" className="underline">← My learning</Link>

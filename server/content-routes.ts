@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { randomUUID } from "node:crypto";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
-import { authorDrafts, decks, questionAttempts } from "@shared/schema";
+import { authorDrafts, decks, questionAttempts, questionSchedule, universalQuestions } from "@shared/schema";
 import { universalQuestionSchema, legacyCardToQuestion } from "@shared/universal-questions";
 import { api } from "@shared/routes";
 import { requireUser } from "./auth";
@@ -79,5 +79,28 @@ export function registerContentRoutes(app: Express) {
   app.get("/api/study/question-history",requireUser,async(req,res,next)=>{
     try{res.json(await db.select().from(questionAttempts).where(eq(questionAttempts.userId,req.studyUser!.id)).orderBy(desc(questionAttempts.createdAt)).limit(2000));}
     catch(e){next(e);}
+  });
+  app.get("/api/study/question-dashboard",requireUser,async(req,res,next)=>{
+    try {
+      const userId=req.studyUser!.id;
+      const rows=await db.select({id:universalQuestions.id,deckId:decks.id,title:decks.title,
+        prompt:sql<string>`${universalQuestions.definition}->>'prompt'`,dueAt:questionSchedule.dueAt,lastCorrect:questionSchedule.lastCorrect,
+        state:questionSchedule.fsrsState}).from(universalQuestions).innerJoin(decks,eq(decks.id,universalQuestions.deckId))
+        .leftJoin(questionSchedule,and(eq(questionSchedule.questionId,universalQuestions.id),eq(questionSchedule.userId,userId)))
+        .where(eq(decks.ownerId,userId)).limit(20000);
+      const attempts=await db.select({questionId:questionAttempts.questionId,total:sql<number>`count(*)`.mapWith(Number),
+        correct:sql<number>`count(*) FILTER (WHERE ${questionAttempts.correct})`.mapWith(Number)})
+        .from(questionAttempts).where(eq(questionAttempts.userId,userId)).groupBy(questionAttempts.questionId);
+      const byQuestion=new Map(attempts.map(a=>[a.questionId,a]));
+      const stats=new Map<number,{deckId:number;title:string;total:number;due:number;weak:number;mastered:number;attempts:number;correct:number}>();
+      const now=Date.now();
+      for(const row of rows){const stat=stats.get(row.deckId)??{deckId:row.deckId,title:row.title,total:0,due:0,weak:0,mastered:0,attempts:0,correct:0};
+        stat.total++;if(!row.dueAt||row.dueAt.getTime()<=now)stat.due++;if(row.lastCorrect===false)stat.weak++;
+        const state=row.state as {state?:number;scheduled_days?:number}|null;
+        if(state?.state===2&&(state.scheduled_days??0)>=21)stat.mastered++;
+        stat.attempts+=byQuestion.get(row.id)?.total??0;stat.correct+=byQuestion.get(row.id)?.correct??0;stats.set(row.deckId,stat);
+      }
+      res.json({decks:[...stats.values()],weakQuestions:rows.filter(r=>r.lastCorrect===false).map(({state:_state,...row})=>row),limited:rows.length===20000});
+    }catch(e){next(e);}
   });
 }

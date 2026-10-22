@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import WebSocket from "ws";
 import express from "express";
 import { mkdtemp,rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,14 +19,20 @@ test("integrated private questions, deduplication, full backup recovery, drafts 
     const r=await fetch(base+path,{method,headers:{...(body===undefined?{}:{"Content-Type":"application/json"}),...(cookie?{Cookie:cookie}:{})},body:body===undefined?undefined:JSON.stringify(body)});
     return {status:r.status,data:await r.json().catch(()=>null),cookie:r.headers.get("set-cookie")?.split(";")[0]};
   }
-  const suffix=randomUUID(),users:string[]=[];
+  const suffix=randomUUID(),users:string[]=[],sockets:WebSocket[]=[];
+  async function socket(cookie?:string){const ws=new WebSocket(base.replace("http:","ws:")+"/ws",{headers:cookie?{Cookie:cookie}:{}});sockets.push(ws);await once(ws,"open");return ws;}
+  async function message(ws:WebSocket,type:string,payload:unknown){const waiting=once(ws,"message");ws.send(JSON.stringify({v:1,type,payload}));return JSON.parse((await waiting)[0].toString());}
   try{
     const a=await request("/api/auth/register","POST",{email:`a-${suffix}@example.test`,password:"Integration-passphrase-2026"});
     const b=await request("/api/auth/register","POST",{email:`b-${suffix}@example.test`,password:"Integration-passphrase-2026"});
     assert.equal(a.status,201);assert.equal(b.status,201);users.push(a.data.id,b.data.id);
-    const imported={deck:{title:"Import "+suffix},cards:[{front:"Card",back:"Answer",type:"flashcard"}]};
+    const imported={deck:{title:"Import "+suffix},cards:[{front:"Card",back:"Answer",type:"multiple_choice",options:["Wrong","Answer","Other","Last"],correctOption:"B"}]};
     const [i1,i2]=await Promise.all([request("/api/decks/import","POST",imported,a.cookie),request("/api/decks/import","POST",imported,a.cookie)]);
     assert.equal(i1.status,201);assert.equal(i2.status,201);assert.equal(i1.data.id,i2.data.id);const deckId=i1.data.id;
+    const guest=await socket();assert.match((await message(guest,"create_room",{deckId})).payload.message,/Sign in/);
+    const outsider=await socket(b.cookie);assert.equal((await message(outsider,"create_room",{deckId})).type,"error");
+    const host=await socket(a.cookie),room=await message(host,"create_room",{deckId});assert.equal(room.type,"room_created");
+    assert.match((await message(outsider,"resume_host",{roomCode:room.payload.roomCode,hostToken:room.payload.hostToken})).payload.message,/Invalid host/);
     const definition={schemaVersion:1,prompt:"Private visual question",explanation:"Explanation",source:{attribution:"Private text",quote:"Secret source passage"},answer:{kind:"multiple_choice",options:[{id:"A",label:"Incorrect"},{id:"B",label:"Correct"}],correctOptionIds:["B"]}};
     const saved=await request(`/api/decks/${deckId}/questions`,"POST",definition,a.cookie);assert.equal(saved.status,201);const qid=saved.data.id;
     for(const [path,method,body] of [
@@ -52,6 +59,17 @@ test("integrated private questions, deduplication, full backup recovery, drafts 
     assert.equal((await request(`/api/study/drafts/${ai.id}/publish`,"POST",{deckId},b.cookie)).status,404);
     const published=await request(`/api/study/drafts/${ai.id}/publish`,"POST",{deckId},a.cookie);assert.equal(published.status,201);
     assert.equal((await request(`/api/study/drafts/${ai.id}/publish`,"POST",{deckId},a.cookie)).data.id,published.data.id);
+    const failed=await request(`/api/decks/${deckId}/questions/${published.data.id}/check`,"POST",{response:{text:"Lyon"},requestId:randomUUID()},a.cookie);
+    assert.equal(failed.data.correct,false);
+    const adaptive=await request(`/api/decks/${deckId}/questions/practice?mode=adaptive`,"GET",undefined,a.cookie);
+    assert.equal(adaptive.data[0].id,published.data.id);
+    const due=await request(`/api/decks/${deckId}/questions/practice?mode=due`,"GET",undefined,a.cookie);
+    assert(!due.data.some((q:{id:number})=>q.id===qid));
+    const conflict=await request(`/api/decks/${deckId}/questions/${published.data.id}/check`,"POST",{response:{text:"Paris"},requestId:rid},a.cookie);
+    assert.equal(conflict.status,409);
+    const questionStats=await request("/api/study/question-dashboard","GET",undefined,a.cookie);
+    assert.equal(questionStats.data.decks[0].attempts,2);assert.equal(questionStats.data.decks[0].weak,1);
+    assert.equal((await request("/api/study/question-dashboard","GET",undefined,b.cookie)).data.decks.length,0);
     const backup=await request(`/api/decks/${deckId}/backup`,"GET",undefined,a.cookie);assert.equal(backup.data.questions.length,2);
     // A forced referential failure must roll back cascaded child deletions as one database operation.
     await pool.query("CREATE TABLE IF NOT EXISTS integrated_restrict_deck(id integer REFERENCES decks(id) ON DELETE RESTRICT)");
@@ -68,6 +86,7 @@ test("integrated private questions, deduplication, full backup recovery, drafts 
   }finally{
     await pool.query("DROP TABLE IF EXISTS integrated_restrict_deck");
     for(const owner of users){await pool.query("DELETE FROM decks WHERE owner_id=$1",[owner]);await pool.query("DELETE FROM users WHERE id=$1",[owner]);}
+    sockets.forEach(ws=>ws.terminate());
     await new Promise<void>(resolve=>server.close(()=>resolve()));await pool.end();await rm(dir,{recursive:true,force:true});
   }
 });

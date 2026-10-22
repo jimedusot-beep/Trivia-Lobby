@@ -3,7 +3,7 @@ import type { Express, Request, Response } from "express";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
-import { cards, decks, studySchedule, studyEvents } from "@shared/schema";
+import { cards, decks, studySchedule, studyEvents, questionSchedule, questionAttempts } from "@shared/schema";
 import { calculateReview, isStudyRating } from "./study-scheduler";
 import { registerStudyDraftRoutes } from "./study-drafts";
 import { requireUser, resolveUser } from "./auth";
@@ -11,6 +11,7 @@ export const findStudyUser = (req: Request) => resolveUser(req.headers.cookie);
 
 const reviewBody = z.object({ cardId: z.number().int().positive(), rating: z.number().int().min(1).max(4), requestId: z.string().uuid() }).strict();
 function failure(res: Response, err: unknown) {
+  if(err instanceof Error && "status" in err && err.status===409){res.status(409).json({message:err.message});return;}
   if (err instanceof z.ZodError) { res.status(400).json({ message: "Invalid request", issues: err.issues }); return; }
   console.error("Study API error:", err);
   res.status(500).json({ message: "Study request failed" });
@@ -47,11 +48,16 @@ export function registerStudyRoutes(app: Express) {
     const input = reviewBody.parse(req.body);
     if (!isStudyRating(input.rating)) { res.status(400).json({ message: "Invalid rating" }); return; }
     const answer = await db.transaction(async tx => {
+      // Serialize idempotency identifiers before card updates, including first reviews.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), hashtext(${'card-request:'+input.requestId}))`);
       // Lock per user/card, including before the first schedule row exists.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), ${input.cardId})`);
       const [existing] = await tx.select().from(studyEvents)
         .where(and(eq(studyEvents.userId, user.id), eq(studyEvents.requestId, input.requestId))).limit(1);
-      if (existing) return { event: existing, replay: true };
+      if (existing) {
+        if(existing.cardId!==input.cardId||existing.rating!==input.rating)throw Object.assign(new Error("Review request conflicts with an earlier submission"),{status:409});
+        return { event: existing, replay: true };
+      }
       const [card] = await tx.select({ id: cards.id }).from(cards).innerJoin(decks, eq(decks.id, cards.deckId)).where(and(eq(cards.id, input.cardId), eq(decks.ownerId, user.id))).limit(1);
       if (!card) return null;
       const [previous] = await tx.select().from(studySchedule)
@@ -177,12 +183,14 @@ export function registerStudyRoutes(app: Express) {
   app.get("/api/study/export", safe(async (req, res) => {
     const user = await findStudyUser(req);
     if (!user) { res.status(401).json({ message: "Authentication required" }); return; }
-    const [states, events] = await Promise.all([
+    const [states, events, questionStates, questionEvents] = await Promise.all([
       db.select().from(studySchedule).where(eq(studySchedule.userId, user.id)),
       db.select().from(studyEvents).where(eq(studyEvents.userId, user.id)).orderBy(studyEvents.reviewedAt),
+      db.select().from(questionSchedule).where(eq(questionSchedule.userId,user.id)),
+      db.select().from(questionAttempts).where(eq(questionAttempts.userId,user.id)).orderBy(questionAttempts.createdAt),
     ]);
     res.setHeader("Content-Disposition", "attachment; filename=trivia-lobby-study-progress.json");
-    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events });
+    res.json({ format: "trivia-lobby-study-v1", exportedAt: new Date().toISOString(), account: user.email, states, events, questionStates, questionEvents });
   }));
 
   registerStudyDraftRoutes(app, safe, findStudyUser);

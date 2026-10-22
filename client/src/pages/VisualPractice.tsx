@@ -35,6 +35,8 @@ export default function VisualPractice() {
   const { id } = useParams();
   const deckId = Number(id);
   const { data: deck } = useDeck(deckId);
+  const practiceMode=useMemo(()=>new URLSearchParams(window.location.search).get("mode"),[]);
+  const adaptive=practiceMode==="adaptive" || practiceMode==="due";
   const timed = useMemo(()=>new URLSearchParams(window.location.search).get("mode")==="timed",[]);
   const [items, setItems] = useState<PracticeItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function VisualPractice() {
     if (!Number.isSafeInteger(deckId) || deckId<=0) return;
     let active = true;
     setLoading(true);
-    fetch(`/api/decks/${deckId}/questions/practice`)
+    fetch(`/api/decks/${deckId}/questions/practice?mode=${adaptive?practiceMode:"all"}`)
       .then(async response => {if (!response.ok) throw new Error("Failed to load exam");return response.json();})
       .then(data => {if(active)setItems(data);})
       .catch(err=>{if(active)setError(err instanceof Error?err.message:"Failed to load exam");})
@@ -115,8 +117,8 @@ export default function VisualPractice() {
   return <main className="min-h-screen p-4 md:p-8 bg-muted/30">
     <section className="max-w-3xl mx-auto space-y-5">
       <Link href="/"><Button variant="ghost">Back to library</Button></Link>
-      <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":"Visual Practice"}</h1>
-      <p className="text-sm text-muted-foreground">Your graded attempts are saved to your account. Timed practice uses a local timer; multiplayer deadlines are enforced by the server.</p>
+      <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":adaptive?"Adaptive Visual Practice":"Visual Practice"}</h1>
+      <p className="text-sm text-muted-foreground">Your graded attempts and FSRS due dates are saved to your account. Adaptive practice prioritizes missed and unseen questions. Timed practice uses a local timer; multiplayer deadlines are enforced by the server.</p>
       <Progress value={items.length ? Math.min(100,index/items.length*100):0} aria-label="Question progress"/>
       {!items.length?<Card><CardContent className="p-6">This deck has no visual questions yet. <Link href={`/exam-builder/${deckId}`}><Button>Add questions</Button></Link></CardContent></Card>
       :index>=items.length?<Card><CardContent className="p-8 text-center space-y-4">

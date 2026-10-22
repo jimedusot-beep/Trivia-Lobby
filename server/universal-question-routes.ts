@@ -2,7 +2,9 @@ import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { db } from "./db";
-import { questionAttempts } from "@shared/schema";
+import { and,eq } from "drizzle-orm";
+import { recordQuestionAttempt } from "./question-memory";
+import { questionSchedule } from "@shared/schema";
 import { requireUser } from "./auth";
 import { universalQuestionSchema, gradeUniversalAnswer, withoutAnswerKeys } from "@shared/universal-questions";
 import {
@@ -17,6 +19,7 @@ function ids(req: Request) {
   return { deckId: idSchema.parse(req.params.deckId), questionId: req.params.questionId === undefined ? 0 : idSchema.parse(req.params.questionId) };
 }
 function failure(err: unknown, res: Response) {
+  if (err instanceof Error && "status" in err && err.status===409) return res.status(409).json({message:err.message});
   if (err instanceof z.ZodError) return res.status(400).json({ message: "Invalid question or response", details: err.issues });
   if (err instanceof Error && err.message === "Deck question limit is 500") return res.status(400).json({ message: err.message });
   if (err instanceof Error && err.message === "Reorder must contain exactly the deck question IDs") return res.status(400).json({ message: err.message });
@@ -48,7 +51,16 @@ export function registerUniversalQuestionRoutes(app: Express) {
     try {
       const { deckId } = ids(req);
       if (!(await deckExists(deckId))) return res.status(404).json({ message: "Deck not found" });
-      const questions = await listUniversalQuestions(deckId);
+      let questions = await listUniversalQuestions(deckId);
+      const mode=z.enum(["all","adaptive","due"]).default("all").parse(req.query.mode);
+      if(mode!=="all") {
+        const states=await db.select().from(questionSchedule).where(eq(questionSchedule.userId,req.studyUser!.id));
+        const byId=new Map(states.map(s=>[s.questionId,s]));const now=Date.now();
+        const priority=(id:number)=>{const state=byId.get(id);return state?.lastCorrect===false?0:!state?1:state.dueAt.getTime()<=now?2:3;};
+        if(mode==="due")questions=questions.filter(q=>!byId.has(q.id)||byId.get(q.id)!.dueAt.getTime()<=now);
+        questions.sort((a,b)=>priority(a.id)-priority(b.id)||(byId.get(a.id)?.dueAt.getTime()??0)-(byId.get(b.id)?.dueAt.getTime()??0));
+        questions=questions.slice(0,100);
+      }
       res.json(questions.map(q => ({ id: q.id, deckId: q.deckId, position: q.position, question: withoutAnswerKeys(q.question) })));
     } catch (err) { failure(err, res); }
   });
@@ -97,9 +109,8 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const input = z.object({ response: z.unknown(), requestId: z.string().uuid().optional() }).strict().parse(req.body);
       const response = input.response;
       const correct = gradeUniversalAnswer(existing.question, response);
-      await db.insert(questionAttempts).values({userId:req.studyUser!.id,questionId,correct,requestId:input.requestId??randomUUID()})
-        .onConflictDoNothing({target:[questionAttempts.userId,questionAttempts.requestId]});
-      res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
+      const event=await recordQuestionAttempt(req.studyUser!.id,questionId,correct,input.requestId??randomUUID());
+      res.json({ correct:event.correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
     } catch (err) { failure(err, res); }
   });
 }

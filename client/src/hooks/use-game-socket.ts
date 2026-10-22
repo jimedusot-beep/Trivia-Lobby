@@ -163,8 +163,13 @@ export function useGameSocket(role: "host" | "player" = "player") {
             break;
         }
       };
-      ws.onclose = () => {
+      ws.onclose = event => {
         setConnected(false);
+        if(/replaced|expired/i.test(event.reason)) {
+          setGameState(prev=>({...prev,error:/expired/i.test(event.reason)?"Room expired. Join or create a new game.":"This session moved to another tab. Continue there or join a new game."}));
+          if(/expired/i.test(event.reason)){if(role==="host")sessionStorage.removeItem("trivia_host");else localStorage.removeItem("trivia_player");}
+          return;
+        }
         if (!disposed) retry = setTimeout(connect, 1200);
       };
     };

@@ -159,3 +159,43 @@ test("host and two players complete secure match; reconnect, deadlines, duplicat
   const finished = (await resumedHost.take(WS_EVENTS.GAME_OVER)).payload;
   assert.equal(finished.leaderboard.find((x: any) => x.playerId === join1.playerId).score, 100);
 });
+
+for(const mode of ["teams","shop","buzzer","wager","party"] as const) {
+  test(`original ${mode} mode enforces its server-owned rules`,async t=>{
+    const server=createServer();
+    const source={async getDeck(){const deck=await fakeStorage.getDeck(1,"owner");return {...deck,cards:[...deck!.cards,deck!.cards[0]]};}} as unknown as IStorage;
+    const wss=attachGameSocket(server,source,{questionMs:5000,resolveUser:async()=>({id:"owner"})});
+    server.listen(0,"127.0.0.1");await once(server,"listening");const address=server.address() as {port:number};
+    const sockets:WebSocket[]=[];
+    async function open(){const ws=new WebSocket(`ws://127.0.0.1:${address.port}/ws`);sockets.push(ws);const inbox=client(ws);await once(ws,"open");return inbox;}
+    t.after(async()=>{sockets.forEach(ws=>ws.terminate());await new Promise<void>(resolve=>wss.close(()=>server.close(()=>resolve())));});
+    const host=await open();host.send(WS_EVENTS.CREATE_ROOM,{deckId:1,mode});const room=(await host.take(WS_EVENTS.ROOM_CREATED)).payload.roomCode;
+    const a=await open(),b=await open();a.send(WS_EVENTS.JOIN_ROOM,{roomCode:room,playerName:"Ada"});b.send(WS_EVENTS.JOIN_ROOM,{roomCode:room,playerName:"Lin"});
+    const aid=(await a.take(WS_EVENTS.ROOM_JOINED)).payload.playerId,bid=(await b.take(WS_EVENTS.ROOM_JOINED)).payload.playerId;
+    host.send(WS_EVENTS.START_GAME,{roomCode:room});
+    let score=0;
+    for(let round=0;round<3;round++){
+      await a.take(WS_EVENTS.QUESTION_START);await b.take(WS_EVENTS.QUESTION_START);
+      if(mode==="buzzer"){
+        a.send(WS_EVENTS.BUZZ,{});let buzz;do{buzz=await a.take(WS_EVENTS.BUZZER_UPDATE);}while(buzz.payload.playerId!==aid);
+        b.send(WS_EVENTS.SUBMIT_ANSWER,{questionIndex:round,answer:"B"});assert.match((await b.take(WS_EVENTS.ERROR)).payload.message,/Buzz/);
+        a.send(WS_EVENTS.SUBMIT_ANSWER,{questionIndex:round,answer:"A"});await a.take(WS_EVENTS.ANSWER_ACCEPTED);
+        b.send(WS_EVENTS.BUZZ,{});b.send(WS_EVENTS.SUBMIT_ANSWER,{questionIndex:round,answer:"B"});
+      }else{
+        a.send(WS_EVENTS.SUBMIT_ANSWER,{questionIndex:round,answer:mode==="wager"&&round===1?"A":"B",...(mode==="wager"&&round===1?{wager:50}:{})});
+        b.send(WS_EVENTS.SUBMIT_ANSWER,{questionIndex:round,answer:"A"});
+      }
+      const result=(await a.take(WS_EVENTS.ANSWER_RESULT)).payload;score+=result.awarded;await host.take(WS_EVENTS.ANSWER_RESULT);
+      host.send(WS_EVENTS.NEXT_QUESTION,{roomCode:room});const board=(await host.take(WS_EVENTS.LEADERBOARD)).payload.leaderboard;
+      if(mode==="teams"){assert.notEqual(board.find((p:any)=>p.playerId===aid).team,board.find((p:any)=>p.playerId===bid).team);}
+      if(mode==="shop"&&round===1){a.send(WS_EVENTS.BUY_UPGRADE,{upgrade:"boost"});let state;do{state=await a.take(WS_EVENTS.LOBBY_UPDATE);}while(!state.payload.players.find((p:any)=>p.playerId===aid)?.upgrade);assert.equal(state.payload.players.find((p:any)=>p.playerId===aid).coins,1);}
+      host.send(WS_EVENTS.NEXT_QUESTION,{roomCode:room});
+    }
+    const final=(await host.take(WS_EVENTS.GAME_OVER)).payload.leaderboard;
+    if(mode==="shop")assert.equal(score,380);
+    if(mode==="wager")assert.equal(score,150);
+    if(mode==="party")assert.equal(score,440);
+    if(mode==="buzzer"){assert.equal(score,0);assert.equal(final.find((p:any)=>p.playerId===bid).score,330);}
+    assert.equal(final.find((p:any)=>p.playerId===aid).score,score);
+  });
+}

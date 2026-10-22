@@ -157,6 +157,11 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
     for (const [ip, limit] of createLimits) if (limit.resetAt < now) createLimits.delete(ip);
   }, 60_000);
   cleanup.unref?.();
+  wss.on("close",()=>{
+    clearInterval(cleanup);
+    for(const room of rooms.values())if(room.timer)clearTimeout(room.timer);
+    rooms.clear();
+  });
 
   wss.on("connection", (ws, req) => {
     ws.on("error", () => {}); // Oversized frames close safely without an unhandled emitter error.

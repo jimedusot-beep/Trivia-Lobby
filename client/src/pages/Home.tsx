@@ -165,6 +165,7 @@ export default function Home() {
                     </Button>
                   </Link>
                   <Link href={`/learning/review/${deck.id}?mode=due`}><Button variant="outline" className="w-full h-12">Adaptive review</Button></Link>
+                  <Link href={`/visual-practice/${deck.id}?mode=adaptive`}><Button variant="outline" className="w-full h-12">Adaptive visual practice</Button></Link>
                   <a className="underline text-sm" href={`/api/decks/${deck.id}/backup`}>Full JSON backup</a>
                   <a className="underline text-sm" href={`/api/decks/${deck.id}/export/qti`}>Export QTI</a>
                   <a className="underline text-sm" href={`/api/decks/${deck.id}/export/anki`}>Export Anki Basic</a>

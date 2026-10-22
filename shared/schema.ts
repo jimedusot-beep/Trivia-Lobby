@@ -87,6 +87,14 @@ export const questionAttempts = pgTable("question_attempts", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, t => [uniqueIndex("question_attempt_request_idx").on(t.userId, t.requestId)]);
 
+export const questionSchedule = pgTable("question_schedule", {
+  userId: uuid("user_id").notNull().references(() => users.id, {onDelete:"cascade"}),
+  questionId: integer("question_id").notNull().references(() => universalQuestions.id, {onDelete:"cascade"}),
+  fsrsState: jsonb("fsrs_state").notNull(),
+  dueAt: timestamp("due_at", {withTimezone:true}).notNull(),
+  lastCorrect: boolean("last_correct").notNull(),
+}, t=>[primaryKey({columns:[t.userId,t.questionId]}),index("question_schedule_user_due_idx").on(t.userId,t.dueAt)]);
+
 export const decksRelations = relations(decks, ({ many }) => ({ cards: many(cards) }));
 export const cardsRelations = relations(cards, ({ one }) => ({
   deck: one(decks, { fields: [cards.deckId], references: [decks.id] }),

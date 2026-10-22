@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
+import { useSaveReview } from "@/hooks/use-save-review";
 import { useDeck } from "@/hooks/use-decks";
 import { buildPracticeQuestions } from "@/lib/practice";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,11 @@ export default function Practice() {
   const [revealed, setRevealed] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [done, setDone] = useState(false);
+  const review=useSaveReview();
   const question = questions[index];
-  const answer = (value: boolean) => {
-    if (marked !== null) return;
+  const answer = async (value: boolean) => {
+    if (marked !== null || review.busy) return;
+    if(!await review.save(question.id,value?3:1))return;
     setMarked(value);
     if (value) setCorrect(n => n + 1);
   };
@@ -38,8 +41,9 @@ export default function Practice() {
       <section className="max-w-3xl mx-auto space-y-6">
         <Link href="/"><Button variant="ghost">Back to library</Button></Link>
         <h1 className="text-3xl font-bold">{deck.title} — Practice</h1>
-        <p className="text-muted-foreground">Session-only results. Account-based study history is not implemented.</p>
-        <Progress value={done ? 100 : questions.length ? 100 * index / questions.length : 0} />
+        <p className="text-muted-foreground">Your practice ratings and next review dates are saved to your account.</p>
+        {review.error&&<p role="alert" className="text-destructive">{review.error}</p>}
+        <Progress aria-label="Practice progress" value={done ? 100 : questions.length ? 100 * index / questions.length : 0} />
         {!questions.length ? <p>No cards in this deck yet.</p> : done ? (
           <Card><CardContent className="p-8 space-y-4 text-center">
             <h2 className="text-2xl font-bold">Practice complete!</h2>
@@ -57,7 +61,7 @@ export default function Practice() {
                 <div className="grid gap-3">
                   {question.choices.map((choice, i) =>
                     <Button key={i} variant="outline" className="h-auto min-h-14 whitespace-normal justify-start text-left p-4"
-                      disabled={marked !== null} onClick={() => answer(i === question.answerIndex)}>
+                      disabled={marked !== null||review.busy} onClick={() => void answer(i === question.answerIndex)}>
                       {String.fromCharCode(65 + i)}. {choice}
                     </Button>
                   )}
@@ -68,8 +72,8 @@ export default function Practice() {
                     <div className="space-y-3">
                       <p className="p-4 rounded bg-muted">{question.back}</p>
                       {marked === null && <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => answer(false)}>Need practice</Button>
-                        <Button onClick={() => answer(true)}>I knew it</Button>
+                        <Button variant="outline" disabled={review.busy} onClick={() => void answer(false)}>Need practice</Button>
+                        <Button disabled={review.busy} onClick={() => void answer(true)}>I knew it</Button>
                       </div>}
                     </div>}
                 </div>

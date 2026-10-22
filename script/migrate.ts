@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import pg from "pg";
 const client=new pg.Client({connectionString:process.env.DATABASE_URL});
-const files=["phase1_cards_fk.sql","0001_private_library.sql","0001_universal_questions.sql","0004_phase4_study.sql","0005_integrated_platform.sql"];
+const files=["phase1_cards_fk.sql","0001_private_library.sql","0001_universal_questions.sql","0004_phase4_study.sql","0005_integrated_platform.sql","0006_question_memory.sql"];
 try {
   if(!process.env.DATABASE_URL)throw new Error("DATABASE_URL required");
   await client.connect();

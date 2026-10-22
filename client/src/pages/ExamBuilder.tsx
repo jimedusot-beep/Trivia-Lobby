@@ -40,6 +40,9 @@ export default function ExamBuilder() {
   const [kind, setKind] = useState<Kind>("multiple_choice");
   const [prompt, setPrompt] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [rawQuestion,setRawQuestion]=useState<string|null>(null);
+  const [questionTags,setQuestionTags]=useState<string[]>([]);
+  const [sourceDetails,setSourceDetails]=useState<UniversalQuestion["source"]>();
   const [citation,setCitation]=useState("");
   const [options, setOptions] = useState<Option[]>(newOptions);
   const [pairs, setPairs] = useState<Pair[]>(newPairs);
@@ -50,7 +53,8 @@ export default function ExamBuilder() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const endpoint = `/api/decks/${deckId}/questions`;
-  const draft=useAuthorDraft(deckId,{selectedId,kind,prompt,explanation,citation,options,pairs,correctId,imageUrl,imageAlt,targets},d=>{
+  const draft=useAuthorDraft(deckId,{selectedId,kind,prompt,explanation,citation,options,pairs,correctId,imageUrl,imageAlt,targets,rawQuestion,questionTags,sourceDetails},d=>{
+    setRawQuestion(d.rawQuestion??null);setQuestionTags(d.questionTags??[]);setSourceDetails(d.sourceDetails);
     setSelectedId(d.selectedId??null);setKind(d.kind??"multiple_choice");setPrompt(d.prompt??"");setExplanation(d.explanation??"");setCitation(d.citation??"");
     setOptions(d.options??newOptions());setPairs(d.pairs??newPairs());setCorrectId(d.correctId??"A");setImageUrl(d.imageUrl??"");setImageAlt(d.imageAlt??"");setTargets(d.targets??[]);
   });
@@ -61,6 +65,7 @@ export default function ExamBuilder() {
   }, [deckId, endpoint]);
   useEffect(() => { void reload(); }, [reload]);
   function reset() {
+    setRawQuestion(null);setQuestionTags([]);setSourceDetails(undefined);setCitation("");
     setSelectedId(null); setKind("multiple_choice"); setPrompt(""); setExplanation("");
     setOptions(newOptions()); setPairs(newPairs()); setCorrectId("A");
     setImageUrl(""); setImageAlt(""); setTargets([]); setNotice("");
@@ -68,9 +73,9 @@ export default function ExamBuilder() {
   function edit(item: Saved) {
     const q = item.question;
     if (!["multiple_choice","matching","image_hotspot"].includes(q.answer.kind)) {
-      setNotice(`This question format (${q.answer.kind}) is supported by the model but not by this visual editor yet.`);
-      return;
+      editJson(item); return;
     }
+    setRawQuestion(null);setQuestionTags(q.tags);setSourceDetails(q.source);
     setSelectedId(item.id); setKind(q.answer.kind as Kind); setPrompt(q.prompt);
     setExplanation(q.explanation ?? "");setCitation(q.source?.attribution??"");
     setNotice("");
@@ -82,6 +87,9 @@ export default function ExamBuilder() {
       setImageUrl(q.answer.imageUrl ?? ""); setImageAlt(q.answer.imageAlt ?? "");
       setTargets(q.answer.targets); setCorrectId(q.answer.correctTargetIds[0]);
     }
+  }
+  function editJson(item:Saved) {
+    const {id:_id,...definition}=item.question;setSelectedId(item.id);setRawQuestion(JSON.stringify(definition,null,2));setNotice("");
   }
   function addHotspot(event: MouseEvent<HTMLButtonElement>) {
     if (targets.length >= 40) return;
@@ -102,12 +110,13 @@ export default function ExamBuilder() {
       } else {
         answer = {kind, imageUrl, imageAlt, targets, correctTargetIds:[correctId]};
       }
-      const question = universalQuestionSchema.omit({ id: true }).parse({
-        schemaVersion:1, prompt, explanation, tags:[], answer, ...(citation.trim()?{source:{attribution:citation.trim()}}:{}),
+      const question = rawQuestion!==null ? universalQuestionSchema.omit({id:true}).parse(JSON.parse(rawQuestion)) : universalQuestionSchema.omit({ id: true }).parse({
+        schemaVersion:1, prompt, explanation, tags:questionTags, answer, ...(sourceDetails||citation.trim()?{source:{...sourceDetails,...(citation.trim()?{attribution:citation.trim()}:{})}}:{}),
       });
       await request(selectedId === null ? endpoint : `${endpoint}/${selectedId}`,
         selectedId === null ? "POST" : "PATCH", question);
       setNotice("Question saved to the database.");
+      setRawQuestion(null);setQuestionTags([]);setSourceDetails(undefined);setCitation("");
       setSelectedId(null);
       setPrompt(""); setExplanation("");
       setOptions(newOptions()); setPairs(newPairs()); setTargets([]); setCorrectId("A");
@@ -144,6 +153,7 @@ export default function ExamBuilder() {
       <p role="status" className="text-sm text-muted-foreground">{draft.status}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={reset}>New question</Button>
+        <Button variant="outline" onClick={()=>{reset();setRawQuestion(JSON.stringify({schemaVersion:1,prompt:"",tags:[],answer:{kind:"short_answer",acceptedAnswers:[""]}},null,2));}}>New JSON question</Button>
         <Link href={`/visual-practice/${deckId}`}><Button>Practice visual questions</Button></Link>
         <Link href={`/visual-practice/${deckId}?mode=timed`}><Button variant="outline">Timed test</Button></Link>
       </div>
@@ -158,6 +168,7 @@ export default function ExamBuilder() {
               <p className="text-xs text-muted-foreground">{item.question.answer.kind}</p>
               <div className="flex flex-wrap gap-1">
                 <Button size="sm" variant="outline" onClick={()=>edit(item)}>Edit</Button>
+                <Button size="sm" variant="outline" onClick={()=>editJson(item)}>Edit JSON</Button>
                 <Button size="sm" variant="outline" onClick={()=>void move(index,-1)} disabled={index===0||busy} aria-label={`Move question ${index+1} up`}>↑</Button>
                 <Button size="sm" variant="outline" onClick={()=>void move(index,1)} disabled={index===saved.length-1||busy} aria-label={`Move question ${index+1} down`}>↓</Button>
                 <Button size="sm" variant="destructive" onClick={()=>void remove(item.id)} disabled={busy}>Delete</Button>
@@ -168,6 +179,7 @@ export default function ExamBuilder() {
         <Card>
           <CardHeader><CardTitle>{selectedId === null ? "Create" : "Edit"} a question</CardTitle></CardHeader>
           <CardContent className="space-y-4">
+            {rawQuestion!==null ? <div className="space-y-2"><Label htmlFor="question-json">Version 1 question JSON (all question types)</Label><Textarea id="question-json" className="font-mono min-h-[420px]" value={rawQuestion} onChange={e=>setRawQuestion(e.target.value)} maxLength={100000}/><p className="text-sm text-muted-foreground">Prompt, answer, explanation, tags and source citation are validated together before saving.</p></div> : <>
             <div className="space-y-1">
               <Label htmlFor="format">Question type</Label>
               <select id="format" className="w-full border rounded p-3 bg-background" value={kind}
@@ -242,6 +254,7 @@ export default function ExamBuilder() {
             <div><Label htmlFor="citation">Source citation</Label><Input id="citation" value={citation} maxLength={500} onChange={e=>setCitation(e.target.value)} placeholder="Author, document and page or passage"/></div>
             <div><Label htmlFor="explanation">Explanation (shown after answering)</Label>
               <Textarea id="explanation" value={explanation} onChange={e=>setExplanation(e.target.value)} maxLength={4000}/></div>
+            </>}
             <Button disabled={busy} onClick={()=>void save()}>{busy?"Saving…":selectedId===null?"Save question":"Save changes"}</Button>
           </CardContent>
         </Card>

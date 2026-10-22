@@ -51,7 +51,7 @@ export default function Play() {
 
   if (!connected) return (
     <div className="h-screen bg-primary flex items-center justify-center text-white font-bold">
-      Reconnecting to game…
+      <div className="text-center space-y-4"><p role="status">{gameState.error??"Reconnecting to game…"}</p><Button variant="outline" className="text-slate-900" onClick={()=>{localStorage.removeItem("trivia_player");setLocation("/join");}}>Return to join</Button></div>
     </div>
   );
 
@@ -59,7 +59,7 @@ export default function Play() {
     <div className="min-h-screen bg-slate-100 p-4 flex flex-col">
       {gameState.error && <div role="alert" className="p-3 bg-red-50 text-red-900 rounded">{gameState.error} <Button variant="outline" onClick={()=>{localStorage.removeItem("trivia_player");setLocation("/join");}}>Return to join</Button></div>}
       <div className="flex justify-between items-center mb-6">
-        <div className="font-bold text-slate-500">{gameState.roomCode}</div>
+        <div className="font-bold text-slate-600">{gameState.roomCode}</div>
         <div className="font-bold text-xl text-primary">{score} pts</div>
       </div>
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full space-y-6">
@@ -122,7 +122,7 @@ export default function Play() {
               <Button onClick={()=>emit(WS_EVENTS.BUY_UPGRADE,{upgrade:"boost"})}>Boost (+50 on correct)</Button>{" "}
               <Button variant="outline" onClick={()=>emit(WS_EVENTS.BUY_UPGRADE,{upgrade:"streak_guard"})}>Protect streak</Button>
             </div>}
-            <p className="text-sm text-slate-500">Waiting for host…</p>
+            <p className="text-sm text-slate-600">Waiting for host…</p>
           </div>
         )}
         {gameState.gameStatus === "ended" && (
