@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
+import { canSubmitAnswer, publicLeaderboard, publicPlayerView } from "./room-projections";
 import { registerUniversalQuestionRoutes } from "./universal-question-routes";
 
 // === GAME STATE TYPES ===
@@ -113,7 +114,10 @@ export async function registerRoutes(
         
         switch (message.type) {
           case WS_EVENTS.CREATE_ROOM: {
-            const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+            let roomCode: string;
+            do {
+              roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            } while (rooms.has(roomCode));
             const deck = await storage.getDeck(message.payload.deckId);
             
             if (!deck) {
@@ -201,11 +205,16 @@ export async function registerRoutes(
             if (!room || room.state !== 'playing') return;
 
             const answerKey = `${userId}-${room.currentQuestionIndex}`;
-            if (room.answersReceived.has(answerKey)) return; // Idempotent
-
-            room.answersReceived.add(answerKey);
             const player = room.players.get(userId);
             const question = room.questions[room.currentQuestionIndex];
+            if (!player || !canSubmitAnswer({
+              gameState: room.state,
+              connected: player.connected,
+              socketMatchesPlayer: player.ws === ws,
+              alreadyAnswered: room.answersReceived.has(answerKey),
+              questionExists: !!question,
+            })) return;
+            room.answersReceived.add(answerKey);
             
             if (player && question) {
               // Basic scoring logic
@@ -257,7 +266,7 @@ export async function registerRoutes(
         const room = rooms.get(userRoomCode);
         if (room) {
           const player = room.players.get(userId);
-          if (player) {
+          if (player && player.ws === ws) {
             player.connected = false;
             // Optionally remove after timeout
           }
@@ -268,11 +277,7 @@ export async function registerRoutes(
 
   // Helpers
   function broadcastLobbyUpdate(room: Room) {
-    const playersList = Array.from(room.players.values()).map(p => ({
-      name: p.name,
-      score: p.score,
-      connected: p.connected
-    }));
+    const playersList = Array.from(room.players.values()).map(publicPlayerView);
     
     room.hostWs.send(JSON.stringify({
       type: WS_EVENTS.LOBBY_UPDATE,
@@ -322,9 +327,7 @@ export async function registerRoutes(
   }
 
   function broadcastGameOver(room: Room) {
-    const leaderboard = Array.from(room.players.values())
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
+    const leaderboard = publicLeaderboard(room.players.values());
 
     const msg = JSON.stringify({
       type: WS_EVENTS.GAME_OVER,
