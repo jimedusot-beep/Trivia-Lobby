@@ -29,7 +29,7 @@ export default function Play() {
   }, [setLocation]);
   useEffect(() => { setSelectedAnswer(null); }, [question?.questionIndex, question?.serverStartTs]);
   useEffect(() => {
-    if (result?.isCorrect) confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
+    if (result?.isCorrect) confetti({ disableForReducedMotion: true, particleCount: 100, spread: 60, origin: { y: 0.7 } });
   }, [result]);
   useEffect(() => {
     if (gameState.phase !== "playing") return;

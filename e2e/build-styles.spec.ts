@@ -1,19 +1,33 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile, readdir } from "node:fs/promises";
+const externalFonts = new WeakMap<Page, string[]>();
 
 async function builtStyles(page: Page) {
   const assets = new URL("../dist/public/assets/", import.meta.url);
-  const styles = (await readdir(assets)).filter(name => name.endsWith(".css"));
+  const files = await readdir(assets);
+  const styles = files.filter(name => name.endsWith(".css"));
   expect(styles.length).toBeGreaterThan(0);
   const css = (await Promise.all(styles.map(name => readFile(new URL(name, assets), "utf8")))).join("\n");
+  // The dev server does not serve dist assets; load the exact built font bytes.
+  await page.route("**/assets/*.woff2", async route => {
+    const name = new URL(route.request().url()).pathname.split("/").pop()!;
+    if (!files.includes(name)) return route.fallback();
+    await route.fulfill({ contentType: "font/woff2", body: await readFile(new URL(name, assets)) });
+  });
   await page.locator('style[data-vite-dev-id], link[rel="stylesheet"]').evaluateAll(nodes => nodes.forEach(node => node.remove()));
   await page.addStyleTag({ content: css });
+  expect(await page.evaluate(async () => {
+    await document.fonts.ready;
+    return document.fonts.check('16px "Nunito Variable"') && document.fonts.check('16px "Fredoka Variable"');
+  })).toBe(true);
 }
 
-// An external font provider is independent of the compiled application CSS.
 test.beforeEach(async ({ page }) => {
-  await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ contentType: "text/css", body: "" }));
+  const requests: string[] = [];
+  externalFonts.set(page, requests);
+  page.on("request", request => { if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(request.url())) requests.push(request.url()); });
 });
+test.afterEach(async ({ page }) => { expect(externalFonts.get(page)).toEqual([]); });
 
 test("built styles preserve the join form, theme and keyboard focus on phone and desktop", async ({ page }) => {
   for (const width of [375, 1280]) {
@@ -21,6 +35,7 @@ test("built styles preserve the join form, theme and keyboard focus on phone and
     await page.goto("/join");
     const code = page.getByLabel("Room Code", { exact: true });
     await expect(code).toBeVisible();
+    await expect(page.locator('meta[name="viewport"]')).not.toHaveAttribute("content", /maximum-scale|user-scalable=no/);
     // Exercise the shipped stylesheet as well as the Vite development pipeline.
     await builtStyles(page);
 
@@ -78,5 +93,36 @@ test("built home styles keep the title gradient and actions visible across scree
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
       expect(bounds!.height).toBeGreaterThanOrEqual(44);
     }
+  }
+});
+
+test("built learning styles wrap long account and study text without hiding actions", async ({ page }) => {
+  const token = "W".repeat(100);
+  await page.route("**/api/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/auth/me") return route.fulfill({ json: { id: "layout-reader", email: "w".repeat(64) + "@example.test" } });
+    if (path === "/api/study/dashboard") return route.fulfill({ json: {
+      visual: { attempts: 0, correct: 0, due: 0 }, attempts: 1, correct: 0, accuracy: 0,
+      sessions: 1, studyDays: 1, dueReviews: 1, studyStreak: 1, xp: 10, achievements: [], historyLimited: false,
+      subjectProgress: [{ subject: token, attempts: 1, accuracy: 0, weakCards: 1, improvementPoints: null }],
+      decks: [{ deckId: 1, title: "Source " + token, subject: token, total: 1, learned: 1, due: 1, mastered: 0, attempts: 1, correct: 0, accuracy: 0 }],
+    } });
+    if (path === "/api/study/history") return route.fulfill({ json: { wrongAnswers: [
+      { id: "review", cardId: 1, deckId: 1, front: "Question " + token, subject: token, reviewedAt: "2026-10-22T12:00:00Z", rating: 1 },
+    ] } });
+    return route.fulfill({ status: 404, json: { message: "Unexpected test request" } });
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/learning");
+  await expect(page.getByRole("heading", { name: "My learning", exact: true })).toBeVisible();
+  await expect(page.getByText("Question " + token, { exact: true })).toBeVisible();
+  await builtStyles(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const name of ["Review due", "Retry weak cards", "Study all", "Retry"]) {
+    const action = page.getByRole("link", { name, exact: true });
+    await expect(action).toBeVisible();
+    const bounds = await action.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
   }
 });

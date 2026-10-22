@@ -1,12 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap');
+@import "@fontsource-variable/fredoka";
+@import "@fontsource-variable/nunito";
 
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
 :root {
   /* Playful Color Palette */
-  --font-display: 'Fredoka', sans-serif;
-  --font-body: 'Nunito', sans-serif;
+  --font-display: 'Fredoka Variable', sans-serif;
+  --font-body: 'Nunito Variable', sans-serif;
 
   --background: 260 100% 97%;
   --foreground: 260 20% 20%;

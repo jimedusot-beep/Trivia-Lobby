@@ -81,10 +81,10 @@ export default function Learning() {
   const subjects = Array.from(new Set(wrong.map(x => x.subject || "General"))).sort();
   const filtered = wrong.filter(x => subjectFilter === "all" || (x.subject || "General") === subjectFilter);
   const unique = filtered.filter((x, i, all) => all.findIndex(y => y.cardId === x.cardId) === i);
-  return <main className="min-h-screen bg-muted/20 p-4 md:p-8">
+  return <main className="min-h-screen bg-muted/20 p-4 md:p-8 [overflow-wrap:anywhere]">
     <div className="max-w-5xl mx-auto space-y-7">
       <header className="flex flex-wrap justify-between items-center gap-3">
-        <div><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
+        <div className="min-w-0 max-w-full"><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
         <div className="flex gap-2 flex-wrap"><Button asChild variant="outline"><Link href="/learning/sources">Source drafts</Link></Button>
           <Button variant="outline" onClick={() => { window.location.href = "/api/study/export"; }}>Export progress</Button>
           <Button variant="outline" onClick={async () => { await api("/api/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>
@@ -103,7 +103,7 @@ export default function Learning() {
           <h2 className="text-2xl font-bold">Weak subjects and improvement</h2>
           <p className="text-sm text-muted-foreground">Improvement compares self-rated recall success in the latest 10 attempts with the previous 10 for the same subject. A change is shown only when both windows contain reviews.</p>
           {!dashboard.subjectProgress.length ? <p>Study cards to see subject trends.</p> :
-            <div className="grid md:grid-cols-2 gap-3">{dashboard.subjectProgress.map(subject =>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{dashboard.subjectProgress.map(subject =>
               <Card key={subject.subject}><CardContent className="p-4 space-y-1">
                 <h3 className="font-bold">{subject.subject}</h3>
                 <p>{subject.accuracy}% self-rated recall across {subject.attempts} attempts</p>
@@ -113,7 +113,7 @@ export default function Learning() {
         </section>
         <section className="space-y-3"><h2 className="text-2xl font-bold">Course pathways</h2>
           <p className="text-muted-foreground">Explore cards → build recall → reach long-term mastery (21+ day intervals). Study at your own pace.</p>
-          <div className="grid md:grid-cols-2 gap-4">{dashboard.decks.map(deck =>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{dashboard.decks.map(deck =>
             <Card key={deck.deckId}><CardHeader><CardTitle>{deck.title}</CardTitle><p className="text-sm text-muted-foreground">{deck.subject}</p></CardHeader>
               <CardContent className="space-y-3">
                 <Progress aria-label={`${deck.title} learned cards`} value={deck.total ? 100 * deck.learned / deck.total : 0} />
@@ -133,13 +133,13 @@ export default function Learning() {
       </>}
       <section className="space-y-4"><h2 className="text-2xl font-bold">Wrong-answer notebook</h2>
         <label htmlFor="subject-filter">Filter subject</label>
-        <select id="subject-filter" className="border rounded p-2 block bg-background" value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}>
+        <select id="subject-filter" className="w-full max-w-full border rounded p-2 block bg-background" value={subjectFilter} onChange={e => setSubjectFilter(e.target.value)}>
           <option value="all">All subjects</option>{subjects.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
         {!unique.length ? <p className="text-muted-foreground">No unresolved weak cards in this subject.</p> :
           <ul className="space-y-2">{unique.slice(0, 100).map(item =>
-            <li key={item.cardId} className="p-3 rounded border bg-card flex justify-between gap-3 items-center">
-              <div><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · Missed {new Date(item.reviewedAt).toLocaleDateString()}</p></div>
+            <li key={item.cardId} className="p-3 rounded border bg-card flex flex-wrap sm:flex-nowrap justify-between gap-3 items-center">
+              <div className="min-w-0 flex-1"><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · Missed {new Date(item.reviewedAt).toLocaleDateString()}</p></div>
               <Button asChild variant="outline"><Link href={`/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
             </li>)}</ul>}
       </section>
