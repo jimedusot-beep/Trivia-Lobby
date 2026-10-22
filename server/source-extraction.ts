@@ -22,6 +22,7 @@ export async function extractSource(filename: string, bytes: Buffer): Promise<Ex
       (async () => {
         const { getDocumentProxy } = await import(workerData.module);
         const pdf = await getDocumentProxy(new Uint8Array(workerData.bytes), { isEvalSupported:false, useSystemFonts:false, disableFontFace:true });
+        let result;
         try {
           if (pdf.numPages > 300) throw new Error('PDF page limit is 300');
           let text = '';
@@ -30,14 +31,15 @@ export async function extractSource(filename: string, bytes: Buffer): Promise<Ex
             text += '\\n[Page '+i+']\\n'+content.items.map(x => x.str ? x.str+(x.hasEOL?'\\n':' ') : '').join('');
             page.cleanup();
           }
-          parentPort.postMessage({ text:text.slice(0,200000), pages:pdf.numPages, status:text.trim()?'extracted':'ocr-required' });
-        } finally { await pdf.destroy(); }
+          result = { text:text.slice(0,200000), pages:pdf.numPages, status:text.trim()?'extracted':'ocr-required' };
+        } finally { await pdf.loadingTask.destroy(); }
+        parentPort.postMessage(result);
       })().catch(e => { throw e; });
     `, { eval:true, workerData:{ bytes, module:createRequire(process.cwd()+"/package.json").resolve("unpdf") }, resourceLimits:{ maxOldGenerationSizeMb:128 } });
     const timer=setTimeout(() => { void worker.terminate(); reject(new Error("PDF extraction timed out")); },15000);
     worker.once("message", value => { clearTimeout(timer); resolve(value); void worker.terminate(); });
     worker.once("error", () => { clearTimeout(timer); reject(new Error("PDF extraction failed")); });
-    worker.once("exit", code => { clearTimeout(timer); if(code!==0) reject(new Error("PDF extraction stopped")); });
+    worker.once("exit", () => { clearTimeout(timer); reject(new Error("PDF extraction stopped before returning text")); });
   }).finally(()=>{pdfJobs--;});
 }
 
