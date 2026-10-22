@@ -10,7 +10,7 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
   const { default: express } = await import("express");
   const { registerStudyRoutes } = await import("./study-routes");
   const { db, pool } = await import("./db");
-  const { decks, cards, studyAccounts } = await import("@shared/schema");
+  const { decks, cards, studyAccounts, studySources, studyDrafts } = await import("@shared/schema");
   const { eq } = await import("drizzle-orm");
   const app = express();
   app.use(express.json());
@@ -57,6 +57,31 @@ test("private history, idempotent reviews and cross-device reload", { skip: !pro
     assert.equal(historyA.value.wrongAnswers[0].cardId, cardId);
     assert.equal(historyB.value.events.length, 0);
     assert.equal(historyB.value.wrongAnswers.length, 0);
+    const sourceId = randomUUID();
+    const draftId = randomUUID();
+    await db.insert(studySources).values({
+      id: sourceId, userId: a.value.id, title: "Private astronomy text",
+      body: "Planetary astronomy is the study of planets, moons, and planetary systems. ".repeat(2),
+    });
+    await db.insert(studyDrafts).values({
+      id: draftId, userId: a.value.id, sourceId, front: "What is planetary astronomy?",
+      back: "The study of planets", evidence: "the study of planets",
+    });
+    const sourcesA = await send("/api/study/sources", "GET", undefined, a.cookie!);
+    const sourcesB = await send("/api/study/sources", "GET", undefined, b.cookie!);
+    assert.equal(sourcesA.value.length, 1);
+    assert.equal(sourcesB.value.length, 0, "cross-account source list must be empty");
+    const draftsB = await send("/api/study/drafts", "GET", undefined, b.cookie!);
+    assert.equal(draftsB.value.length, 0);
+    const forbiddenApproval = await send(`/api/study/drafts/${draftId}`, "PATCH", {
+      front: "What is planetary astronomy?", back: "Studying planets", approved: true,
+    }, b.cookie!);
+    assert.equal(forbiddenApproval.status, 404, "another user may not edit the draft");
+    const approvedByOwner = await send(`/api/study/drafts/${draftId}`, "PATCH", {
+      front: "What is planetary astronomy?", back: "Studying planets", approved: true,
+    }, a.cookie!);
+    assert.equal(approvedByOwner.status, 200);
+    assert.equal(approvedByOwner.value.approved, true);
     const aQueue = await send(`/api/study/queue?deckId=${deckId}&mode=missed`, "GET", undefined, a.cookie!);
     const bQueue = await send(`/api/study/queue?deckId=${deckId}&mode=missed`, "GET", undefined, b.cookie!);
     assert.equal(aQueue.value.cards.length, 1);
