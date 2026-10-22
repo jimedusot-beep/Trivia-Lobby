@@ -85,7 +85,7 @@ export default function Host() {
               <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
               <div 
                 onClick={copyCode}
-                data-testid="room-code" className="text-5xl sm:text-7xl md:text-8xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
+                data-testid="room-code" className="text-5xl sm:text-7xl md:text-8xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-linear-to-r from-yellow-400 to-orange-500"
               >
                 {gameState.roomCode || "..."}
               </div>
@@ -100,7 +100,7 @@ export default function Host() {
                   key={p.playerId}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="bg-white/10 backdrop-blur-sm p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
+                  className="bg-white/10 backdrop-blur-xs p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
                   {p.name}
                   {gameState.mode==="teams"&&<span className="block text-sm">Team {p.teamId}</span>}

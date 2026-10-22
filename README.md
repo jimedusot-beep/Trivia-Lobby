@@ -6,7 +6,7 @@ This branch integrates current main with secure multiplayer, private source stor
 
 ## Start
 
-Use Node 22+, persistent PostgreSQL and a private durable source volume or private S3 bucket. See `.env.example`; never commit credentials.
+Use Node 22+, persistent PostgreSQL and a private durable source volume or private S3 bucket. The Tailwind 4 UI supports Safari 16.4+, Chrome 111+ and Firefox 128+; see the [build-tool migration](docs/BUILD_TOOL_MIGRATION.md). See `.env.example`; never commit credentials.
 
 ```sh
 npm ci
@@ -36,17 +36,17 @@ Live games currently support 2–4-choice MCQs from either question schema. QTI 
 npm run check
 npm test
 npm run build
-npm audit --omit=dev --audit-level=high
+npm audit --audit-level=moderate
 npm run audit:licenses
 # Isolated disposable PostgreSQL only, after migration:
 TEST_DATABASE_URL="$DATABASE_URL" STUDY_TEST_DATABASE_URL="$DATABASE_URL" npm run test:integration
-# With a running test app and browser runtimes:
+# After building, with a running test app and browser runtimes:
 npx playwright install chromium firefox webkit
 npm run test:e2e
 npm run smoke
 ```
 
-The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. See [PR #21 checks](https://github.com/jimedusot-beep/Trivia-Lobby/pull/21/checks) for current hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
+The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build, full dependency audit and compiled-style regressions, HTTP/DB/WS smoke and three browser engines. See [merged main acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907) for recorded hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
 
 ## Operations and research
 

@@ -29,7 +29,7 @@ export function AnimatedCard({ front, back, isFlipped, onFlip, className }: Anim
         </div>
 
         {/* Back Face */}
-        <div id={id+"-back"} aria-hidden={!isFlipped} className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border-2 border-primary shadow-xl flex flex-col items-center justify-center p-8 text-center">
+        <div id={id+"-back"} aria-hidden={!isFlipped} className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-linear-to-br from-primary/10 to-secondary/10 border-2 border-primary shadow-xl flex flex-col items-center justify-center p-8 text-center">
           <div className="absolute top-4 left-4 text-xs font-bold text-primary uppercase tracking-widest">Answer</div>
           {back}
         </div>

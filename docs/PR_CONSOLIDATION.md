@@ -1,6 +1,6 @@
 # PR consolidation for merge
 
-The open PRs in the user's screenshot overlap and use incompatible prototype account, protocol and migration designs. PR #21 is the consolidated implementation. All six earlier branch heads are preserved as ancestors, so merging this result incorporates their history without replaying conflicting implementations over the current app.
+The PRs in the user's screenshot overlapped and use incompatible prototype account, protocol and migration designs. PR #21 is the consolidated implementation. All six earlier branch heads are preserved as ancestors, so merging this result incorporates their history without replaying conflicting implementations over the current app.
 
 | PR | Resolution |
 |---|---|
@@ -12,7 +12,7 @@ The open PRs in the user's screenshot overlap and use incompatible prototype acc
 | #20 earlier integration | Port encrypted snapshot recovery and retained-original verification, private/versioned S3 infrastructure template, opt-in backup workflow, streamed AI-response bounds, saved flashcard recall and timing-resistant login. Keep #21's stronger editing, portable formats, answer replay validation, source citations, protocol projection and migration contracts. Preserve the original additional artwork. |
 | #21 final integration | Contains the combined source and all heads. Runs unit/socket tests, native PostgreSQL integration/migration and recovery checks, smoke tests and independent Chromium/Firefox/WebKit acceptance jobs before merge. |
 
-Local verification after consolidation: 57 unit/socket tests, five PGlite database/API scenarios and seven Chromium browser scenarios pass, with TypeScript and production build checks. Native encrypted recovery and the complete browser matrix must also pass in GitHub Actions for this revision.
+All seven screenshot PRs are now marked merged through PR #21 at `e649b07eee0f0a48fe772ca8f39da3817da8f90e`. Its source passed 57 unit/socket tests, five native PostgreSQL database/API scenarios, encrypted database-and-original-file recovery and seven browser scenarios in each of Chromium, Firefox and WebKit (21 total), with retries disabled. The same checks passed after merge in [main acceptance run 39814795907](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907). TypeScript, build and smoke checks also passed.
 
 The previous acceptance jobs stalled during combined browser installation. The new workflow installs one browser per bounded job, uses per-PR concurrency, and attempts to cancel obsolete acceptance runs. It does not disable the browser checks.
 
