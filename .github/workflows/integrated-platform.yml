@@ -78,7 +78,7 @@ jobs:
       - run: npm test
       - run: npm run test:integration
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=moderate
       - name: Database backup and empty-database restore rehearsal
         run: |
           npm run backup:db

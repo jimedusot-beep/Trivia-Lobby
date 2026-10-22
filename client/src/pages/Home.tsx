@@ -34,14 +34,14 @@ export default function Home() {
       <img src="/lobby-welcome.png" alt="" className="w-full max-h-72 object-cover rounded-3xl" />
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-20">
-        <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-linear-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
           Trivia Lobby
         </h1>
         <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
           Family game night meets serious studying. Build reusable decks, practice with flashcards, and host live quiz battles.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 pt-4">
           <Button asChild size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all"><Link href="/join">
               <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
             </Link></Button>
@@ -85,7 +85,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {matchingDecks.map((deck) => (
               <Card key={deck.id} className="group hover:shadow-xl hover:border-primary/50 transition-all duration-300 rounded-3xl overflow-hidden border-2 bg-card">
-                <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent pb-4">
+                <CardHeader className="bg-linear-to-br from-primary/5 to-transparent pb-4">
                   <div className="flex justify-between items-start">
                     <CardTitle className="font-display text-2xl truncate pr-2" title={deck.title}>
                       {deck.title}

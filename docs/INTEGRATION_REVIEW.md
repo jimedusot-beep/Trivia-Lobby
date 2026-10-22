@@ -1,6 +1,8 @@
-# Integrated branch review
+# Integration and maintenance review
 
-Verified on 2026-10-22 on `feature/integrated-learning-platform-20261022`. The branch integrates main `bd6bceaeda7ebb86475828c090bd207bce555ead`, including PR #7's room projections and submission guard, with Phase 1 PR #10, Phase 3 PR #15 and Phase 4 PR #11 while retaining main's visual exams and 11-kind question model. Research PR #5 supplies reference catalogs rather than application source.
+Verified on 2026-10-22. PR #21 merged the consolidated implementation into main at `e649b07eee0f0a48fe772ca8f39da3817da8f90e`. All seven screenshot PRs (#5, #8, #10, #11, #15, #20, #21) are merged. Main's own [CI](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814796100) and [integrated acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907) passed after that merge.
+
+The subsequent `fix/build-tool-security-20261022` maintenance branch removes the remaining development advisories and adds compiled-stylesheet browser checks. Its exact follow-up validation is recorded below and in its pull-request checks.
 
 The integration closes the original account/ownership gaps, replaces trusted player IDs with rotating credentials, and makes the server authoritative for multiplayer timing, scoring and state. It also joins private original documents, reviewed imports, editable questions, saved practice and FSRS under one account. Original teams, buzzer, wager, workshop and party modes reuse the secured game engine.
 
@@ -14,24 +16,22 @@ The [48-item status checklist](IMPLEMENTATION_CHECKLIST.md) identifies bounded i
 | Unit and real WebSocket tests | 57 passed locally, zero failed or skipped. Includes timers, reconnect rotation, host/player permissions, scoring, portable formats, extraction including text-free PDFs, schemas, matching, rate limits and main's projection/guard regressions. |
 | Migrations | All five ordered migrations applied twice against native PostgreSQL 16 in hosted acceptance and against the disposable local PGlite database. |
 | Database/API integration | Five passed, zero skipped, on native PostgreSQL 16 in hosted acceptance; five also pass using local PGlite over its socket adapter. Covers ownership, retained originals, FK cascades/rollback, study idempotency, drafts, reviewed publication, card editing and JSON restore. |
-| Native database archive | `pg_dump`, archive validation/checksum and empty-target atomic `pg_restore` passed in hosted acceptance. This is a disposable CI database, not a production backup configuration. |
-| Browser acceptance | Seven Chromium tests passed with retries disabled: join keyboard/axe/phone layout; cross-device private history and legacy practice saving; imported-card edit/reorder/reload; host/player match with both reconnecting; visual authoring/reopen/MCQ/matching/hotspot practice. |
-| Build | Production client and server built. Client JS is about 666 kB before gzip (205 kB gzip), with a bundle-size warning. |
+| Native database archive | `pg_dump`, archive validation/checksum and empty-target atomic `pg_restore`, plus authenticated encrypted recovery of exact database contents and retained original bytes, passed in hosted acceptance. This is a disposable CI database, not a production backup configuration. |
+| Browser acceptance | On merged main, seven tests passed in each of Chromium, Firefox and WebKit (21 total), with retries disabled: join keyboard/axe/phone layout; cross-device private history and legacy practice saving; imported-card edit/reorder/reload; host/player match with both reconnecting; visual authoring/reopen/MCQ/matching/hotspot practice. |
+| Build | Production client and server built. Client JS is about 675 kB before gzip (207 kB gzip), with a bundle-size warning. |
 | Smoke | HTTP liveness, database readiness and actual WebSocket exchange passed against the test app. |
 | Production dependency audit | Zero reported vulnerabilities at the checked lockfile. |
-| Full dependency audit | Eight development advisories: five high, three moderate, in the Tailwind 3 glob/selector chain. These remain open; no forced Tailwind 4 migration. |
+| Full dependency audit | Zero vulnerabilities across production and development dependencies after the Tailwind 4 migration. CI runs the full audit at moderate severity and above; no advisory exceptions or suppression. |
 | License inventory | 280 installed production packages inventoried; no missing/review-required license metadata. This is not legal clearance. |
 
-Local browser acceptance used Chromium 141 with Playwright 1.64.1 and Node 24.19.0; the unit/socket suite is also checked on Node 22 in CI. Native PostgreSQL 16, repeated migrations, the five integration tests and archive restoration passed in [hosted run 39808253872](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39808253872) at source commit `d535b49`. Browser-matrix acceptance was still running when this record was updated; consult [PR #21 checks](https://github.com/jimedusot-beep/Trivia-Lobby/pull/21/checks) for the current result.
+Local browser acceptance uses Chromium 141 with Playwright 1.64.1 and Node 24.19.0; hosted acceptance uses Node 22 and native PostgreSQL 16. The merged main acceptance run above includes repeated migrations, five database/API tests, native archive restoration, encrypted original-file recovery and all three browser engines. The build-tool follow-up also passes 57 unit/socket tests, five local PGlite database/API tests, the existing seven Chromium scenarios, and two additional compiled-style scenarios covering phone/tablet/desktop layouts and keyboard focus. The new home-layout check exposed tablet-width action overflow; wrapping the action row fixes it. See [BUILD_TOOL_MIGRATION.md](BUILD_TOOL_MIGRATION.md) for the dependency and browser compatibility changes.
 
 ## Remaining acceptance and operator work
 
-- Complete the full Chromium/Firefox/WebKit matrix in `.github/workflows/integrated-platform.yml` and require green checks before merge. Native PostgreSQL and archive restoration have passed; the browser matrix remains a separate acceptance gate.
 - Provision durable private object storage, enable independent original-file retention, and configure scheduled encrypted offsite database backups plus provider point-in-time recovery. The app adapters and scripts do not provision these services.
 - Rehearse migration from a copy of any existing database. Ownerless legacy decks remain inaccessible until ownership is verified. A previously deployed separate Phase 4 account system needs explicit identity mapping; migration refuses to guess.
 - Configure and acceptance-test a real private S3 bucket and optional HTTPS AI provider. Neither was accessed. PDF/DOCX extraction and evidence approval are tested locally; no OCR or live AI-output quality evaluation was performed.
 - Complete a manual screen-reader/touch accessibility review and the full game-mode/browser matrix. Automated representative checks passed; full WCAG conformance is not claimed.
-- Resolve the development dependency advisories through a separately validated build-tool update.
 
 ## Product limits
 
@@ -43,7 +43,7 @@ Rooms and WebSocket throttles are process-local. Use one long-running app proces
 
 ## Publication status
 
-Publication of the development branch and a draft pull request was explicitly authorized on 2026-10-22. This change is prepared for review; no production deployment or merge into main is included.
+The consolidated implementation is merged through PR #21. The build-tool follow-up runs the same required checks before merge. Repository merges do not configure or deploy the production database, object storage, AI provider or backup schedule.
 
 ## PR consolidation
 

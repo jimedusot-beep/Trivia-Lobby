@@ -1,6 +1,6 @@
 # Requested work status
 
-All 48 requested items are tracked below. **Implemented** describes the combined source and local checks, not a production rollout. **Partial** identifies a narrower implementation or unfinished acceptance work. **Pending operations** requires deployment configuration that was not available. Exact verification is recorded in [INTEGRATION_REVIEW.md](INTEGRATION_REVIEW.md).
+All 48 requested items are tracked below. **Implemented** describes the merged source and recorded checks, not a production rollout. **Partial** identifies a narrower implementation or unfinished acceptance work. **Pending operations** requires deployment configuration that was not available. Exact verification is recorded in [INTEGRATION_REVIEW.md](INTEGRATION_REVIEW.md).
 
 | # | Priority | Requested item | Status and evidence/limits |
 |---|---|---|---|
@@ -18,7 +18,7 @@ All 48 requested items are tracked below. **Implemented** describes the combined
 | 12 | P0 Multiplayer | Complete multiplayer test | Implemented: socket match covers two players, invalid actions and deadlines; browser match covers host/player reload, reconnect and finish. |
 | 13 | P0 Data | Transactional deck deletion | Implemented: atomic owner-filtered deletion and FK cascades; rollback coverage. |
 | 14 | P0 Data | Relational foreign keys | Implemented: additive migrations validate references and enforce cascades; native PostgreSQL 16 acceptance passes. |
-| 15 | P0 Data | Durable database backups | Pending operations: restricted archive/checksum/empty-target restore scripts pass native hosted rehearsal; production scheduling and retention/PITR remain. |
+| 15 | P0 Data | Durable database backups | Pending operations: native archive restoration and encrypted database-plus-original-file recovery pass hosted rehearsal; production scheduling, offsite storage and retention/PITR remain. |
 | 16 | P1 Data | Save original documents | Implemented: bounded validated original bytes retained with hashes; authorized retrieval tested. |
 | 17 | P1 Data | Secure object storage | Partial: private volume and encrypted private S3 adapter implemented; production bucket/retention and S3 acceptance pending. |
 | 18 | P1 Data | Folders, courses and tags | Implemented: private library metadata and organization UI. |
@@ -35,11 +35,11 @@ All 48 requested items are tracked below. **Implemented** describes the combined
 | 29 | P1 Study | Timed/untimed practice | Implemented: universal practice modes and saved missed answers; solo timer is local, competitive timer is server-authoritative. |
 | 30 | P1 Study | Explanations/source citations | Implemented: authoring, backups and post-check explanations, attribution/page/source passages. |
 | 31 | P1 Quality | Expanded unit tests | Implemented: 57 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction (including text-free PDFs), permissions and projection/guard regressions. |
-| 32 | P1 Quality | Playwright host/player E2E | Partial acceptance: all five Chromium scenarios pass; Firefox/WebKit projects await CI. |
+| 32 | P1 Quality | Playwright host/player E2E | Implemented: seven scenarios pass in each of Chromium, Firefox and WebKit (21 total) on merged main; compiled-style regressions extend the browser suite. |
 | 33 | P1 Quality | PostgreSQL integration tests | Implemented: five API/relational tests pass on native PostgreSQL 16 and PGlite; repeated migrations and native archive restoration pass. |
-| 34 | P1 Quality | Dependency/license audits | Implemented audit: production has zero reported vulnerabilities; eight development advisories remain. Inventory records 280 packages with no missing/review-required license metadata. |
+| 34 | P1 Quality | Dependency/license audits | Implemented: full production/development audit reports zero vulnerabilities after the validated Tailwind 4 migration; CI now audits both scopes. Inventory records 280 packages with no missing/review-required license metadata. |
 | 35 | P1 Quality | Deployment smoke tests | Implemented: HTTP/DB/real-WS smoke passes locally; production smoke pending deployment. |
-| 36 | P1 Quality | Reconcile main/research branches | Implemented: main (including PR #7 projections/guards) plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; prepared for draft PR review. |
+| 36 | P1 Quality | Reconcile main/research branches | Implemented: main (including PR #7 projections/guards) plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; all seven screenshot PRs (#5, #8, #10, #11, #15, #20, #21) merged through PR #21. |
 | 37 | P1 Experience | Host/player feedback/errors | Implemented: visible reconnect state, invalid action/deadline errors, acknowledgments and restored answered state. |
 | 38 | P1 Experience | Mobile/accessibility audit | Partial: phone overflow, keyboard, labels, menu alternatives, reduced motion and representative axe checks pass; full manual screen-reader/touch audit pending. |
 | 39 | P1 Experience | Draft save/recovery | Implemented: private server drafts, optimistic revisions, recovery, keepalive flush and visible save/conflict feedback. |

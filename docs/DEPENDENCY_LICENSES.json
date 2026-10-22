@@ -1802,9 +1802,9 @@
     },
     {
       "name": "tailwind-merge",
-      "version": "2.6.0",
+      "version": "3.7.0",
       "license": "MIT",
-      "integrity": "sha512-P+Vu1qXfzediirmHOC3xKGAYeZtPcV9g76X+xg2FD4tYgR71ewMA35Y3sCz3zhiN/dwefRpJX0yBcgwi1fXNQA==",
+      "integrity": "sha512-XPPUyAc+cvspz3lHTcR/QgPfW2A0lv/xQNIjX3HGhLR+Nq2lHaLq5MtTesHn8GUr3W3DguT2KT5x3NVgRtYwmA==",
       "reviewRequired": false
     },
     {
