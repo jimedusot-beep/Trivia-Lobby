@@ -97,4 +97,7 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
-})();
+})().catch(() => {
+  console.error("Application startup failed; check the production build and runtime configuration");
+  process.exit(1);
+});

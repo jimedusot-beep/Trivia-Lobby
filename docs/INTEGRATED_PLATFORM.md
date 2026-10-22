@@ -21,7 +21,7 @@ Merged PR #21 preserves current main and the ancestry of Phase 1 PR #10, Phase 3
 
 ## Deployment and migration
 
-Use Node 22+, HTTPS, a persistent PostgreSQL database and one long-running app process. `npm run db:migrate` bootstraps a fresh DB and repeats additive migrations safely. Back up existing DBs first. Do not use `db:push` for production reconciliation: it can propose destructive changes to objects beyond Drizzle's model.
+Use Node 22+, HTTPS, a persistent PostgreSQL database and one long-running app process. After `npm run build`, `npm start` verifies private storage and applies packaged additive migrations before listening. Development/manual migration remains `npm run db:migrate`. See [PRODUCTION_STARTUP.md](PRODUCTION_STARTUP.md) for Replit and deployable artifacts. Back up existing DBs first. Do not use `db:push` for production reconciliation: it can propose destructive changes to objects beyond Drizzle's model.
 
 The standalone Phase 4 prototype used separate `study_accounts`. If it was deployed, the migration refuses to guess identities. Map accounts/dependencies into `users` only after a backup and staging rehearsal. Legacy decks require verified manual ownership assignment. No old material is made public automatically.
 

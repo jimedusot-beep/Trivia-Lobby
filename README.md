@@ -18,6 +18,8 @@ npm run dev
 
 Back up existing databases before migration. Pre-account decks require verified ownership assignment. Previously deployed experimental Phase 4 identities need explicit migration. Use checked-in migrations in production, not `db:push`.
 
+For production, run `npm run build` then `npm start` with deployment secrets set. The built launcher verifies private storage and applies packaged migrations before accepting traffic, and runs without development dependencies. See the [production/Replit release guide](docs/PRODUCTION_STARTUP.md) for the single-instance hosting setup and smoke checks.
+
 ## Features
 
 - One account for private decks, documents, drafts and learning history; guests can join live rooms.
@@ -46,7 +48,7 @@ npm run test:e2e
 npm run smoke
 ```
 
-All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE.md), including purchase/reconnect and buzzer handoff behavior. The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build, full dependency audit and compiled-style regressions, HTTP/DB/WS smoke and three browser engines. See [merged main acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39814795907) for recorded hosted results and the [review](docs/INTEGRATION_REVIEW.md) for recorded evidence and limits.
+All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE.md), including purchase/reconnect and buzzer handoff behavior. The integrated GitHub Actions workflow covers migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build, full dependency audit and compiled-style regressions, HTTP/DB/WS smoke and three browser engines. A separate production-runtime job checks fresh-database startup and restart with development dependencies removed. See [merged main acceptance](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/39822799268) for 45 recorded browser results and the [review](docs/INTEGRATION_REVIEW.md) for evidence and limits.
 
 ## Operations and research
 
