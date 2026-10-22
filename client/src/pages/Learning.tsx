@@ -116,7 +116,7 @@ export default function Learning() {
             <Card key={deck.deckId}><CardHeader><CardTitle>{deck.title}</CardTitle><p className="text-sm text-muted-foreground">{deck.subject}</p></CardHeader>
               <CardContent className="space-y-3">
                 <Progress aria-label={`${deck.title} learned cards`} value={deck.total ? 100 * deck.learned / deck.total : 0} />
-                <p className="text-sm">{deck.learned}/{deck.total} started · {deck.mastered} mastered · {deck.due} due · {deck.accuracy === null ? "No attempts" : `${deck.accuracy}% accuracy`}</p>
+                <p className="text-sm">{deck.learned}/{deck.total} started · {deck.mastered} mastered · {deck.due} due · {deck.accuracy === null ? "No attempts" : `${deck.accuracy}% self-rated recall`}</p>
                 <ol className="text-sm space-y-1" aria-label={`${deck.title} milestones`}>
                   <li>{deck.learned > 0 ? "✓" : "○"} Explore: start reviewing your first card</li>
                   <li>{deck.total > 0 && deck.learned === deck.total ? "✓" : "○"} Cover: review every card at least once</li>
