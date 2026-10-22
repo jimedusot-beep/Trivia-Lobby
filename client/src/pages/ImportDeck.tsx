@@ -22,6 +22,7 @@ export default function ImportDeck() {
 
   const importDeck = useImportDeck();
 
+  const [backupV2,setBackupV2]=useState<unknown>(null);
   const handleFile = async (file?: File) => {
     if (!file) return;
     if (!/\.(csv|tsv|json)$/i.test(file.name)) {
@@ -35,6 +36,9 @@ export default function ImportDeck() {
     try {
       const text = await file.text();
       if (!text.trim()) throw new Error("File is empty");
+      const json=/\.json$/i.test(file.name)?JSON.parse(text):null;
+      if(json?.format==="trivia-lobby-deck"&&json?.version===2){setBackupV2(json);setSelectedFilename(file.name);setCsvContent(text);return;}
+      setBackupV2(null);
       setCsvContent(text.replace(/^\uFEFF/, ""));
       setSelectedFilename(file.name);
       setDeckInfo(prev => ({
@@ -148,6 +152,8 @@ export default function ImportDeck() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                  <Link href="/library" className="underline font-semibold">Save an original file in your private source library instead</Link>. This quick importer stores derived cards only.
+                  <br />
                   <strong>CSV/TSV headers:</strong> Front, Back, Type, OptionA, OptionB, OptionC, OptionD, CorrectOption. Or use a Trivia Lobby JSON backup.
                 </div>
                 <div className="space-y-2">
@@ -170,7 +176,8 @@ export default function ImportDeck() {
                   value={csvContent}
                   onChange={e => { setCsvContent(e.target.value); setSelectedFilename(null); }}
                 />
-                <Button 
+                {backupV2 !== null && <Button className="w-full" onClick={async()=>{try{const r=await fetch("/api/backups/restore",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(backupV2)});if(!r.ok)throw new Error((await r.json()).message);setLocation("/");}catch(e){toast({title:"Restore failed",description:(e as Error).message,variant:"destructive"});}}}>Restore complete JSON backup</Button>}
+                <Button
                   className="w-full rounded-xl" 
                   onClick={handleParse}
                   disabled={!csvContent || (!deckInfo.title && !selectedFilename?.toLowerCase().endsWith(".json"))}

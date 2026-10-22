@@ -1,6 +1,9 @@
 import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { db } from "./db";
+import { questionAttempts } from "@shared/schema";
+import { requireUser } from "./auth";
 import { universalQuestionSchema, gradeUniversalAnswer, withoutAnswerKeys } from "@shared/universal-questions";
 import {
   deckExists, listUniversalQuestions, getUniversalQuestion, addUniversalQuestion,
@@ -23,12 +26,17 @@ function failure(err: unknown, res: Response) {
   console.error("Universal question API failure", err);
   return res.status(500).json({ message: "Question operation failed" });
 }
-/**
- * WARNING: Phase 2 routes inherit the legacy public deck model.
- * Until Phase 3 accounts/ownership ships, do not store private exam keys here.
- * The /practice projection omits keys, but authoring endpoints are public.
- */
+/** Every authoring, practice and grading operation requires the deck owner. */
 export function registerUniversalQuestionRoutes(app: Express) {
+  app.use("/api/decks/:deckId/questions", requireUser, async (req, res, next) => {
+    try {
+      const deckId = idSchema.parse(req.params.deckId);
+      if (!await deckExists(deckId, req.studyUser!.id)) {
+        res.status(404).json({ message: "Deck not found" }); return;
+      }
+      next();
+    } catch (err) { failure(err, res); }
+  });
   app.get("/api/decks/:deckId/questions", async (req, res) => {
     try {
       const { deckId } = ids(req);
@@ -86,9 +94,12 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const existing = await getUniversalQuestion(deckId, questionId);
       if (!existing) return res.status(404).json({ message: "Question not found" });
       // Authoritative scoring for solo practice only; not a competitive, anti-cheat endpoint.
-      const response = z.object({ response: z.unknown() }).parse(req.body).response;
+      const input = z.object({ response: z.unknown(), requestId: z.string().uuid().optional() }).strict().parse(req.body);
+      const response = input.response;
       const correct = gradeUniversalAnswer(existing.question, response);
-      res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "" });
+      await db.insert(questionAttempts).values({userId:req.studyUser!.id,questionId,correct,requestId:input.requestId??randomUUID()})
+        .onConflictDoNothing({target:[questionAttempts.userId,questionAttempts.requestId]});
+      res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
     } catch (err) { failure(err, res); }
   });
 }

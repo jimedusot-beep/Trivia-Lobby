@@ -1,66 +1,74 @@
+import { createHash } from "node:crypto";
+import { type UniversalQuestion, universalQuestionSchema } from "@shared/universal-questions";
+import { fingerprint } from "./universal-question-store";
 import { db } from "./db";
-import {
-  decks,
-  cards,
-  type InsertDeck,
-  type InsertCard,
-  type Deck,
-  type Card
-} from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { decks, cards, libraryFiles, deckSources, importReceipts, universalQuestions, type InsertDeck, type InsertCard, type Deck, type Card } from "@shared/schema";
+import { and, eq, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // Decks
-  getDecks(): Promise<Deck[]>;
-  getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined>;
-  createDeck(deck: InsertDeck): Promise<Deck>;
-  importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck>;
-  deleteDeck(id: number): Promise<void>;
-  
-  // Cards
-  createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]>;
+  getDecks(ownerId: string): Promise<Deck[]>;
+  getDeck(id: number, ownerId: string): Promise<(Deck & { cards: Card[] }) | undefined>;
+  createDeck(deck: InsertDeck, ownerId: string): Promise<Deck>;
+  importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, "deckId">[], ownerId: string, sourceFileId?: string, questions?: UniversalQuestion[]): Promise<Deck>;
+  deleteDeck(id: number, ownerId: string): Promise<boolean>;
+  createCards(deckId: number, cardsList: Omit<InsertCard, "deckId">[], ownerId: string): Promise<Card[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getDecks(): Promise<Deck[]> {
-    return await db.select().from(decks).orderBy(decks.createdAt);
+  async getDecks(ownerId: string): Promise<Deck[]> {
+    return db.select().from(decks).where(eq(decks.ownerId, ownerId)).orderBy(decks.createdAt);
   }
-
-  async getDeck(id: number): Promise<(Deck & { cards: Card[] }) | undefined> {
-    const deck = await db.select().from(decks).where(eq(decks.id, id));
-    if (deck.length === 0) return undefined;
-
+  async getDeck(id: number, ownerId: string): Promise<(Deck & { cards: Card[] }) | undefined> {
+    const [deck] = await db.select().from(decks).where(and(eq(decks.id, id), eq(decks.ownerId, ownerId))).limit(1);
+    if (!deck) return undefined;
     const deckCards = await db.select().from(cards).where(eq(cards.deckId, id));
-    
-    return { ...deck[0], cards: deckCards };
+    return { ...deck, cards: deckCards };
   }
-
-  async createDeck(deck: InsertDeck): Promise<Deck> {
-    const [newDeck] = await db.insert(decks).values(deck).returning();
-    return newDeck;
+  async createDeck(deck: InsertDeck, ownerId: string): Promise<Deck> {
+    const [created] = await db.insert(decks).values({ ...deck, ownerId }).returning();
+    return created;
   }
-
-  // Save deck and every card in a single transaction. Roll back on any failure.
-  async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Deck> {
-    if (cardsList.length === 0) throw new Error('Cannot import an empty deck');
-    return db.transaction(async (tx) => {
-      const [created] = await tx.insert(decks).values(deck).returning();
-      await tx.insert(cards).values(cardsList.map(card => ({ ...card, deckId: created.id })));
+  async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, "deckId">[], ownerId: string, sourceFileId?: string, questions?: UniversalQuestion[]): Promise<Deck> {
+    if ((cardsList.length === 0 && !questions?.length) || cardsList.length > 5000 || (questions?.length ?? 0) > 500) throw new Error("Import requires 1–5000 cards");
+    return db.transaction(async tx => {
+      if (sourceFileId) {
+        const [source] = await tx.select({ id: libraryFiles.id }).from(libraryFiles)
+          .where(and(eq(libraryFiles.id, sourceFileId), eq(libraryFiles.ownerId, ownerId))).limit(1);
+        if (!source) throw new Error("Source file not found");
+      }
+      const contentHash = createHash("sha256").update(JSON.stringify({
+        deck, cards: cardsList.map(c=>({front:c.front,back:c.back,type:c.type,options:c.options??[],correctOption:c.correctOption??null})), questions: (questions ?? []).map(({id:_id,...q})=>q),
+      })).digest("hex");
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerId}), hashtext(${contentHash}))`);
+      const [receipt] = await tx.select().from(importReceipts).where(and(eq(importReceipts.ownerId,ownerId),eq(importReceipts.fingerprint,contentHash)));
+      if (receipt) {
+        const [existing] = await tx.select().from(decks).where(and(eq(decks.id,receipt.deckId),eq(decks.ownerId,ownerId)));
+        if (existing) return existing;
+      }
+      const [created] = await tx.insert(decks).values({ ...deck, ownerId }).returning();
+      if (cardsList.length) await tx.insert(cards).values(cardsList.map(card => ({ ...card, deckId: created.id })));
+      if (questions?.length) await tx.insert(universalQuestions).values(questions.map((q,position)=>({
+        deckId:created.id,position,fingerprint:fingerprint(q),definition:universalQuestionSchema.parse(q),
+      })));
+      await tx.insert(importReceipts).values({ownerId,fingerprint:contentHash,deckId:created.id});
+      if (sourceFileId) {
+        await tx.insert(deckSources).values({ deckId: created.id, fileId: sourceFileId });
+        await tx.update(libraryFiles).set({ importStatus: "linked" }).where(and(eq(libraryFiles.id, sourceFileId), eq(libraryFiles.ownerId, ownerId)));
+      }
       return created;
     });
   }
-
-  async deleteDeck(id: number): Promise<void> {
-    await db.delete(cards).where(eq(cards.deckId, id));
-    await db.delete(decks).where(eq(decks.id, id));
+  async deleteDeck(id: number, ownerId: string): Promise<boolean> {
+    const deleted = await db.delete(decks).where(and(eq(decks.id, id), eq(decks.ownerId, ownerId))).returning({ id: decks.id });
+    return deleted.length !== 0;
   }
-
-  async createCards(deckId: number, cardsList: Omit<InsertCard, 'deckId'>[]): Promise<Card[]> {
+  async createCards(deckId: number, cardsList: Omit<InsertCard, "deckId">[], ownerId: string): Promise<Card[]> {
     if (cardsList.length === 0) return [];
-    
-    const cardsWithDeckId = cardsList.map(c => ({ ...c, deckId }));
-    return await db.insert(cards).values(cardsWithDeckId).returning();
+    return db.transaction(async tx => {
+      const [deck] = await tx.select({ id: decks.id }).from(decks).where(and(eq(decks.id, deckId), eq(decks.ownerId, ownerId))).limit(1);
+      if (!deck) throw new Error("Deck not found");
+      return tx.insert(cards).values(cardsList.map(c => ({ ...c, deckId }))).returning();
+    });
   }
 }
-
 export const storage = new DatabaseStorage();

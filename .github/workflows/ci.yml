@@ -7,6 +7,23 @@ on:
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: trivia_ci
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U trivia -d trivia_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://trivia:trivia_ci_only@localhost:5432/trivia_ci
+      TEST_DATABASE_URL: postgresql://trivia:trivia_ci_only@localhost:5432/trivia_ci
+      PRIVATE_STORAGE_DIR: /tmp/trivia-ci-private-sources
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,6 +32,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: npm run test
+      - name: Create fresh isolated schema
+        run: npm run db:push
+      - name: Verify migrations are idempotent
+        run: |
+          npm run db:migrate
+          npm run db:migrate
+      - name: Unit, PostgreSQL, private HTTP, FSRS and WebSocket tests
+        env:
+          STUDY_TEST_DATABASE_URL: postgresql://trivia:trivia_ci_only@localhost:5432/trivia_ci
+        run: npm test
       - run: npm run build
-      - run: npm audit --omit=dev --audit-level=high
+      - name: Enforce production dependency security gate
+        run: npm audit --omit=dev --audit-level=high

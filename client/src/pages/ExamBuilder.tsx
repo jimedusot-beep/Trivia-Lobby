@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { Link, useParams } from "wouter";
 import { useDeck } from "@/hooks/use-decks";
+import { useAuthorDraft } from "@/hooks/use-author-draft";
 import { normalizedHotspotPoint } from "@/lib/hotspots";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export default function ExamBuilder() {
   const [kind, setKind] = useState<Kind>("multiple_choice");
   const [prompt, setPrompt] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [citation,setCitation]=useState("");
   const [options, setOptions] = useState<Option[]>(newOptions);
   const [pairs, setPairs] = useState<Pair[]>(newPairs);
   const [correctId, setCorrectId] = useState("A");
@@ -48,6 +50,10 @@ export default function ExamBuilder() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const endpoint = `/api/decks/${deckId}/questions`;
+  const draft=useAuthorDraft(deckId,{selectedId,kind,prompt,explanation,citation,options,pairs,correctId,imageUrl,imageAlt,targets},d=>{
+    setSelectedId(d.selectedId??null);setKind(d.kind??"multiple_choice");setPrompt(d.prompt??"");setExplanation(d.explanation??"");setCitation(d.citation??"");
+    setOptions(d.options??newOptions());setPairs(d.pairs??newPairs());setCorrectId(d.correctId??"A");setImageUrl(d.imageUrl??"");setImageAlt(d.imageAlt??"");setTargets(d.targets??[]);
+  });
   const reload = useCallback(async () => {
     if (!Number.isSafeInteger(deckId) || deckId < 1) return;
     try { setSaved(await request(endpoint)); }
@@ -66,7 +72,7 @@ export default function ExamBuilder() {
       return;
     }
     setSelectedId(item.id); setKind(q.answer.kind as Kind); setPrompt(q.prompt);
-    setExplanation(q.explanation ?? "");
+    setExplanation(q.explanation ?? "");setCitation(q.source?.attribution??"");
     setNotice("");
     if (q.answer.kind === "multiple_choice") {
       setOptions(q.answer.options); setCorrectId(q.answer.correctOptionIds[0]);
@@ -97,7 +103,7 @@ export default function ExamBuilder() {
         answer = {kind, imageUrl, imageAlt, targets, correctTargetIds:[correctId]};
       }
       const question = universalQuestionSchema.omit({ id: true }).parse({
-        schemaVersion:1, prompt, explanation, tags:[], answer,
+        schemaVersion:1, prompt, explanation, tags:[], answer, ...(citation.trim()?{source:{attribution:citation.trim()}}:{}),
       });
       await request(selectedId === null ? endpoint : `${endpoint}/${selectedId}`,
         selectedId === null ? "POST" : "PATCH", question);
@@ -133,9 +139,9 @@ export default function ExamBuilder() {
       <Link href="/"><Button variant="ghost">Back to decks</Button></Link>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — Exam Builder</h1>
       <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded" role="note">
-        Current decks are public and editable without accounts. Do not add private exams or student data.
-        Linked images are external HTTPS URLs, not uploaded or permanently archived files.
+        Your questions and answer keys are private to your account. Use a private library image link or an HTTPS image you have permission to use.
       </p>
+      <p role="status" className="text-sm text-muted-foreground">{draft.status}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={reset}>New question</Button>
         <Link href={`/visual-practice/${deckId}`}><Button>Practice visual questions</Button></Link>
@@ -203,7 +209,7 @@ export default function ExamBuilder() {
                 <Input id="image-url" type="url" placeholder="https://..." value={imageUrl} onChange={e=>setImageUrl(e.target.value)}/></div>
               <div><Label htmlFor="image-alt">Diagram description (for accessibility)</Label>
                 <Input id="image-alt" value={imageAlt} onChange={e=>setImageAlt(e.target.value)}/></div>
-              {imageUrl.startsWith("https://") && <div className="relative w-full border rounded overflow-hidden">
+              {(imageUrl.startsWith("https://") || /^\/api\/library\/files\/[a-f0-9-]{36}\/image$/.test(imageUrl)) && <div className="relative w-full border rounded overflow-hidden">
                 <img src={imageUrl} alt={imageAlt || "Editable diagram"} className="w-full h-auto block"/>
                 <button type="button" aria-label="Add a target at the clicked diagram position, or at center using keyboard"
                   className="absolute inset-0 cursor-crosshair" onClick={addHotspot}/>
@@ -233,6 +239,7 @@ export default function ExamBuilder() {
                 </div>)}
               </fieldset>
             </div>}
+            <div><Label htmlFor="citation">Source citation</Label><Input id="citation" value={citation} maxLength={500} onChange={e=>setCitation(e.target.value)} placeholder="Author, document and page or passage"/></div>
             <div><Label htmlFor="explanation">Explanation (shown after answering)</Label>
               <Textarea id="explanation" value={explanation} onChange={e=>setExplanation(e.target.value)} maxLength={4000}/></div>
             <Button disabled={busy} onClick={()=>void save()}>{busy?"Saving…":selectedId===null?"Save question":"Save changes"}</Button>

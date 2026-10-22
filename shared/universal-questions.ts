@@ -8,7 +8,8 @@ import { z } from "zod";
 
 const short = z.string().trim().min(1).max(500);
 const identifier = z.string().trim().min(1).max(80);
-const httpsUrl = z.string().url().max(2048).refine(value => value.startsWith("https://"), "Use an HTTPS image URL");
+const httpsUrl = z.string().max(2048).refine(value => /^\/api\/library\/files\/[a-f0-9-]{36}\/image$/.test(value) ||
+  (()=>{try{return new URL(value).protocol === "https:";}catch{return false;}})(), "Use HTTPS or a private library image");
 const option = z.object({ id: identifier, label: short });
 const point = z.object({
   id: identifier, label: short,
@@ -86,6 +87,7 @@ export const universalQuestionSchema = z.object({
     documentId: identifier.optional(),
     page: z.number().int().positive().optional(),
     attribution: short.optional(),
+    quote: z.string().max(4000).optional(),
   }).optional(),
   answer: z.union([textAnswer, multipleChoice, imageHotspot, matching,
     flashcard, multipleSelect, trueFalse, shortAnswer, ordering, dragDropLabels, diagramIdentification]),
@@ -134,7 +136,7 @@ export function gradeUniversalAnswer(question: UniversalQuestion, response: unkn
 }
 /** Player-facing projection only; does not expose answer keys, matches or text answers. */
 export function withoutAnswerKeys(question: UniversalQuestion) {
-  const { answer, explanation: _hiddenExplanation, ...base } = question;
+  const { answer, explanation: _hiddenExplanation, source: _hiddenSource, ...base } = question;
   switch (answer.kind) {
     case "multiple_choice": case "multiple_select":
       return { ...base, answer: { kind: answer.kind, options: answer.options } };

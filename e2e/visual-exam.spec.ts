@@ -11,6 +11,8 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     route.fulfill({status:200, contentType:"image/svg+xml", body:svg}));
   let deckId:number|undefined;
   try {
+    const account=await page.request.post(base+"/api/auth/register",{data:{email:`visual-${Date.now()}-${Math.random().toString(16).slice(2)}@example.test`,password:"Browser-test-passphrase-2026"}});
+    expect(account.status()).toBe(201);
     await page.goto(base+"/new-exam");
     await page.getByLabel("Title").fill("Phase 2 E2E "+Date.now());
     await page.getByRole("button",{name:"Create deck and open builder"}).click();

@@ -11,3 +11,8 @@ vite.config.ts.*
 !.env.example
 *.pem
 *.key
+playwright-report/
+test-results/
+reports/
+*.dump
+*.enc

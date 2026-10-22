@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { useGameSocket } from "@/hooks/use-game-socket";
-import { WS_EVENTS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Join() {
   const [, setLocation] = useLocation();
-  const { connected, emit } = useGameSocket(); // Just use socket for joining logic
   const { toast } = useToast();
   
   const [name, setName] = useState("");
@@ -25,20 +22,12 @@ export default function Join() {
   const handleJoin = () => {
     if (!name || !code) return;
     
-    if (!connected) {
-      toast({ title: "Connecting...", description: "Please wait for server connection." });
-      return;
-    }
 
     setIsJoining(true);
     
-    // Generate a random ID for this session
-    const playerId = crypto.randomUUID();
-    
-    // Store in localStorage for persistence
+    // Store pending join. Server assigns identity and an unpredictable token.
     localStorage.setItem('trivia_player', JSON.stringify({
-      playerId,
-      name,
+      name:name.trim(),
       roomCode: code.toUpperCase()
     }));
 
@@ -55,29 +44,29 @@ export default function Join() {
         </CardHeader>
         <CardContent className="space-y-6 pb-8">
           <div className="space-y-2">
-            <Label className="text-lg">Room Code</Label>
+            <Label htmlFor="room-code" className="text-lg">Room Code</Label>
             <Input 
               className="h-14 text-center text-2xl font-mono uppercase tracking-widest bg-muted/50 border-2 focus:border-primary" 
-              placeholder="ABCD"
+              id="room-code" placeholder="ABC234"
               value={code}
               onChange={e => setCode(e.target.value.toUpperCase())}
-              maxLength={4}
+              maxLength={6}
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-lg">Your Name</Label>
+            <Label htmlFor="player-name" className="text-lg">Your Name</Label>
             <Input 
               className="h-14 text-center text-xl font-bold bg-muted/50 border-2 focus:border-primary" 
-              placeholder="Enter nickname"
+              id="player-name" placeholder="Enter nickname"
               value={name}
               onChange={e => setName(e.target.value)}
-              maxLength={12}
+              maxLength={24}
             />
           </div>
           <Button 
             className="w-full h-14 text-xl font-bold rounded-xl shadow-lg shadow-primary/20 btn-bouncy"
             onClick={handleJoin}
-            disabled={!name || !code || isJoining}
+            disabled={!name.trim() || !/^[A-HJ-NP-Z2-9]{6}$/.test(code) || isJoining}
           >
             {isJoining ? <Loader2 className="animate-spin" /> : "Enter Game"}
           </Button>

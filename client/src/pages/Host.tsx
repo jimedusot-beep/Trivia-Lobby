@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useGameSocket } from "@/hooks/use-game-socket";
 import { WS_EVENTS } from "@shared/schema";
@@ -12,16 +12,20 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Host() {
   const { deckId } = useParams();
-  const { connected, gameState, emit } = useGameSocket();
+  const { connected, restoring, gameState, emit } = useGameSocket("host");
+  const createRequested = useRef(false);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
   // Auto-create room on mount
   useEffect(() => {
-    if (connected && deckId && !gameState.roomCode) {
-      emit(WS_EVENTS.CREATE_ROOM, { deckId: parseInt(deckId) });
+    if (connected && deckId && !gameState.roomCode && !restoring && !createRequested.current) {
+      createRequested.current = true;
+      sessionStorage.setItem("trivia_host_deck_id", deckId);
+      const mode=new URLSearchParams(window.location.search).get("mode") ?? "classic";
+      emit(WS_EVENTS.CREATE_ROOM, { deckId: parseInt(deckId), mode });
     }
-  }, [connected, deckId, gameState.roomCode, emit]);
+  }, [connected, deckId, gameState.roomCode, restoring, emit]);
 
   const copyCode = () => {
     if (gameState.roomCode) {
@@ -52,6 +56,8 @@ export default function Host() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
+      {gameState.error && <div role="alert" className="p-4 bg-red-950 rounded">{gameState.error} <Button variant="outline" className="text-black" onClick={()=>{createRequested.current=false;sessionStorage.removeItem("trivia_host");window.location.reload();}}>Create a new room</Button></div>}
+      <p className="text-sm text-slate-300">Mode: {gameState.mode??"classic"}{gameState.mode==="party"?" · Every second round earns double points":""}</p>
       {/* Top Bar */}
       <div className="flex justify-between items-center mb-8">
          <Link href="/">
@@ -73,13 +79,13 @@ export default function Host() {
         {gameState.gameStatus === 'lobby' && (
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
             <div className="space-y-4">
-              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">trivia.app/join</span> with code:</h2>
-              <div 
+              <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
+              <button type="button" data-testid="room-code" aria-label="Copy room code"
                 onClick={copyCode}
-                className="text-8xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
+                className="text-5xl sm:text-7xl md:text-9xl font-black font-mono tracking-wider cursor-pointer hover:scale-105 transition-transform text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500"
               >
                 {gameState.roomCode || "..."}
-              </div>
+              </button>
               <Button variant="ghost" size="sm" onClick={copyCode} className="text-slate-400 hover:text-white">
                 {copied ? "Copied!" : <><Copy className="w-4 h-4 mr-2" /> Click to Copy</>}
               </Button>
@@ -93,7 +99,7 @@ export default function Host() {
                   animate={{ scale: 1, opacity: 1 }}
                   className="bg-white/10 backdrop-blur-sm p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
-                  {p.name}
+                  {p.name}{p.team ? ` · ${p.team}` : ""}
                 </motion.div>
               ))}
               {gameState.players.length === 0 && (
@@ -155,12 +161,12 @@ export default function Host() {
              )}
 
              {/* Result/Leaderboard Screen */}
-             {gameState.lastAnswerResult && (
+             {gameState.lastAnswerResult && gameState.currentQuestion && (
                <div className="text-center space-y-8 animate-in slide-in-from-right duration-500">
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
                    <div className="text-4xl font-bold text-green-400">
-                     {gameState.currentQuestion.choices.find((c: string) => c.startsWith(gameState.lastAnswerResult.correctLetter))}
+                     {gameState.currentQuestion.choices[["A", "B", "C", "D"].indexOf(gameState.lastAnswerResult.correctLetter)]}
                    </div>
                  </div>
 
@@ -189,12 +195,13 @@ export default function Host() {
                    </div>
                  </div>
 
-                 <Button 
+                 {gameState.mode === "teams" && <div className="flex flex-wrap justify-center gap-6">{["Orchid","Lagoon"].map(team=><p key={team}>{team}: {gameState.players.filter(p=>p.team===team).reduce((n,p)=>n+p.score,0)} team points</p>)}</div>}
+                 <Button
                    size="lg" 
                    className="h-16 px-12 text-xl font-bold bg-primary hover:bg-primary/90 btn-bouncy"
                    onClick={nextQuestion}
                  >
-                   Next Question <Play className="ml-2 w-5 h-5" />
+                   {gameState.phase === "reveal" ? "Show leaderboard" : "Next / Finish"} <Play className="ml-2 w-5 h-5" />
                  </Button>
                </div>
              )}

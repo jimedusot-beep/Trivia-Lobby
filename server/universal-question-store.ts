@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { decks, universalQuestions } from "@shared/schema";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
@@ -11,14 +11,15 @@ const decode = (row: typeof universalQuestions.$inferSelect): SavedUniversalQues
   id: row.id, deckId: row.deckId, position: row.position,
   question: universalQuestionSchema.parse(row.definition),
 });
-function fingerprint(question: UniversalQuestion) {
+export function fingerprint(question: UniversalQuestion) {
   // Duplicate prompts of the same kind are intentionally disallowed per deck.
   return createHash("sha256").update(JSON.stringify([
     question.answer.kind, question.prompt.trim().normalize("NFKC").toLocaleLowerCase(),
   ])).digest("hex");
 }
-export async function deckExists(deckId: number) {
-  const [record] = await db.select({ id: decks.id }).from(decks).where(eq(decks.id, deckId));
+export async function deckExists(deckId: number, ownerId?: string) {
+  const [record] = await db.select({ id: decks.id }).from(decks).where(
+    ownerId ? and(eq(decks.id, deckId), eq(decks.ownerId, ownerId)) : eq(decks.id, deckId));
   return !!record;
 }
 export async function listUniversalQuestions(deckId: number) {
@@ -34,6 +35,7 @@ export async function getUniversalQuestion(deckId: number, questionId: number) {
 }
 export async function addUniversalQuestion(deckId: number, question: UniversalQuestion) {
   return db.transaction(async tx => {
+    await tx.execute(sql`SELECT id FROM decks WHERE id=${deckId} FOR UPDATE`);
     const current = await tx.select({ position: universalQuestions.position })
       .from(universalQuestions).where(eq(universalQuestions.deckId, deckId));
     if (current.length >= 500) throw new Error("Deck question limit is 500");

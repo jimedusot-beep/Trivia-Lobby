@@ -4,6 +4,7 @@ import { useDeck } from "@/hooks/use-decks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MatchingExercise } from "@/components/MatchingExercise";
 import { Progress } from "@/components/ui/progress";
 
 type Named = { id: string; label: string };
@@ -14,7 +15,7 @@ type AnswerView = {
   items?: Named[]; imageUrl?: string; imageAlt?: string;
 };
 type PracticeItem = { id: number; position: number; question: {prompt: string;answer: AnswerView} };
-type Graded = { correct: boolean; answer?: unknown; explanation: string };
+type Graded = { correct: boolean; answer?: unknown; explanation: string; source?:{attribution?:string;quote?:string;page?:number} };
 function answerDescription(answer: unknown): string {
   if (!answer || typeof answer !== "object" || !("kind" in answer)) return "";
   const a = answer as { kind:string; correctOptionIds?:string[]; correctTargetIds?:string[]; pairs?: {prompt:string;match:string}[];
@@ -46,6 +47,7 @@ export default function VisualPractice() {
   const [orderIds, setOrderIds] = useState<string[]>([]);
   const [typed, setTyped] = useState("");
   const [truth, setTruth] = useState<boolean | null>(null);
+  const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const [result, setResult] = useState<Graded | null>(null);
   const [busy, setBusy] = useState(false);
   const [seconds, setSeconds] = useState(30);
@@ -74,7 +76,7 @@ export default function VisualPractice() {
   }, [timed,current,seconds,result,busy]);
   function resetResponse() {
     setSelectedIds([]);setTargetId("");setMatchIds({});setOrderIds([]);setTyped("");setTruth(null);
-    setResult(null);setSeconds(30);setError("");
+    setRequestId(crypto.randomUUID());setResult(null);setSeconds(30);setError("");
   }
   function next() {setIndex(i=>i+1);resetResponse();}
   function restart() {setIndex(0);setCorrect(0);resetResponse();}
@@ -92,7 +94,7 @@ export default function VisualPractice() {
     setBusy(true);setError("");
     try {
       const reply = await fetch(`/api/decks/${deckId}/questions/${current.id}/check`,{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response}),
+        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({response,requestId}),
       });
       if(!reply.ok) throw new Error((await reply.json().catch(()=>({}))).message??"Answer validation failed");
       const graded:Graded = await reply.json();
@@ -114,7 +116,7 @@ export default function VisualPractice() {
     <section className="max-w-3xl mx-auto space-y-5">
       <Link href="/"><Button variant="ghost">Back to library</Button></Link>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":"Visual Practice"}</h1>
-      <p className="text-sm text-muted-foreground">Solo session only. Answers are graded by the server; results are not saved to an account.</p>
+      <p className="text-sm text-muted-foreground">Your graded attempts are saved to your account. Timed practice uses a local timer; multiplayer deadlines are enforced by the server.</p>
       <Progress value={items.length ? Math.min(100,index/items.length*100):0} aria-label="Question progress"/>
       {!items.length?<Card><CardContent className="p-6">This deck has no visual questions yet. <Link href={`/exam-builder/${deckId}`}><Button>Add questions</Button></Link></CardContent></Card>
       :index>=items.length?<Card><CardContent className="p-8 text-center space-y-4">
@@ -137,17 +139,9 @@ export default function VisualPractice() {
               <span>{o.label}</span>
             </label>)}
           </fieldset>}
-          {(answer?.kind==="matching"||answer?.kind==="drag_drop_labels")&&<div className="space-y-3">
-            <p>Choose the matching label for each prompt or region.</p>
-            {(answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]).map(p=><label className="flex flex-col gap-1" key={p.id}>
-              <span>{p.prompt}</span>
-              <select className="border rounded p-3 bg-background" disabled={!!result}
-                value={matchIds[p.id]??""} onChange={e=>setMatchIds(old=>({...old,[p.id]:e.target.value}))}>
-                <option value="">Choose a label</option>
-                {(answer.matches??answer.labels??[]).map(m=><option value={m.id} key={m.id}>{m.label}</option>)}
-              </select>
-            </label>)}
-          </div>}
+          {(answer?.kind==="matching"||answer?.kind==="drag_drop_labels")&&<MatchingExercise
+            prompts={answer.prompts??answer.targets?.map((t,i)=>({id:t.id,prompt:`Region ${i+1}`}))??[]}
+            matches={answer.matches??answer.labels??[]} value={matchIds} onChange={setMatchIds} disabled={!!result}/>}
           {(answer?.kind==="image_hotspot"||answer?.kind==="diagram_identification"||answer?.kind==="drag_drop_labels")&&
             <div className="space-y-3">
               {answer.imageUrl?<div className="relative">
@@ -156,7 +150,7 @@ export default function VisualPractice() {
                   aria-label={`Select region ${i+1}`} aria-pressed={targetId===t.id}
                   onClick={()=>setTargetId(t.id)}
                   className={`absolute rounded-full border-2 border-white focus-visible:outline outline-4 outline-primary ${targetId===t.id?"bg-blue-700":"bg-red-600"}`}
-                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"28px",height:"28px",transform:"translate(-50%,-50%)"}}/>)}
+                  style={{left:`${t.x*100}%`,top:`${t.y*100}%`,width:"44px",height:"44px",transform:"translate(-50%,-50%)"}}/>)}
               </div>:<p role="note">The source image is unavailable; ask the author to add an HTTPS image URL.</p>}
               {answer.kind!=="drag_drop_labels"&&<fieldset className="flex flex-wrap gap-2">
                 <legend className="mb-2">Keyboard-accessible region choices</legend>
@@ -190,6 +184,7 @@ export default function VisualPractice() {
               <p className="font-semibold">{result.correct?"Correct!":"Not quite."}</p>
               {result.answer !== undefined && result.answer !== null && <p><strong>Answer:</strong> {answerDescription(result.answer)}</p>}
               {result.explanation&&<p>{result.explanation}</p>}
+              {result.source && <aside className="text-sm border-l-2 pl-3"><p>Source: {result.source.attribution??"Saved document"}{result.source.page?` · page ${result.source.page}`:""}</p>{result.source.quote&&<blockquote>{result.source.quote}</blockquote>}</aside>}
               <Button onClick={next}>{index+1===items.length?"Show results":"Next question"}</Button>
             </div>}
         </CardContent>
