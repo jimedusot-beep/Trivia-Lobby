@@ -4,6 +4,9 @@ on:
     branches: [main, feature/unify-trivia-and-file-import]
   pull_request:
     branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
