@@ -94,7 +94,10 @@ jobs:
         run: npm run backup:drill
       - name: Install selected browser
         timeout-minutes: 7
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
+          npx playwright install --with-deps ${{ matrix.browser }}
       - name: Start application and smoke test
         run: |
           npm run dev >/tmp/trivia-server.log 2>&1 &
