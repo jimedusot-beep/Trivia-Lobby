@@ -133,3 +133,49 @@ export const universalQuestions = pgTable("universal_questions", {
   uniqueIndex("uq_universal_question_deck_fingerprint").on(table.deckId, table.fingerprint),
   index("idx_universal_question_deck_position").on(table.deckId, table.position),
 ]);
+
+// Persistent review memory uses the same account as the private library.
+export const studySchedule = pgTable("study_schedule", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: integer("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  fsrsState: jsonb("fsrs_state").notNull(),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+  lastRating: integer("last_rating").notNull(),
+  needsWork: boolean("needs_work").notNull().default(false),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [primaryKey({ columns: [table.userId, table.cardId] }), index("study_schedule_user_due_idx").on(table.userId, table.dueAt)]);
+
+export const studyEvents = pgTable("study_events", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: integer("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  requestId: uuid("request_id").notNull(),
+  rating: integer("rating").notNull(),
+  correct: boolean("correct").notNull(),
+  dueBefore: timestamp("due_before", { withTimezone: true }),
+  dueAfter: timestamp("due_after", { withTimezone: true }).notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
+  stateBefore: jsonb("state_before").notNull(),
+  stateAfter: jsonb("state_after").notNull(),
+}, (table) => [uniqueIndex("study_events_user_request_idx").on(table.userId, table.requestId), index("study_events_user_time_idx").on(table.userId, table.reviewedAt)]);
+
+export const studySources = pgTable("study_sources", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const studyDrafts = pgTable("study_drafts", {
+  id: uuid("id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceId: uuid("source_id").notNull().references(() => studySources.id, { onDelete: "cascade" }),
+  front: text("front").notNull(),
+  back: text("back").notNull(),
+  explanation: text("explanation"),
+  evidence: text("evidence").notNull(),
+  approved: boolean("approved").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("study_drafts_user_source_idx").on(table.userId, table.sourceId)]);

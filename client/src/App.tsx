@@ -15,6 +15,8 @@ import NotFound from "@/pages/not-found";
 import ExamBuilder from "@/pages/ExamBuilder";
 import NewExamDeck from "@/pages/NewExamDeck";
 import VisualPractice from "@/pages/VisualPractice";
+import Learning from "@/pages/Learning";
+import LearningSources from "@/pages/LearningSources";
 import AuthGate from "@/components/AuthGate";
 import Library from "@/pages/Library";
 
@@ -30,6 +32,8 @@ function Router() {
       <Route path="/new-exam"><AuthGate><NewExamDeck /></AuthGate></Route>
       <Route path="/exam-builder/:id"><AuthGate><ExamBuilder /></AuthGate></Route>
       <Route path="/visual-practice/:id"><AuthGate><VisualPractice /></AuthGate></Route>
+      <Route path="/learning"><AuthGate><Learning /></AuthGate></Route>
+      <Route path="/learning/sources"><AuthGate><LearningSources /></AuthGate></Route>
       <Route path="/join" component={Join} />
       <Route path="/play" component={Play} />
       <Route component={NotFound} />

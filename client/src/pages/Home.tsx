@@ -31,6 +31,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
+      <img src="/lobby-welcome.png" alt="" className="w-full max-h-72 object-cover rounded-3xl" />
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-20">
         <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
@@ -51,6 +52,7 @@ export default function Home() {
               <ClipboardList className="mr-3 h-6 w-6" /> New Exam Deck
             </Button>
           </Link>
+          <Link href="/learning"><Button size="lg" variant="secondary" className="h-16 px-8 rounded-2xl">Learning & memory</Button></Link>
           <Link href="/library"><Button size="lg" variant="secondary" className="h-16 px-8 rounded-2xl">Private source library</Button></Link>
           <Link href="/import">
             <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">

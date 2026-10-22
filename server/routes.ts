@@ -6,6 +6,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { requireUser, requireSameOrigin, registerAuthRoutes, resolveUser } from "./auth";
 import { registerUniversalQuestionRoutes } from "./universal-question-routes";
+import { registerStudyRoutes } from "./study-routes";
 import { registerLibraryRoutes } from "./library";
 
 export async function registerRoutes(
@@ -53,6 +54,8 @@ export async function registerRoutes(
     } catch (e) { next(e); }
   });
   registerLibraryRoutes(app);
+  app.use("/api/study", requireUser);
+  registerStudyRoutes(app);
   app.use("/api/decks/:deckId/questions", requireUser);
   registerUniversalQuestionRoutes(app);
 
