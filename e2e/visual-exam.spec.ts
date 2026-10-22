@@ -51,15 +51,16 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await expect(page.getByText("Saved questions (3)")).toBeVisible();
     await page.setViewportSize({width:375,height:812});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-    await page.getByRole("button",{name:"Practice visual questions"}).click();
+    await page.getByRole("link",{name:"Practice visual questions"}).click();
 
     await page.getByLabel("Right").check();
     await page.getByRole("button",{name:"Check answer"}).click();
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.getByRole("button",{name:"Next question"}).click();
 
-    await page.getByLabel("uno").selectOption("one");
-    await page.getByLabel("dos").selectOption("two");
+    await page.getByRole("button",{name:"one",exact:true}).click();
+    await page.getByRole("button",{name:"Place selected label at uno",exact:true}).click();
+    await page.getByLabel("dos",{exact:true}).selectOption("two");
     await page.getByRole("button",{name:"Check answer"}).click();
     await expect(page.getByText("Correct!")).toBeVisible();
     await page.getByRole("button",{name:"Next question"}).click();
@@ -72,6 +73,6 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await page.getByRole("button",{name:"Show results"}).click();
     await expect(page.getByText("3 of 3 graded correct.")).toBeVisible();
   } finally {
-    if(deckId)await page.request.delete(base+`/api/decks/${deckId}`);
+    if(deckId)await page.request.delete(base+`/api/decks/${deckId}`,{timeout:5000}).catch(()=>{});
   }
 });

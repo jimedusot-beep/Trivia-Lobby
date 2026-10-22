@@ -57,11 +57,9 @@ export default function Host() {
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
       {/* Top Bar */}
       <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
-         <Link href="/">
-           <Button variant="ghost" className="text-white hover:bg-white/10">
+         <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
-           </Button>
-         </Link>
+           </Link></Button>
          <div className="flex items-center gap-4">
            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
              <Users className="h-4 w-4" />
@@ -246,11 +244,9 @@ export default function Host() {
                 )}
              </div>
 
-             <Link href="/">
-               <Button size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black">
+             <Button asChild size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black"><Link href="/">
                  Back to Home
-               </Button>
-             </Link>
+               </Link></Button>
            </div>
         )}
       </div>

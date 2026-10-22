@@ -2,7 +2,7 @@
 
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
 
-This branch integrates current main with secure multiplayer, private source storage and the FSRS study engine. The [integrated implementation and runbook](docs/INTEGRATED_PLATFORM.md) maps the complete checklist and distinguishes implemented features from deployment configuration. Historical phase reports describe their original branches.
+This branch integrates current main with secure multiplayer, private source storage and the FSRS study engine. The [review and verification record](docs/INTEGRATION_REVIEW.md), [item-by-item checklist](docs/IMPLEMENTATION_CHECKLIST.md) and [operating runbook](docs/INTEGRATED_PLATFORM.md) distinguish implemented features from remaining validation and deployment configuration. Historical phase reports describe their original branches.
 
 ## Start
 
@@ -22,13 +22,13 @@ Back up existing databases before migration. Pre-account decks require verified 
 
 - One account for private decks, documents, drafts and learning history; guests can join live rooms.
 - Retained originals, course/folder/tag organization, extracted-content search, reviewed imports and source-linked drafting.
-- MCQ/matching/hotspot authoring with editing, reordering and server autosave. Eleven graded model kinds.
+- MCQ, short-answer, flashcard, true/false, matching and hotspot authoring with editing, reordering and server autosave. Eleven graded model kinds. Imported legacy cards also support editing and reordering.
 - Visual practice with saved attempts, FSRS schedules, timed/untimed/adaptive modes, explanations and citations.
 - Due reviews, wrong-answer notebook, course/subject statistics, cross-device persistence and progress export.
 - Server-authoritative live quiz state, rotating reconnect credentials and deadlines. Classic, teams, buzzer, virtual-point wagers, original workshop upgrades and party rounds.
 - V2 JSON backups preserve legacy cards and visual definitions/order/citations. Anki text and supported QTI item export; supported QTI and basic legacy APKG text import.
 
-Live games currently support 2–4-choice MCQs from either question schema. QTI conversion covers QTI 2.1 single-choice and plain short-answer items. Anki conversion covers two-column text and basic two-field legacy APKG text notes. Custom/cloze/media/new compressed APKG formats remain retained originals and need a supported export. JSON is the lossless complex-question format; original media bytes and histories have separate backup paths. Scanned PDFs need OCR/transcription. AI stays disabled until a provider is configured, and requires explicit review/approval/publication.
+Live games currently support 2–4-choice MCQs from either question schema. QTI conversion covers QTI 2.1 single-choice and exact, case-sensitive short-answer items, individually or in ZIP item packages. Anki conversion covers two-column text and basic two-field legacy APKG text notes. Custom/cloze/media/new compressed APKG formats remain retained originals and need a supported export. JSON is the lossless complex-question format; original media bytes and histories have separate backup paths. Scanned PDFs need OCR/transcription. AI stays disabled until a provider is configured, and requires explicit review/approval/publication.
 
 ## Verification
 
@@ -46,7 +46,7 @@ npm run test:e2e
 npm run smoke
 ```
 
-GitHub Actions runs migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. Consult the PR's latest integrated workflow for results.
+The integrated GitHub Actions workflow is configured for migration repetition, account isolation, PostgreSQL FK/rollback tests, JSON and native database restoration, socket matches, production build/audit, HTTP/DB/WS smoke and three browser engines. It has not yet run for this branch. Local results and their limits are recorded in the [review](docs/INTEGRATION_REVIEW.md).
 
 ## Operations and research
 

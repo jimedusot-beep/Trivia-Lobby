@@ -3,6 +3,7 @@ import { Worker } from "node:worker_threads";
 import { identifySource, inspectArchive, zipText, xmlToText, textPairs } from "./library-parse";
 
 export type ExtractedSource = { text: string; status: string; pages?: number };
+let pdfJobs=0;
 /** PDF parsing runs with a memory ceiling and hard timeout away from the HTTP event loop. */
 export async function extractSource(filename: string, bytes: Buffer): Promise<ExtractedSource> {
   const { kind } = identifySource(filename, bytes);
@@ -13,7 +14,9 @@ export async function extractSource(filename: string, bytes: Buffer): Promise<Ex
     return { text, status: text.trim() ? "extracted" : "empty" };
   }
   if (kind !== "pdf") return { text: "", status: "manual-only" };
-  return new Promise((resolve,reject) => {
+  if(pdfJobs>=2)throw new Error("Source extraction is busy; retry shortly");
+  pdfJobs++;
+  return new Promise<ExtractedSource>((resolve,reject) => {
     const worker = new Worker(`
       const { parentPort, workerData } = require('node:worker_threads');
       (async () => {
@@ -35,7 +38,7 @@ export async function extractSource(filename: string, bytes: Buffer): Promise<Ex
     worker.once("message", value => { clearTimeout(timer); resolve(value); void worker.terminate(); });
     worker.once("error", () => { clearTimeout(timer); reject(new Error("PDF extraction failed")); });
     worker.once("exit", code => { clearTimeout(timer); if(code!==0) reject(new Error("PDF extraction stopped")); });
-  });
+  }).finally(()=>{pdfJobs--;});
 }
 
 export async function sourcePreview(filename: string, bytes: Buffer) {

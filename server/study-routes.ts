@@ -46,6 +46,7 @@ export function registerStudyRoutes(app: Express) {
     const input = reviewBody.parse(req.body);
     if (!isStudyRating(input.rating)) { res.status(400).json({ message: "Invalid rating" }); return; }
     const answer = await db.transaction(async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}),hashtext(${input.requestId}))`);
       // Lock per user/card, including before the first schedule row exists.
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${user.id}), ${input.cardId})`);
       const [existing] = await tx.select().from(studyEvents)

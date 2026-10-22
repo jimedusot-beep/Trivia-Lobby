@@ -159,3 +159,38 @@ test("host and two players complete secure match; reconnect, deadlines, duplicat
   const finished = (await resumedHost.take(WS_EVENTS.GAME_OVER)).payload;
   assert.equal(finished.leaderboard.find((x: any) => x.playerId === join1.playerId).score, 100);
 });
+
+test("new rooms require authenticated ownership; workshop and buzzer actions enforce role, phase and cost",async t=>{
+ const server=createServer(),wss=attachGameSocket(server,fakeStorage,{questionMs:5000,authorizeHost:async req=>req.headers["x-test-owner"]==="owner"?"owner":null});
+ server.listen(0,"127.0.0.1");await once(server,"listening");const url=`ws://127.0.0.1:${(server.address() as any).port}/ws`;
+ const sockets:WebSocket[]=[];
+ const open=async(owner=false)=>{const ws=new WebSocket(url,{headers:owner?{"x-test-owner":"owner"}:{}});sockets.push(ws);const inbox=client(ws);await once(ws,"open");return inbox;};
+ t.after(async()=>{sockets.forEach(ws=>ws.terminate());await new Promise<void>(r=>wss.close(()=>server.close(()=>r())));});
+ const denied=await open();denied.send(WS_EVENTS.CREATE_ROOM,{deckId:1});assert.match((await denied.take(WS_EVENTS.ERROR)).payload.message,/Sign in/);
+ const host=await open(true);host.send(WS_EVENTS.CREATE_ROOM,{deckId:1});const {roomCode}=(await host.take(WS_EVENTS.ROOM_CREATED)).payload;
+ const p1=await open(),p2=await open();p1.send(WS_EVENTS.JOIN_ROOM,{roomCode,playerName:"A"});p2.send(WS_EVENTS.JOIN_ROOM,{roomCode,playerName:"B"});
+ const joined=(await p1.take(WS_EVENTS.ROOM_JOINED)).payload;await p2.take(WS_EVENTS.ROOM_JOINED);await p1.take(WS_EVENTS.SYNC_SNAPSHOT);await p2.take(WS_EVENTS.SYNC_SNAPSHOT);
+ p1.send(WS_EVENTS.CONFIGURE_GAME,{roomCode,mode:"workshop"});assert.match((await p1.take(WS_EVENTS.ERROR)).payload.message,/Host/);
+ host.send(WS_EVENTS.CONFIGURE_GAME,{roomCode,mode:"workshop"});await p1.take(WS_EVENTS.GAME_CONFIGURED);
+ host.send(WS_EVENTS.START_GAME,{roomCode});await p1.take(WS_EVENTS.QUESTION_START);await p2.take(WS_EVENTS.QUESTION_START);
+ p1.send(WS_EVENTS.BUY_UPGRADE,{roomCode,upgrade:"focus"});assert.match((await p1.take(WS_EVENTS.ERROR)).payload.message,/between rounds/);
+ p1.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:0,answer:"B"});p2.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:0,answer:"B"});
+ await p1.take(WS_EVENTS.ANSWER_RESULT);assert.equal((await p1.take(WS_EVENTS.PLAYER_STATUS)).payload.coins,80);
+ p1.send(WS_EVENTS.BUY_UPGRADE,{roomCode,upgrade:"focus"});assert.deepEqual((await p1.take(WS_EVENTS.PLAYER_STATUS)).payload,{coins:20,focus:1,guard:0});
+ p1.send(WS_EVENTS.BUY_UPGRADE,{roomCode,upgrade:"guard"});await p1.take(WS_EVENTS.ERROR);
+ host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await host.take(WS_EVENTS.LEADERBOARD);host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await p1.take(WS_EVENTS.QUESTION_START);
+ p1.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:1,answer:"B"});p2.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:1,answer:"B"});
+ assert.equal((await p1.take(WS_EVENTS.ANSWER_RESULT)).payload.awarded,160);assert.equal((await p1.take(WS_EVENTS.PLAYER_STATUS)).payload.focus,0);
+ host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await host.take(WS_EVENTS.LEADERBOARD);host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});
+ assert.equal((await host.take(WS_EVENTS.GAME_OVER)).payload.leaderboard.find((p:any)=>p.playerId===joined.playerId).score,260);
+
+ const host2=await open(true);host2.send(WS_EVENTS.CREATE_ROOM,{deckId:1});const code2=(await host2.take(WS_EVENTS.ROOM_CREATED)).payload.roomCode;
+ const a=await open(),b=await open();a.send(WS_EVENTS.JOIN_ROOM,{roomCode:code2,playerName:"Buzz A"});b.send(WS_EVENTS.JOIN_ROOM,{roomCode:code2,playerName:"Buzz B"});
+ const sessionA=(await a.take(WS_EVENTS.ROOM_JOINED)).payload;await b.take(WS_EVENTS.ROOM_JOINED);await a.take(WS_EVENTS.SYNC_SNAPSHOT);await b.take(WS_EVENTS.SYNC_SNAPSHOT);
+ host2.send(WS_EVENTS.CONFIGURE_GAME,{roomCode:code2,mode:"buzzer"});await a.take(WS_EVENTS.GAME_CONFIGURED);host2.send(WS_EVENTS.START_GAME,{roomCode:code2});await a.take(WS_EVENTS.QUESTION_START);await b.take(WS_EVENTS.QUESTION_START);
+ a.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode:code2,questionIndex:0,answer:"B"});assert.match((await a.take(WS_EVENTS.ERROR)).payload.message,/Buzz in/);
+ a.send(WS_EVENTS.BUZZ,{roomCode:code2,questionIndex:0});let buzz=await a.take(WS_EVENTS.BUZZ_STATE);if(buzz.payload.playerId===null)buzz=await a.take(WS_EVENTS.BUZZ_STATE);assert.equal(buzz.payload.playerId,sessionA.playerId);
+ b.send(WS_EVENTS.BUZZ,{roomCode:code2,questionIndex:0});await b.take(WS_EVENTS.ERROR);
+ a.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode:code2,questionIndex:0,answer:"A"});await a.take(WS_EVENTS.ANSWER_ACCEPTED);
+ b.send(WS_EVENTS.BUZZ,{roomCode:code2,questionIndex:0});b.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode:code2,questionIndex:0,answer:"B"});assert.equal((await b.take(WS_EVENTS.ANSWER_RESULT)).payload.isCorrect,true);
+});

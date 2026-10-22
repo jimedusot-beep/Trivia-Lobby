@@ -3,6 +3,7 @@
  * disposable DB and a running server. Two independent browser contexts model devices.
  */
 import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
 
 test("adaptive cards survive reload and second-device login without leaking to another account", async ({ browser }) => {
@@ -24,10 +25,14 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await page.getByRole("button", { name: "Need an account? Register" }).click();
     await page.getByLabel("Email").fill(address);
     await page.getByLabel(/Password/).fill(password);
-    await page.getByRole("button", { name: "Create study account" }).click();
+    await page.getByRole("button", { name: "Create account", exact:true }).click();
     await expect(page.getByRole("heading", { name: "My learning" })).toBeVisible();
   };
   try {
+    await signup(pageA,email);
+    await pageA.goto(base+"/");
+    const accessibility=await new AxeBuilder({page:pageA}).withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
+    expect(accessibility.violations.filter(v=>["serious","critical"].includes(v.impact??""))).toEqual([]);
     const created = await pageA.request.post(base + "/api/decks/import", {
       data: { deck: { title: "Adaptive browser test " + suffix, category: "Browser Recall" },
         cards: [
@@ -37,13 +42,11 @@ test("adaptive cards survive reload and second-device login without leaking to a
     });
     expect(created.status()).toBe(201);
     deckId = (await created.json()).id;
-    await signup(pageA, email);
-
     await pageA.goto(base + `/learning/review/${deckId}?mode=due`);
     await expect(pageA.getByRole("heading", { name: question })).toBeVisible();
     await pageA.getByRole("button", { name: "Reveal answer" }).click();
     await expect(pageA.getByText("A persisted response")).toBeVisible();
-    await pageA.getByRole("button", { name: "Again" }).click();
+    await Promise.all([pageA.waitForResponse(r=>r.url().endsWith("/api/study/review")&&r.request().method()==="POST"),pageA.getByRole("button", { name: "Again" }).click()]);
     await pageA.goto(base + "/learning");
     await expect(pageA.getByRole("heading", { name: "Wrong-answer notebook" })).toBeVisible();
     await expect(pageA.getByText(question)).toBeVisible();
@@ -57,6 +60,7 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageB.getByRole("button", { name: "Sign in", exact: true }).click();
     await expect(pageB.getByRole("heading", { name: "My learning" })).toBeVisible();
     await expect(pageB.getByText(question)).toBeVisible();
+    expect(await pageB.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await pageB.goto(base + `/learning/review/${deckId}?mode=missed`);
     await expect(pageB.getByRole("heading", { name: question })).toBeVisible();
     await pageB.getByRole("button", { name: "Reveal answer" }).click();
@@ -73,15 +77,16 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await pageOther.goto(base + `/learning/review/${deckId}?mode=missed`);
     await expect(pageOther.getByRole("heading", { name: "Queue complete" })).toBeVisible();
 
-    // Untrusted cross-origin client requests cannot mutate saved progress.
-    const blocked = await pageOther.evaluate(async () => {
-      try {
-        await fetch("/api/study/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-        return false;
-      } catch { return true; }
-    });
-    // Browser same-origin requests are allowed to reach validation, but can't claim another account's history.
-    expect(typeof blocked).toBe("boolean");
+    await pageA.goto(base+`/practice/${deckId}`);
+    await pageA.getByRole("button",{name:"Reveal answer",exact:true}).click();
+    await pageA.getByRole("button",{name:"I knew it",exact:true}).click();
+    await expect(pageA.getByText("Review saved",{exact:true})).toBeVisible();
+    const savedPractice=await pageA.request.get(base+"/api/study/history");
+    expect((await savedPractice.json()).events.length).toBe(3);
+    const blocked = await pageA.request.post(base+"/api/study/review",{headers:{Origin:"https://untrusted.example"},data:{cardId:1,rating:1,requestId:randomUUID()}});
+    expect(blocked.status()).toBe(403);
+    const history=await pageOther.request.get(base+"/api/study/history");
+    expect((await history.json()).events).toEqual([]);
   } finally {
     if (deckId !== null) await pageA.request.delete(base + `/api/decks/${deckId}`).catch(() => {});
     await first.close(); await second.close(); await other.close();

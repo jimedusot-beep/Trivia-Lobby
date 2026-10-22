@@ -1,8 +1,8 @@
 /**
  * Application-owned universal questions (version 1).
  * Compatible with the initial model in research PR #5. No third-party code used.
- * Definitions are public on the legacy unauthenticated deck API; NEVER use its
- * authoring responses as player game payloads.
+ * Definitions are owner-private. Use the key-free projection for gameplay
+ * instead of sending authoring definitions.
  */
 import { z } from "zod";
 
@@ -150,7 +150,7 @@ export function withoutAnswerKeys(question: UniversalQuestion) {
       return { ...base, answer: { kind: answer.kind, items } };
     }
     case "image_hotspot": case "diagram_identification":
-      return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})) } };
+      return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl??("imageAssetId" in answer&&answer.imageAssetId?`/api/library/files/${encodeURIComponent(answer.imageAssetId)}/media`:undefined), imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})) } };
     case "drag_drop_labels": return { ...base, answer: { kind: answer.kind, imageUrl: answer.imageUrl, imageAlt: answer.imageAlt, targets: answer.targets.map(({id,x,y,radius}) => ({id,x,y,radius})), labels: answer.targets.map(t => ({id:t.label,label:t.label})).sort((a,b)=>a.label.localeCompare(b.label)) } };
     case "true_false": return { ...base, answer: { kind: answer.kind } };
     default: return { ...base, answer: { kind: answer.kind } };

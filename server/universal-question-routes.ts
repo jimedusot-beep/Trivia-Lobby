@@ -28,11 +28,7 @@ function failure(err: unknown, res: Response) {
   console.error("Universal question API failure", err instanceof Error ? err.name : "UnknownError");
   return res.status(500).json({ message: "Question operation failed" });
 }
-/**
- * WARNING: Phase 2 routes inherit the legacy public deck model.
- * Until Phase 3 accounts/ownership ships, do not store private exam keys here.
- * The /practice projection omits keys, but authoring endpoints are public.
- */
+/** Owner-scoped authoring and solo grading; live rooms use their own safe protocol. */
 export function registerUniversalQuestionRoutes(app: Express) {
   app.use("/api/decks/:deckId/questions", requireUser, async (req, res, next) => {
     try {
@@ -112,9 +108,9 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const existing = await getUniversalQuestion(deckId, questionId);
       if (!existing) return res.status(404).json({ message: "Question not found" });
       // Authoritative scoring for solo practice only; not a competitive, anti-cheat endpoint.
-      const {response,requestId} = z.object({ response: z.unknown(), requestId:z.string().uuid().default(randomUUID) }).parse(req.body);
-      const correct = gradeUniversalAnswer(existing.question, response);
-      const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,response,correct);
+      const {response,requestId,skipped} = z.object({ response: z.unknown(), requestId:z.string().uuid().default(randomUUID),skipped:z.boolean().default(false) }).parse(req.body);
+      const correct = skipped?false:gradeUniversalAnswer(existing.question, response);
+      const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,{response,skipped},correct,existing.question.answer);
       if(saved==="conflict"){res.status(409).json({message:"This answer request was already used for a different response"});return;}
       res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
     } catch (err) { failure(err, res); }

@@ -7,7 +7,7 @@ import { universalQuestionSchema, legacyCardToQuestion } from "@shared/universal
 import { requireUser } from "./auth";
 import { db } from "./db";
 import { listUniversalQuestions } from "./universal-question-store";
-import { exportAnkiTsv, exportQti } from "./portable-formats";
+import { exportAnkiTsv, exportQti, exportQtiPackage } from "./portable-formats";
 
 export const deckBackupSchema = z.object({
   format:z.literal("trivia-lobby-deck"), version:z.literal(2),
@@ -22,7 +22,7 @@ export function registerBackupRoutes(app: Express) {
       const id=z.coerce.number().int().positive().parse(req.params.id);
       const [deck]=await db.select().from(decks).where(and(eq(decks.id,id),eq(decks.ownerId,req.studyUser!.id)));
       if(!deck){res.status(404).json({message:"Deck not found"});return;}
-      const rows=await db.select().from(cards).where(eq(cards.deckId,id)).orderBy(cards.id);
+      const rows=await db.select().from(cards).where(eq(cards.deckId,id)).orderBy(cards.position,cards.id);
       const questions=await listUniversalQuestions(id);
       const format=req.query.format??"json";
       if(format==="anki") {
@@ -37,6 +37,9 @@ export function registerBackupRoutes(app: Express) {
         res.send(exportAnkiTsv([...rows,...converted]));return;
       }
       if(format==="qti") {
+        if(req.query.index===undefined){
+          res.type("application/zip").attachment("trivia-lobby.qti").send(exportQtiPackage([...questions.map(q=>q.question),...rows.map(legacyCardToQuestion)]));return;
+        }
         const index=z.coerce.number().int().min(0).default(0).parse(req.query.index);
         const question=[...questions.map(q=>q.question),...rows.map(legacyCardToQuestion)][index];
         if(!question){res.status(404).json({message:"Question not found"});return;}
@@ -45,7 +48,7 @@ export function registerBackupRoutes(app: Express) {
       if(format!=="json"){res.status(400).json({message:"Unknown export format"});return;}
       res.attachment("trivia-lobby-deck-v2.json").json({format:"trivia-lobby-deck",version:2,
         deck:{title:deck.title,description:deck.description,category:deck.category},
-        cards:rows.map(({id:_id,deckId:_deck,createdAt:_date,...card})=>card),questions:questions.map(q=>q.question),
+        cards:rows.map(({id:_id,position:_position,deckId:_deck,createdAt:_date,...card})=>card),questions:questions.map(q=>q.question),
       });
     }catch(err){ if(err instanceof z.ZodError || err instanceof Error && /export|accepted answer/.test(err.message))res.status(422).json({message:err.message});else next(err); }
   });
@@ -58,7 +61,7 @@ export function registerBackupRoutes(app: Express) {
         const existing=await tx.execute(sql`SELECT d.* FROM import_receipts r JOIN decks d ON d.id=r.deck_id WHERE r.owner_id=${ownerId} AND r.fingerprint=${hash}`);
         if(existing.rows.length)return {id:existing.rows[0].id,replayed:true};
         const [created]=await tx.insert(decks).values({...input.deck,ownerId}).returning();
-        if(input.cards.length)await tx.insert(cards).values(input.cards.map(c=>({...c,deckId:created.id})));
+        if(input.cards.length)await tx.insert(cards).values(input.cards.map((c,position)=>({...c,position,deckId:created.id})));
         if(input.questions.length)await tx.insert(universalQuestions).values(input.questions.map((q,position)=>{
           const question={...q,id:randomUUID()};
           const fingerprint=createHash("sha256").update(JSON.stringify([q.answer.kind,q.prompt.trim().normalize("NFKC").toLowerCase()])).digest("hex");

@@ -62,11 +62,9 @@ export default function Study() {
       <div className="max-w-2xl mx-auto w-full space-y-6 flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Link href="/">
-            <Button variant="ghost" className="hover:bg-transparent hover:text-primary">
+          <Button asChild variant="ghost" className="hover:bg-transparent hover:text-primary"><Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" /> Exit
-            </Button>
-          </Link>
+            </Link></Button>
           <div className="text-center">
             <h2 className="font-bold text-lg">{deck.title}</h2>
             <p className="text-xs text-muted-foreground">{currentIndex + 1} / {queue.length} cards</p>
@@ -86,7 +84,7 @@ export default function Study() {
                 <Trophy className="h-12 w-12" />
               </div>
               <h1 className="text-4xl font-display font-bold">Session Complete!</h1>
-              <p className="text-muted-foreground text-lg">You've reviewed all cards in this deck. Session results are not yet saved to an account.</p>
+              <p className="text-muted-foreground text-lg">You've previewed all cards in this deck. Open Learning & memory to save recall reviews.</p>
               <Button onClick={handleRestart} size="lg" className="rounded-xl text-lg px-8">
                 <RotateCcw className="mr-2 h-5 w-5" /> Start Over
               </Button>

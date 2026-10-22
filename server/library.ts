@@ -139,6 +139,14 @@ export function registerLibraryRoutes(app: Express): void {
     } catch (e) { if (!invalid(e, res)) next(e); }
   });
 
+  app.get("/api/library/files/:id/media",requireUser,async(req,res,next)=>{
+    try{
+      const file=await ownedFile(req.studyUser!.id,String(req.params.id));
+      if(!file||!["image/png","image/jpeg","image/webp"].includes(file.mimeType)){res.status(404).json({message:"Image not found"});return;}
+      res.setHeader("Cache-Control","private, no-store");res.setHeader("X-Content-Type-Options","nosniff");res.type(file.mimeType).send(await original(file));
+    }catch(e){next(e);}
+  });
+
   app.post("/api/library/files/:id/decks", requireUser, async (req, res, next) => {
     try {
       const file = await ownedFile(req.studyUser!.id, String(req.params.id));

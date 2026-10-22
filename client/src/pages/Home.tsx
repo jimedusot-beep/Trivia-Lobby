@@ -42,23 +42,17 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Link href="/join">
-            <Button size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all">
+          <Button asChild size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all"><Link href="/join">
               <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
-            </Button>
-          </Link>
-          <Link href="/new-exam">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2">
+            </Link></Button>
+          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2"><Link href="/new-exam">
               <ClipboardList className="mr-3 h-6 w-6" /> New Exam Deck
-            </Button>
-          </Link>
-          <Link href="/learning"><Button size="lg" variant="secondary" className="h-16 px-8 rounded-2xl">Learning & memory</Button></Link>
-          <Link href="/library"><Button size="lg" variant="secondary" className="h-16 px-8 rounded-2xl">Private source library</Button></Link>
-          <Link href="/import">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">
+            </Link></Button>
+          <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/learning">Learning & memory</Link></Button>
+          <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/library">Private source library</Link></Button>
+          <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
               <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
-            </Button>
-          </Link>
+            </Link></Button>
         </div>
       </div>
 
@@ -85,9 +79,7 @@ export default function Home() {
             </div>
             <h3 className="text-xl font-bold mb-2">{search ? "No matching decks" : "No decks yet"}</h3>
             <p className="text-muted-foreground mb-6">{search ? "Try a different search term." : "Import your first deck to get started!"}</p>
-            <Link href="/import">
-              <Button>Create Deck</Button>
-            </Link>
+            <Button asChild><Link href="/import">Create Deck</Link></Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -134,33 +126,26 @@ export default function Home() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 grid grid-cols-2 gap-3">
-                  <Link href={`/learning/review/${deck.id}?mode=due`}>
-                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5">
+                  <Button asChild variant="outline" className="w-full h-12 rounded-xl font-bold border-2 hover:border-primary hover:text-primary hover:bg-primary/5"><Link href={`/learning/review/${deck.id}?mode=due`}>
                       <Brain className="mr-2 h-4 w-4" /> Study
-                    </Button>
-                  </Link>
-                  <Link href={`/practice/${deck.id}`}>
-                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                    </Link></Button>
+                  <Button asChild variant="outline" className="w-full h-12 rounded-xl font-bold border-2"><Link href={`/practice/${deck.id}`}>
                       <ClipboardList className="mr-2 h-4 w-4" /> Practice
-                    </Button>
-                  </Link>
-                  <Link href={`/exam-builder/${deck.id}`}>
-                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                    </Link></Button>
+                  <Button asChild variant="outline" className="w-full h-12 rounded-xl font-bold border-2"><Link href={`/exam-builder/${deck.id}`}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Exam Builder
-                    </Button>
-                  </Link>
-                  <Link href={`/visual-practice/${deck.id}`}>
-                    <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2">
+                    </Link></Button>
+                  <Button asChild variant="outline" className="w-full h-12 rounded-xl font-bold border-2"><Link href={`/visual-practice/${deck.id}`}>
                       <ClipboardList className="mr-2 h-4 w-4" /> Visual Exam
-                    </Button>
-                  </Link>
-                  <Link href={`/host/${deck.id}`}>
-                    <Button className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                    </Link></Button>
+                  <Button asChild className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"><Link href={`/host/${deck.id}`}>
                       <Users className="mr-2 h-4 w-4" /> Host
-                    </Button>
-                  </Link>
+                    </Link></Button>
+                  <Button asChild variant="outline"><Link href={`/flashcards/${deck.id}`}>Flashcard preview</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/card-editor/${deck.id}`}>Edit saved cards</Link></Button>
                   <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup`}>Download full backup</a>
                   <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup?format=anki`}>Export Anki text</a>
+                  <a className="underline p-3 text-sm" href={`/api/decks/${deck.id}/backup?format=qti`}>Export QTI package</a>
                 </CardContent>
               </Card>
             ))}

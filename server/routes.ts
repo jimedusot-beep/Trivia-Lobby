@@ -10,6 +10,7 @@ import { registerStudyRoutes } from "./study-routes";
 import { registerLibraryRoutes } from "./library";
 import { registerBackupRoutes } from "./backup-routes";
 import { registerAuthorDraftRoutes } from "./author-drafts";
+import { registerCardEditorRoutes } from "./card-editor";
 import { universalGameCards } from "./live-question-adapter";
 import { apiAbuseLimit } from "./rate-limit";
 
@@ -61,6 +62,7 @@ export async function registerRoutes(
   registerLibraryRoutes(app);
   registerBackupRoutes(app);
   registerAuthorDraftRoutes(app);
+  registerCardEditorRoutes(app);
   app.use("/api/study", requireUser);
   registerStudyRoutes(app);
   registerUniversalQuestionRoutes(app);

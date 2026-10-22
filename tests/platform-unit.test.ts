@@ -1,7 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { parseQti, exportQti, exportAnkiTsv, parseAnkiTsv, parseApkg } from "../server/portable-formats";
+import { parseQti, parseQtiFile, exportQti, exportQtiPackage, exportAnkiTsv, parseAnkiTsv, parseApkg, storedZip } from "../server/portable-formats";
+import initSqlJs from "sql.js";
+import { deduplicateCards } from "../server/card-dedup";
+test("repeated legacy imports collapse duplicates and refuse silent answer replacement",()=>{
+ const card={front:"A question",back:"Answer",type:"flashcard" as const,options:[],correctOption:null};
+ assert.equal(deduplicateCards([card,{...card,front:" A   question "}]).length,1);
+ assert.equal(deduplicateCards([card],[card]).length,0);
+ assert.throws(()=>deduplicateCards([{...card,back:"Conflicting"}],[card]),/different answers/);
+});
 import { universalQuestionSchema, withoutAnswerKeys } from "../shared/universal-questions";
 import { extractSource } from "../server/source-extraction";
 import { consumeRate } from "../server/rate-limit";
@@ -21,7 +29,7 @@ test("original game modes: wagers are bounded, upgrades consumed and party round
 test("QTI single-choice and text exports preserve escaped questions and correct responses",()=>{
   for(const answer of [
     {kind:"multiple_choice",options:[{id:"A",label:"<yes> & \"ok\""},{id:"B",label:"No"}],correctOptionIds:["A"]},
-    {kind:"short_answer",acceptedAnswers:["A < B & C"],caseSensitive:false},
+    {kind:"short_answer",acceptedAnswers:["A < B & C"],caseSensitive:true},
   ]){
     const original=universalQuestionSchema.parse({schemaVersion:1,id:"source-1",prompt:"Is A < B & C > D?",answer});
     const [imported]=parseQti(exportQti(original));
@@ -33,7 +41,7 @@ test("QTI refuses XML entities and complex unsupported interactions",()=>{
   assert.throws(()=>parseQti('<assessmentItem><itemBody><matchInteraction/></itemBody></assessmentItem>'),/Unsupported/);
 });
 test("Anki text round-trip preserves tabs, multiline text, quotes and Unicode",()=>{
-  const cards=[{front:'Multiple\tcolumns?\n"你好"',back:'A newline\nand comma, preserved.'},{front:"two",back:"三"}];
+  const cards=[{front:'Multiple\tcolumns?\n"你好"',back:'A newline\n#part of answer\nand comma, preserved.'},{front:"#two",back:"三"}];
   assert.deepEqual(parseAnkiTsv(exportAnkiTsv(cards)).map(({front,back})=>({front,back})),cards);
 });
 test("player projection omits source evidence, explanations and key associations",()=>{
@@ -49,6 +57,28 @@ test("source extraction preserves plain text without network requests",async()=>
   const text="Question :: Answer\n".repeat(5);const extracted=await extractSource("own.txt",Buffer.from(text));
   assert.equal(extracted.text,text);assert.equal(extracted.status,"extracted");
 });
+test("PDF worker extracts source text with a real original PDF fixture",async()=>{
+ const content="BT /F1 12 Tf 20 50 Td (Memory :: Review) Tj ET";
+ const objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>","<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 100] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",`<< /Length ${content.length} >>\nstream\n${content}\nendstream`,"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+ let pdf="%PDF-1.4\n";const offsets=[0];
+ objects.forEach((body,i)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${i+1} 0 obj\n${body}\nendobj\n`;});
+ const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(n=>String(n).padStart(10,"0")+" 00000 n \n").join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+ const extracted=await extractSource("original.pdf",Buffer.from(pdf));assert.match(extracted.text,/Memory\s*::\s*Review/);assert.equal(extracted.pages,1);assert.equal(extracted.status,"extracted");
+});
 test("malformed APKG cannot execute SQLite statements",async()=>{
   await assert.rejects(()=>parseApkg(Buffer.from("not a zip")),/ZIP/);
+});
+test("QTI package round-trip preserves every supported item",()=>{
+ const questions=["First?","Second?"].map(prompt=>universalQuestionSchema.parse({schemaVersion:1,id:randomUUID(),prompt,answer:{kind:"short_answer",acceptedAnswers:["Answer"],caseSensitive:true}}));
+ const restored=parseQtiFile(exportQtiPackage(questions));assert.deepEqual(restored.map(q=>q.prompt),questions.map(q=>q.prompt));
+});
+test("legacy basic Anki SQLite package converts text while custom note models are rejected",async()=>{
+ const SQL=await initSqlJs(),database=new SQL.Database();
+ try{
+  database.run("CREATE TABLE col(models TEXT); CREATE TABLE notes(mid INTEGER,flds TEXT)");
+  database.run("INSERT INTO col VALUES(?)",[JSON.stringify({1:{type:0,flds:[{name:"Front"},{name:"Back"}],tmpls:[{qfmt:"{{Front}}",afmt:"{{FrontSide}}<hr>{{Back}}"}]}})]);
+  database.run("INSERT INTO notes VALUES(1,?)",["Question\x1fAnswer"]);
+  const cards=await parseApkg(storedZip({"collection.anki2":Buffer.from(database.export())}));assert.equal(cards[0].front,"Question");assert.equal(cards[0].back,"Answer");
+  database.run("UPDATE col SET models='{}'");await assert.rejects(()=>parseApkg(storedZip({"collection.anki2":Buffer.from(database.export())})),/custom Anki/);
+ }finally{database.close();}
 });

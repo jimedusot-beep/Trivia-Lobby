@@ -58,16 +58,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             {mode === "login" ? "Need an account? Register" : "Already registered? Sign in"}
           </Button>
           <p className="text-sm text-muted-foreground">You can join a public game without an account. Private decks and files require sign-in.</p>
-          <Link href="/join"><Button variant="outline">Join a game</Button></Link>
+          <Button asChild variant="outline"><Link href="/join">Join a game</Link></Button>
         </CardContent>
       </Card>
     </main>
   );
   return <>
     <nav className="flex flex-wrap gap-3 items-center justify-end px-4 py-2 border-b bg-background text-sm">
-      <Link href="/"><Button size="sm" variant="ghost">Decks</Button></Link>
-      <Link href="/library"><Button size="sm" variant="ghost">Source library</Button></Link>
-      <span className="text-muted-foreground">{user.email}</span>
+      <Button asChild size="sm" variant="ghost"><Link href="/">Decks</Link></Button>
+      <Button asChild size="sm" variant="ghost"><Link href="/library">Source library</Link></Button>
+      <span className="text-muted-foreground break-all min-w-0">{user.email}</span>
       <Button size="sm" variant="outline" onClick={logout}>Sign out</Button>
     </nav>
     {children}

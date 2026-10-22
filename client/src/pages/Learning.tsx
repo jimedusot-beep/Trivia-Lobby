@@ -85,7 +85,7 @@ export default function Learning() {
     <div className="max-w-5xl mx-auto space-y-7">
       <header className="flex flex-wrap justify-between items-center gap-3">
         <div><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
-        <div className="flex gap-2 flex-wrap"><Link href="/learning/sources"><Button variant="outline">Source drafts</Button></Link>
+        <div className="flex gap-2 flex-wrap"><Button asChild variant="outline"><Link href="/learning/sources">Source drafts</Link></Button>
           <Button variant="outline" onClick={() => { window.location.href = "/api/study/export"; }}>Export progress</Button>
           <Button variant="outline" onClick={async () => { await api("/api/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>
       </header>
@@ -124,9 +124,9 @@ export default function Learning() {
                   <li>{deck.total > 0 && deck.mastered >= Math.ceil(0.8 * deck.total) ? "✓" : "○"} Retain: achieve 21-day intervals for 80% of cards</li>
                 </ol>
                 <div className="flex flex-wrap gap-2">
-                  <Link href={`/learning/review/${deck.deckId}?mode=due`}><Button>Review due</Button></Link>
-                  <Link href={`/learning/review/${deck.deckId}?mode=missed`}><Button variant="outline">Retry weak cards</Button></Link>
-                  <Link href={`/learning/review/${deck.deckId}?mode=all`}><Button variant="outline">Study all</Button></Link>
+                  <Button asChild><Link href={`/learning/review/${deck.deckId}?mode=due`}>Review due</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/learning/review/${deck.deckId}?mode=missed`}>Retry weak cards</Link></Button>
+                  <Button asChild variant="outline"><Link href={`/learning/review/${deck.deckId}?mode=all`}>Study all</Link></Button>
                 </div>
               </CardContent></Card>)}</div>
         </section>
@@ -140,7 +140,7 @@ export default function Learning() {
           <ul className="space-y-2">{unique.slice(0, 100).map(item =>
             <li key={item.cardId} className="p-3 rounded border bg-card flex justify-between gap-3 items-center">
               <div><strong>{item.front}</strong><p className="text-sm text-muted-foreground">{item.subject} · Missed {new Date(item.reviewedAt).toLocaleDateString()}</p></div>
-              <Link href={`/learning/review/${item.deckId}?mode=missed`}><Button variant="outline">Retry</Button></Link>
+              <Button asChild variant="outline"><Link href={`/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
             </li>)}</ul>}
       </section>
     </div>
@@ -152,6 +152,7 @@ export function AdaptiveReview() {
   const { user, setUser, loading } = useStudyUser();
   const mode = new URLSearchParams(window.location.search).get("mode");
   const validMode = mode === "all" || mode === "missed" ? mode : "due";
+  const [queueLoading,setQueueLoading] = useState(true);
   const [queue, setQueue] = useState<CardRow[]>([]);
   const [total, setTotal] = useState(0);
   const [index, setIndex] = useState(0);
@@ -161,10 +162,10 @@ export function AdaptiveReview() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   useEffect(() => {
     if (!user) return;
-    let active = true;
+    let active = true;setQueueLoading(true);
     api<{ cards: CardRow[]; totalMatching: number }>(`/api/study/queue?deckId=${encodeURIComponent(deckId)}&mode=${validMode}`)
       .then(result => { if (active) { setQueue(result.cards); setTotal(result.totalMatching); setIndex(0); setShown(false); } })
-      .catch(err => { if (active) setError(err.message); });
+      .catch(err => { if (active) setError(err.message); }).finally(()=>{if(active)setQueueLoading(false);});
     return () => { active = false; };
   }, [user, deckId, validMode]);
   const card = queue[index];
@@ -185,9 +186,9 @@ export function AdaptiveReview() {
       <p className="text-muted-foreground">Due queue · {validMode} · Card {Math.min(index + 1, queue.length)} of {queue.length}{total > 100 ? " (first 100)" : ""}</p>
       <Progress value={queue.length ? 100 * index / queue.length : 100} aria-label="Review progress" />
       {error && <p role="alert" className="text-destructive">{error}</p>}
-      {!card ? <Card><CardContent className="p-8 text-center space-y-3"><h2 className="text-2xl font-bold">Queue complete</h2>
-        <p>Reviews are saved. Come back when cards are due, including from another device.</p><Link href="/learning"><Button>View dashboard</Button></Link></CardContent></Card> :
-        <Card><CardHeader><CardTitle className="text-2xl">{card.front}</CardTitle></CardHeader>
+      {queueLoading?<p role="status">Loading saved review queue…</p>:!card ? <Card><CardContent className="p-8 text-center space-y-3"><h2 className="text-2xl font-bold">Queue complete</h2>
+        <p>Reviews are saved. Come back when cards are due, including from another device.</p><Button asChild><Link href="/learning">View dashboard</Link></Button></CardContent></Card> :
+        <Card><CardHeader><CardTitle><h2 className="text-2xl">{card.front}</h2></CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {!shown ? <Button className="w-full" onClick={() => setShown(true)}>Reveal answer</Button> :
               <><div aria-live="polite" className="p-4 rounded bg-muted"><strong>Answer</strong><p className="mt-2 whitespace-pre-wrap">{card.back}</p></div>

@@ -110,11 +110,9 @@ export default function ImportDeck() {
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Link href="/">
-          <Button variant="ghost" className="pl-0 hover:pl-2 transition-all">
+        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all"><Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
-          </Button>
-        </Link>
+          </Link></Button>
 
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-display font-bold">Import New Deck</h1>
@@ -180,7 +178,7 @@ export default function ImportDeck() {
                   />
                   <p id="upload-help" className="text-xs text-muted-foreground">
                     Up to 2 MB. CSV/TSV and Trivia Lobby JSON backups supported. {selectedFilename ? `Selected: ${selectedFilename}` : "Or paste CSV/TSV text below."}
-                    The imported cards are saved to the configured PostgreSQL database. The original file is not yet archived.
+                    Quick imports save cards. Upload through the source library to retain the original file.
                   </p>
                 </div>
                 <Textarea

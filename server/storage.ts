@@ -2,6 +2,7 @@ import { db } from "./db";
 import { decks, cards, libraryFiles, deckSources, type InsertDeck, type InsertCard, type Deck, type Card } from "@shared/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
+import { deduplicateCards } from "./card-dedup";
 
 export interface IStorage {
   getDecks(ownerId: string): Promise<Deck[]>;
@@ -19,7 +20,7 @@ export class DatabaseStorage implements IStorage {
   async getDeck(id: number, ownerId: string): Promise<(Deck & { cards: Card[] }) | undefined> {
     const [deck] = await db.select().from(decks).where(and(eq(decks.id, id), eq(decks.ownerId, ownerId))).limit(1);
     if (!deck) return undefined;
-    const deckCards = await db.select().from(cards).where(eq(cards.deckId, id));
+    const deckCards = await db.select().from(cards).where(eq(cards.deckId, id)).orderBy(cards.position,cards.id);
     return { ...deck, cards: deckCards };
   }
   async createDeck(deck: InsertDeck, ownerId: string): Promise<Deck> {
@@ -28,6 +29,7 @@ export class DatabaseStorage implements IStorage {
   }
   async importDeck(deck: InsertDeck, cardsList: Omit<InsertCard, "deckId">[], ownerId: string, sourceFileId?: string): Promise<Deck> {
     if (cardsList.length === 0 || cardsList.length > 5000) throw new Error("Import requires 1–5000 cards");
+    cardsList=deduplicateCards(cardsList);
     return db.transaction(async tx => {
       const fingerprint = createHash("sha256").update(JSON.stringify({deck,cardsList,sourceFileId:sourceFileId??null})).digest("hex");
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${ownerId}),hashtext(${fingerprint}))`);
@@ -42,7 +44,7 @@ export class DatabaseStorage implements IStorage {
         if (!source) throw new Error("Source file not found");
       }
       const [created] = await tx.insert(decks).values({ ...deck, ownerId }).returning();
-      await tx.insert(cards).values(cardsList.map(card => ({ ...card, deckId: created.id })));
+      await tx.insert(cards).values(cardsList.map((card,position) => ({ ...card, position, deckId: created.id })));
       if (sourceFileId) {
         await tx.insert(deckSources).values({ deckId: created.id, fileId: sourceFileId });
         await tx.update(libraryFiles).set({ importStatus: "linked" }).where(and(eq(libraryFiles.id, sourceFileId), eq(libraryFiles.ownerId, ownerId)));
@@ -58,9 +60,13 @@ export class DatabaseStorage implements IStorage {
   async createCards(deckId: number, cardsList: Omit<InsertCard, "deckId">[], ownerId: string): Promise<Card[]> {
     if (cardsList.length === 0) return [];
     return db.transaction(async tx => {
-      const [deck] = await tx.select({ id: decks.id }).from(decks).where(and(eq(decks.id, deckId), eq(decks.ownerId, ownerId))).limit(1);
+      const [deck] = await tx.select({ id: decks.id }).from(decks).where(and(eq(decks.id, deckId), eq(decks.ownerId, ownerId))).limit(1).for("update");
       if (!deck) throw new Error("Deck not found");
-      return tx.insert(cards).values(cardsList.map(c => ({ ...c, deckId }))).returning();
+      const current=await tx.select().from(cards).where(eq(cards.deckId,deckId));
+      const unique=deduplicateCards(cardsList,current.map(c=>({...c,type:c.type as InsertCard["type"],options:Array.isArray(c.options)?c.options as string[]:[]})));
+      if(!unique.length)return [];
+      const position=current.length?Math.max(...current.map(c=>c.position))+1:0;
+      return tx.insert(cards).values(unique.map((c,i) => ({ ...c,position:position+i, deckId }))).returning();
     });
   }
 }

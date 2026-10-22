@@ -102,7 +102,7 @@ export default function Library() {
   return <main className="max-w-6xl mx-auto p-4 md:p-8 space-y-5">
     <div className="flex flex-wrap gap-3 items-center justify-between">
       <h1 className="text-3xl font-bold">Private source library</h1>
-      <Link href="/"><Button variant="outline">Back to decks</Button></Link>
+      <Button asChild variant="outline"><Link href="/">Back to decks</Link></Button>
       <Button disabled={!selected||busy} variant="outline" onClick={async()=>{if(!selected)return;setBusy(true);try{await jsonRequest(`/api/library/files/${selected.id}/study-source`,{method:"POST"});navigate("/learning/sources");}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}>Use selected document for source-backed drafts</Button>
     </div>
     <p className="text-sm text-muted-foreground">

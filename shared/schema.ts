@@ -30,6 +30,7 @@ export const decks = pgTable("decks", {
 
 export const cards = pgTable("cards", {
   id: serial("id").primaryKey(),
+  position:integer("position").notNull().default(0),
   deckId: integer("deck_id").notNull().references(() => decks.id, { onDelete: "cascade" }),
   type: text("type").notNull().default("flashcard"),
   front: text("front").notNull(),
@@ -73,7 +74,7 @@ export const cardsRelations = relations(cards, ({ one }) => ({
 export const insertDeckSchema = createInsertSchema(decks).omit({ id: true, ownerId: true, createdAt: true }).extend({
   title: z.string().trim().min(1).max(200), description: z.string().max(4000).nullable().optional(), category: z.string().trim().min(1).max(100).nullable().optional(),
 });
-export const insertCardSchema = createInsertSchema(cards).omit({ id: true, createdAt: true }).extend({
+export const insertCardSchema = createInsertSchema(cards).omit({ id: true, position:true, createdAt: true }).extend({
   type: z.enum(["flashcard", "multiple_choice"]).default("flashcard"),
   front: z.string().trim().min(1).max(10000), back: z.string().trim().min(1).max(10000),
   options: z.array(z.string().trim().min(1).max(1000)).max(4).nullable().optional(),

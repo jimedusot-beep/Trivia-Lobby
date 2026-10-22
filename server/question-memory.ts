@@ -4,9 +4,10 @@ import { db } from "./db";
 import { calculateReview } from "./study-scheduler";
 
 /** Atomic, idempotent question attempts and FSRS schedules, including visual questions. */
-export async function rememberQuestion(owner:string, questionId:number, requestId:string, response:unknown, correct:boolean){
-  const hash=createHash("sha256").update(JSON.stringify(response)??"null").digest("hex");
+export async function rememberQuestion(owner:string, questionId:number, requestId:string, response:unknown, correct:boolean,definition:unknown){
+  const hash=createHash("sha256").update(JSON.stringify([response,definition])).digest("hex");
   return db.transaction(async tx=>{
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${owner}),hashtext(${requestId}))`);
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${owner}),${questionId})`);
     const previous=await tx.execute(sql`SELECT question_id,response_hash,correct FROM question_attempts WHERE owner_id=${owner} AND request_id=${requestId}`);
     if(previous.rows[0])return previous.rows[0].question_id===questionId&&previous.rows[0].response_hash===hash ? "replayed" : "conflict";

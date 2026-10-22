@@ -1,4 +1,11 @@
 BEGIN;
+DO $$ BEGIN
+  IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='cards' AND column_name='position') THEN
+    ALTER TABLE cards ADD COLUMN position integer NOT NULL DEFAULT 0;
+    UPDATE cards SET position=ranked.position FROM (SELECT id,(row_number() OVER(PARTITION BY deck_id ORDER BY id)-1)::integer AS position FROM cards) ranked WHERE cards.id=ranked.id;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS cards_deck_position_idx ON cards(deck_id,position,id);
 ALTER TABLE library_files ADD COLUMN IF NOT EXISTS extracted_text text NOT NULL DEFAULT '';
 ALTER TABLE library_files ADD COLUMN IF NOT EXISTS course text NOT NULL DEFAULT '';
 ALTER TABLE library_files ADD COLUMN IF NOT EXISTS extraction_status text NOT NULL DEFAULT 'pending';
