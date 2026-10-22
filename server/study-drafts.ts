@@ -3,7 +3,7 @@ import type { Express, Request, Response } from "express";
 import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
-import { cards, studyDrafts, studySources } from "@shared/schema";
+import { studyDrafts, studySources } from "@shared/schema";
 import { normalizedPrompt } from "./study-scheduler";
 
 type Guarded = (handler: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response) => Promise<void>;
@@ -63,9 +63,11 @@ export function registerStudyDraftRoutes(app: Express, safe: Guarded, findUser: 
     });
     if (!upstream.ok) { res.status(502).json({ message: "AI draft provider failed" }); return; }
     const payload = generatedSchema.parse(await upstream.json());
-    const existing = await db.select({ front: studyDrafts.front }).from(studyDrafts).where(eq(studyDrafts.sourceId, source.id));
-    const liveCards = await db.select({ front: cards.front }).from(cards).limit(10000);
-    const used = new Set([...existing, ...liveCards].map(x => normalizedPrompt(x.front)));
+    // Scope duplication checks to the signed-in account. Scanning all cards can
+    // leak information about other users' private decks after Phase 3 merges.
+    const existing = await db.select({ front: studyDrafts.front }).from(studyDrafts)
+      .where(eq(studyDrafts.userId, user.id)).limit(10000);
+    const used = new Set(existing.map(x => normalizedPrompt(x.front)));
     const approved = payload.cards.filter(card => {
       // Unsupported evidence never enters the draft library.
       if (!source.body.includes(card.evidence)) return false;
