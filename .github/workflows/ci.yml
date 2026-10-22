@@ -4,9 +4,30 @@ on:
     branches: [main, feature/unify-trivia-and-file-import]
   pull_request:
     branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   typecheck-and-build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trivia_test
+          POSTGRES_PASSWORD: isolated_ci_only
+          POSTGRES_DB: trivia_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trivia_test -d trivia_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://trivia_test:isolated_ci_only@localhost:5432/trivia_test
+      STUDY_TEST_DATABASE_URL: postgresql://trivia_test:isolated_ci_only@localhost:5432/trivia_test
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,6 +36,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Create isolated CI schema
+        run: npx drizzle-kit push --force
+      - name: Verify additive Phase 2 migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0001_universal_questions.sql
+      - name: Verify additive study migration parses
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0004_phase4_study.sql
       - run: npm run test
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high

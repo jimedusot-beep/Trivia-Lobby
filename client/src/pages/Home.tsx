@@ -51,6 +51,7 @@ export default function Home() {
               <ClipboardList className="mr-3 h-6 w-6" /> New Exam Deck
             </Button>
           </Link>
+          <Link href="/learning"><Button size="lg" variant="secondary" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl"><Brain className="mr-3 h-6 w-6" /> My Learning</Button></Link>
           <Link href="/import">
             <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all">
               <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
@@ -151,6 +152,7 @@ export default function Home() {
                       <ClipboardList className="mr-2 h-4 w-4" /> Visual Exam
                     </Button>
                   </Link>
+                  <Link href={`/learning/review/${deck.id}?mode=due`}><Button variant="outline" className="w-full h-12 rounded-xl font-bold border-2"><Brain className="mr-2 h-4 w-4" /> Adaptive</Button></Link>
                   <Link href={`/host/${deck.id}`}>
                     <Button className="w-full h-12 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                       <Users className="mr-2 h-4 w-4" /> Host

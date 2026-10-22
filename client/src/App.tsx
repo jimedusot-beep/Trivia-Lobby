@@ -15,6 +15,8 @@ import NotFound from "@/pages/not-found";
 import ExamBuilder from "@/pages/ExamBuilder";
 import NewExamDeck from "@/pages/NewExamDeck";
 import VisualPractice from "@/pages/VisualPractice";
+import Learning, { AdaptiveReview } from "@/pages/Learning";
+import LearningSources from "@/pages/LearningSources";
 
 function Router() {
   return (
@@ -26,6 +28,9 @@ function Router() {
       <Route path="/new-exam" component={NewExamDeck} />
       <Route path="/exam-builder/:id" component={ExamBuilder} />
       <Route path="/visual-practice/:id" component={VisualPractice} />
+      <Route path="/learning/review/:deckId" component={AdaptiveReview} />
+      <Route path="/learning/sources" component={LearningSources} />
+      <Route path="/learning" component={Learning} />
       <Route path="/host/:deckId" component={Host} />
       <Route path="/join" component={Join} />
       <Route path="/play" component={Play} />

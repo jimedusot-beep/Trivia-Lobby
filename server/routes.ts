@@ -7,6 +7,7 @@ import { WS_EVENTS } from "@shared/schema";
 import { z } from "zod";
 import { canSubmitAnswer, publicLeaderboard, publicPlayerView } from "./room-projections";
 import { registerUniversalQuestionRoutes } from "./universal-question-routes";
+import { registerStudyRoutes } from "./study-routes";
 
 // === GAME STATE TYPES ===
 type Player = {
@@ -41,6 +42,7 @@ export async function registerRoutes(
   
   // === HTTP API ROUTES ===
   registerUniversalQuestionRoutes(app);
+  registerStudyRoutes(app);
 
   app.get(api.decks.list.path, async (req, res) => {
     const decks = await storage.getDecks();
