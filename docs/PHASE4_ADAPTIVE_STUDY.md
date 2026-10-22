@@ -36,6 +36,17 @@ The repository's original `docs/research/STUDY_AI_REFERENCE_AUDIT.md` contains t
 - Course progress is derived from existing deck/category: Explore (any reviewed), Cover (all reviewed), Retain (80% of cards with FSRS intervals 21+ days). These are original, non-punitive milestones, not teacher-managed lesson authoring or forced unlocks.
 - **Deleting a public deck currently cascades its per-card review history.** Preserve/soft-delete cards before production if a permanent audit trail is required.
 
+## Continued integration and privacy audit (2026-10-21)
+- Merged the latest `main` lineage into this branch, preserving Phase 2 universal question schema, Exam Builder and Visual Practice routes, and the patched Drizzle ORM dependency. The merge retains Phase 4 history rather than rebasing or force-pushing.
+- Removed API response bodies from Express logs. Previously response logging could have captured private notes, citations, account information and exported history. Also avoid logging error objects that may include SQL parameters.
+- Reject re-used idempotency keys when the requested card or rating differs from the persisted event; no silent replay of a different answer.
+- Weak-card notebook now derives directly from the latest per-user schedule, not just the most recent 2,000 events; an unresolved weakness therefore remains visible after extensive studying.
+- AI duplicate checks are now scoped to the current account's existing draft suggestions. This intentionally avoids reading other users' private cards. Full owned-deck deduplication awaits Phase 3's merged owner authorization.
+- Added defensive Origin-header parsing for cookie-authenticated mutations and privacy regression coverage for source/draft reads and approvals.
+- Browser E2E: `e2e/adaptive-study.spec.ts` runs two independent signed-in contexts (desktop and mobile), reads an account's saved mistakes after reload/login, retries from a second context, and confirms the other account's notebook remains empty.
+- **Important limitation:** Existing legacy `/api/decks` delete operations still allow removal of cards and their associated review records on current main. Phase 1/3 owner authorization and a retention/soft-delete policy are required before exposing private education content. This branch does not claim otherwise.
+- Self-graded Good/Easy ratings describe **self-reported recall**, not objective exam accuracy. Use the Phase 2 server grader for objective exam scores; do not combine those numbers with multiplayer scores.
+
 ## Deploy
 1. Back up PostgreSQL. Review and apply `migrations/0004_phase4_study.sql` to an existing Trivia Lobby DB after cards/decks tables exist: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0004_phase4_study.sql`. This migration is additive and uses `IF NOT EXISTS` with explicit constraints. Alternatively reconcile Drizzle schema with an existing migration management strategy; do **not** blindly run against production.
 2. `npm ci && npm run check && npm test && npm run build`; start normally with `DATABASE_URL` configured.
