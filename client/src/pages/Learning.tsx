@@ -165,7 +165,7 @@ export function AdaptiveReview() {
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {!card ? <Card><CardContent className="p-8 text-center space-y-3"><h2 className="text-2xl font-bold">Queue complete</h2>
         <p>Reviews are saved. Come back when cards are due, including from another device.</p><Link href="/learning"><Button>View dashboard</Button></Link></CardContent></Card> :
-        <Card><CardHeader><CardTitle className="text-2xl">{card.front}</CardTitle></CardHeader>
+        <Card><CardHeader><h2 className="text-2xl font-semibold leading-none tracking-tight">{card.front}</h2></CardHeader>
           <CardContent className="space-y-4">
             {!shown ? <Button className="w-full" onClick={() => setShown(true)}>Reveal answer</Button> :
               <><div aria-live="polite" className="p-4 rounded bg-muted"><strong>Answer</strong><p className="mt-2 whitespace-pre-wrap">{card.back}</p></div>
