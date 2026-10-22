@@ -6,6 +6,7 @@ import { eq, and, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "./db";
 import { users, userSessions } from "@shared/schema";
+import { trustedStudyOrigin } from "./study-security";
 
 const COOKIE = "tl_session";
 const DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -47,15 +48,8 @@ export async function requireUser(req: Request, res: Response, next: NextFunctio
 // Defense-in-depth for browser cookie requests; same-site cookies are not a replacement for Origin checks.
 export function requireSameOrigin(req: Request, res: Response, next: NextFunction): void {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
-  if (req.get("sec-fetch-site") === "cross-site") { res.status(403).json({ message: "Cross-site request rejected" }); return; }
-  const origin = req.get("origin");
-  if (origin) {
-    try {
-      const parsed = new URL(origin);
-      if (parsed.host !== req.get("host") || !["http:", "https:"].includes(parsed.protocol)) {
-        res.status(403).json({ message: "Origin rejected" }); return;
-      }
-    } catch { res.status(403).json({ message: "Origin rejected" }); return; }
+  if (!trustedStudyOrigin(req.get("origin"), req.get("host"), req.get("sec-fetch-site"))) {
+    res.status(403).json({ message: "Cross-site request rejected" }); return;
   }
   next();
 }

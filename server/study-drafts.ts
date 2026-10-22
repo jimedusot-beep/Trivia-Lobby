@@ -67,7 +67,7 @@ export function registerStudyDraftRoutes(app: Express, safe: Guarded, findUser: 
     const raw=await upstream.text();
     if(raw.length>100000){res.status(502).json({message:"AI provider response exceeded the size limit"});return;}
     const payload = generatedSchema.parse(JSON.parse(raw));
-    const existing = await db.select({ front: studyDrafts.front }).from(studyDrafts).where(eq(studyDrafts.sourceId, source.id));
+    const existing = await db.select({ front: studyDrafts.front }).from(studyDrafts).where(eq(studyDrafts.userId, user.id)).limit(10000);
     const liveCards = await db.select({ front: cards.front }).from(cards).innerJoin(decks,eq(cards.deckId,decks.id)).where(eq(decks.ownerId,user.id)).limit(10000);
     const used = new Set([...existing, ...liveCards].map(x => normalizedPrompt(x.front)));
     const approved = payload.cards.filter(card => {

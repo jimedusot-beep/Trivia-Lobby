@@ -93,7 +93,7 @@ export default function Learning() {
       {dashboard && <>
         <p className="p-4 border rounded">Visual exams: {dashboard.visual.attempts} attempts · {dashboard.visual.correct} correct · {dashboard.visual.due} due reviews. Open a deck’s Visual Exam for adaptive practice.</p>
         <section aria-label="Learning statistics" className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {([["Due reviews", dashboard.dueReviews], ["Accuracy", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study sessions", dashboard.sessions]] as const).map(([label, value]) =>
+          {([["Due reviews", dashboard.dueReviews], ["Self-rated recall", `${dashboard.accuracy}%`], ["Attempts", dashboard.attempts], ["Study sessions", dashboard.sessions]] as const).map(([label, value]) =>
             <Card key={label}><CardContent className="p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold">{value}</p></CardContent></Card>)}
         </section>
         <p className="text-sm text-muted-foreground">Study days: {dashboard.studyDays}. Optional milestones: {dashboard.xp} practice XP · {dashboard.studyStreak} day current streak. A break never removes achievements. XP is not a multiplayer score.</p>
@@ -101,12 +101,12 @@ export default function Learning() {
         {dashboard.historyLimited && <p role="note">Analytics shows your most recent 10,000 reviews. Export includes all events.</p>}
         <section className="space-y-3" aria-label="Subject improvement">
           <h2 className="text-2xl font-bold">Weak subjects and improvement</h2>
-          <p className="text-sm text-muted-foreground">Improvement compares accuracy in the latest 10 attempts with the previous 10 for the same subject. A change is shown only when both windows contain reviews.</p>
+          <p className="text-sm text-muted-foreground">Improvement compares self-rated recall success in the latest 10 attempts with the previous 10 for the same subject. A change is shown only when both windows contain reviews.</p>
           {!dashboard.subjectProgress.length ? <p>Study cards to see subject trends.</p> :
             <div className="grid md:grid-cols-2 gap-3">{dashboard.subjectProgress.map(subject =>
               <Card key={subject.subject}><CardContent className="p-4 space-y-1">
                 <h3 className="font-bold">{subject.subject}</h3>
-                <p>{subject.accuracy}% accuracy across {subject.attempts} attempts</p>
+                <p>{subject.accuracy}% self-rated recall across {subject.attempts} attempts</p>
                 <p className="text-sm text-muted-foreground">{subject.weakCards} unresolved weak cards</p>
                 <p className="text-sm">{subject.improvementPoints === null ? "Not enough reviews to compare yet" : `${subject.improvementPoints > 0 ? "+" : ""}${subject.improvementPoints} percentage points in recent recall`}</p>
               </CardContent></Card>)}</div>}
@@ -117,7 +117,7 @@ export default function Learning() {
             <Card key={deck.deckId}><CardHeader><CardTitle>{deck.title}</CardTitle><p className="text-sm text-muted-foreground">{deck.subject}</p></CardHeader>
               <CardContent className="space-y-3">
                 <Progress aria-label={`${deck.title} learned cards`} value={deck.total ? 100 * deck.learned / deck.total : 0} />
-                <p className="text-sm">{deck.learned}/{deck.total} started · {deck.mastered} mastered · {deck.due} due · {deck.accuracy === null ? "No attempts" : `${deck.accuracy}% accuracy`}</p>
+                <p className="text-sm">{deck.learned}/{deck.total} started · {deck.mastered} mastered · {deck.due} due · {deck.accuracy === null ? "No attempts" : `${deck.accuracy}% self-rated recall`}</p>
                 <ol className="text-sm space-y-1" aria-label={`${deck.title} milestones`}>
                   <li>{deck.learned > 0 ? "✓" : "○"} Explore: start reviewing your first card</li>
                   <li>{deck.total > 0 && deck.learned === deck.total ? "✓" : "○"} Cover: review every card at least once</li>
