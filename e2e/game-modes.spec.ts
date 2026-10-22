@@ -1,4 +1,47 @@
-import { test, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { test as base, expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { createServer } from "node:net";
+import { setTimeout as delay } from "node:timers/promises";
+
+// Five mode matches use the real five-rooms/minute budget. Keep their room
+// authority separate from the classic suite rather than bypassing the limiter.
+const test = base.extend<{}, { modeBaseURL: string }>({
+  modeBaseURL: [async ({}, use) => {
+    const reservation = createServer();
+    reservation.listen(0, "127.0.0.1");
+    await once(reservation, "listening");
+    const address = reservation.address();
+    if (!address || typeof address === "string") throw new Error("Cannot reserve a mode-test port");
+    const port = address.port;
+    await new Promise<void>((resolve, reject) => reservation.close(error => error ? reject(error) : resolve()));
+    const url = `http://127.0.0.1:${port}`;
+    const app = spawn(process.execPath, ["--import", "tsx", "server/index.ts"], {
+      env: { ...process.env, PORT: String(port), NODE_ENV: "development" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    const record = (data: Buffer) => { output = (output + data.toString()).slice(-4000); };
+    app.stdout.on("data", record);
+    app.stderr.on("data", record);
+    const stopped = once(app, "exit");
+    try {
+      let ready = false;
+      const deadline = Date.now() + 20000;
+      while (Date.now() < deadline && app.exitCode === null) {
+        try { ready = (await fetch(url + "/health/ready", { signal: AbortSignal.timeout(500) })).ok; } catch {}
+        if (ready) break;
+        await delay(100);
+      }
+      if (!ready) throw new Error("Mode-test app did not become ready: " + output);
+      await use(url);
+    } finally {
+      app.kill("SIGTERM");
+      await Promise.race([stopped, delay(5000)]);
+      if (app.exitCode === null && app.signalCode === null) { app.kill("SIGKILL"); await stopped; }
+    }
+  }, { scope: "worker" }],
+});
 
 type Mode = "teams" | "buzzer" | "wager" | "workshop" | "party";
 type Match = { host: Page; players: Page[]; advance: () => Promise<void>; finish: () => Promise<void> };
@@ -85,8 +128,8 @@ async function award(page: Page, points: number) {
   if (points !== 0) await expect(page.getByText(`${points > 0 ? "+" : ""}${points} pts`, { exact: true })).toBeVisible();
 }
 
-test("teams retain balanced membership and server-computed scores through finish", async ({ browser, baseURL }) => {
-  await match(browser, baseURL, "teams", 2, 3, async ({ host, players: [ada, grace, lin], advance, finish }) => {
+test("teams retain balanced membership and server-computed scores through finish", async ({ browser, modeBaseURL }) => {
+  await match(browser, modeBaseURL, "teams", 2, 3, async ({ host, players: [ada, grace, lin], advance, finish }) => {
     await choose(ada).click();
     await choose(grace, false).click();
     await choose(lin).click();
@@ -108,8 +151,8 @@ test("teams retain balanced membership and server-computed scores through finish
   });
 });
 
-test("buzzer ownership expires and passes after a wrong answer", async ({ browser, baseURL }) => {
-  await match(browser, baseURL, "buzzer", 2, 2, async ({ players: [ada, grace], advance, finish }) => {
+test("buzzer ownership expires and passes after a wrong answer", async ({ browser, modeBaseURL }) => {
+  await match(browser, modeBaseURL, "buzzer", 2, 2, async ({ players: [ada, grace], advance, finish }) => {
     await expect(choose(ada)).toBeDisabled();
     await expect(choose(grace)).toBeDisabled();
     await ada.getByRole("button", { name: "Buzz in", exact: true }).click();
@@ -134,8 +177,8 @@ test("buzzer ownership expires and passes after a wrong answer", async ({ browse
   });
 });
 
-test("wagers are limited to earned points and produce visible gains and losses", async ({ browser, baseURL }) => {
-  await match(browser, baseURL, "wager", 3, 1, async ({ players: [player], advance, finish }) => {
+test("wagers are limited to earned points and produce visible gains and losses", async ({ browser, modeBaseURL }) => {
+  await match(browser, modeBaseURL, "wager", 3, 1, async ({ players: [player], advance, finish }) => {
     await expect(player.getByLabel(/Wager earned points/)).toHaveAttribute("max", "0");
     await choose(player).click();
     await award(player, 100);
@@ -156,8 +199,8 @@ test("wagers are limited to earned points and produce visible gains and losses",
   });
 });
 
-test("workshop purchases persist on reconnect and consume focus and guard once", async ({ browser, baseURL }) => {
-  await match(browser, baseURL, "workshop", 6, 1, async ({ players: [player], advance, finish }) => {
+test("workshop purchases persist on reconnect and consume focus and guard once", async ({ browser, modeBaseURL }) => {
+  await match(browser, modeBaseURL, "workshop", 6, 1, async ({ players: [player], advance, finish }) => {
     await choose(player).click();
     await award(player, 100);
     await expect(player.getByRole("heading", { name: "Workshop · 80 coins", exact: true })).toBeVisible();
@@ -193,8 +236,8 @@ test("workshop purchases persist on reconnect and consume focus and guard once",
   });
 });
 
-test("party doubles only the third round and restores the mode after host reload", async ({ browser, baseURL }) => {
-  await match(browser, baseURL, "party", 3, 1, async ({ host, players: [player], advance, finish }) => {
+test("party doubles only the third round and restores the mode after host reload", async ({ browser, modeBaseURL }) => {
+  await match(browser, modeBaseURL, "party", 3, 1, async ({ host, players: [player], advance, finish }) => {
     for (const points of [100, 110]) {
       await choose(player).click();
       await award(player, points);

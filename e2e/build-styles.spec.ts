@@ -80,3 +80,34 @@ test("built home styles keep the title gradient and actions visible across scree
     }
   }
 });
+
+test("built learning styles wrap long account and study text without hiding actions", async ({ page }) => {
+  const token = "W".repeat(100);
+  await page.route("**/api/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/auth/me") return route.fulfill({ json: { id: "layout-reader", email: "w".repeat(64) + "@example.test" } });
+    if (path === "/api/study/dashboard") return route.fulfill({ json: {
+      visual: { attempts: 0, correct: 0, due: 0 }, attempts: 1, correct: 0, accuracy: 0,
+      sessions: 1, studyDays: 1, dueReviews: 1, studyStreak: 1, xp: 10, achievements: [], historyLimited: false,
+      subjectProgress: [{ subject: token, attempts: 1, accuracy: 0, weakCards: 1, improvementPoints: null }],
+      decks: [{ deckId: 1, title: "Source " + token, subject: token, total: 1, learned: 1, due: 1, mastered: 0, attempts: 1, correct: 0, accuracy: 0 }],
+    } });
+    if (path === "/api/study/history") return route.fulfill({ json: { wrongAnswers: [
+      { id: "review", cardId: 1, deckId: 1, front: "Question " + token, subject: token, reviewedAt: "2026-10-22T12:00:00Z", rating: 1 },
+    ] } });
+    return route.fulfill({ status: 404, json: { message: "Unexpected test request" } });
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/learning");
+  await expect(page.getByRole("heading", { name: "My learning", exact: true })).toBeVisible();
+  await expect(page.getByText("Question " + token, { exact: true })).toBeVisible();
+  await builtStyles(page);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const name of ["Review due", "Retry weak cards", "Study all", "Retry"]) {
+    const action = page.getByRole("link", { name, exact: true });
+    await expect(action).toBeVisible();
+    const bounds = await action.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
+  }
+});

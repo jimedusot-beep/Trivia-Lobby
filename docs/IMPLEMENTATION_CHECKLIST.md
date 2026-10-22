@@ -35,7 +35,7 @@ All 48 requested items are tracked below. **Implemented** describes the merged s
 | 29 | P1 Study | Timed/untimed practice | Implemented: universal practice modes and saved missed answers; solo timer is local, competitive timer is server-authoritative. |
 | 30 | P1 Study | Explanations/source citations | Implemented: authoring, backups and post-check explanations, attribution/page/source passages. |
 | 31 | P1 Quality | Expanded unit tests | Implemented: 57 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction (including text-free PDFs), permissions and projection/guard regressions. |
-| 32 | P1 Quality | Playwright host/player E2E | Implemented: nine scenarios pass in each of Chromium, Firefox and WebKit (27 total) through PR #22; five added game-mode scenarios extend the same required matrix. |
+| 32 | P1 Quality | Playwright host/player E2E | Implemented: nine scenarios pass in each of Chromium, Firefox and WebKit (27 total) through PR #22; five added game-mode scenarios and a long-content dashboard layout regression extend the same required matrix. |
 | 33 | P1 Quality | PostgreSQL integration tests | Implemented: five API/relational tests pass on native PostgreSQL 16 and PGlite; repeated migrations and native archive restoration pass. |
 | 34 | P1 Quality | Dependency/license audits | Implemented: full production/development audit reports zero vulnerabilities after the validated Tailwind 4 migration; CI now audits both scopes. Inventory records 280 packages with no missing/review-required license metadata. |
 | 35 | P1 Quality | Deployment smoke tests | Implemented: HTTP/DB/real-WS smoke passes locally; production smoke pending deployment. |
