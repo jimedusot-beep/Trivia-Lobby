@@ -1,4 +1,4 @@
-name: Phase 2 Visual Exam E2E
+name: Visual Exam & Adaptive Study Browser E2E
 on:
   pull_request:
     branches: [main]
@@ -41,6 +41,8 @@ jobs:
         run: npm run db:push
       - name: Verify additive Phase 2 migration
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0001_universal_questions.sql
+      - name: Verify additive Phase 4 migration
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0004_phase4_study.sql
       - name: Install browser test runner
         run: |
           npm install --no-save @playwright/test
@@ -57,8 +59,8 @@ jobs:
           done
           cat /tmp/trivia-e2e-server.log
           exit 1
-      - name: Browser creation, persistence, mobile and scoring
-        run: npx playwright test e2e/visual-exam.spec.ts --browser=chromium --reporter=line
+      - name: Browser visual-exam and adaptive cross-device regression
+        run: npx playwright test e2e/*.spec.ts --browser=chromium --workers=1 --reporter=line
       - name: Print server logs on failure
         if: failure()
         run: cat /tmp/trivia-e2e-server.log || true
