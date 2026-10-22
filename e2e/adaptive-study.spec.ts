@@ -96,7 +96,8 @@ test("adaptive cards survive reload and second-device login without leaking to a
     await expect(visualRow).toBeVisible();
     await expect(visualRow.getByRole("link",{name:"Retry"}))
       .toHaveAttribute("href",`/visual-practice/${deckId}?mode=adaptive`);
-    await pageOther.reload();
+    await pageOther.goto(base+"/learning");
+    await expect(pageOther.getByRole("heading",{name:"Wrong-answer notebook"})).toBeVisible();
     await expect(pageOther.getByText(visualPrompt)).toHaveCount(0);
 
     await pageA.goto(base+`/practice/${deckId}`);
