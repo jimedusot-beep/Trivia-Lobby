@@ -34,12 +34,12 @@ All 48 requested items are tracked below. **Implemented** describes the combined
 | 28 | P1 Study | Cross-device study progress | Implemented: shared account-backed legacy/universal histories; independent browser-context reload test passes. |
 | 29 | P1 Study | Timed/untimed practice | Implemented: universal practice modes and saved missed answers; solo timer is local, competitive timer is server-authoritative. |
 | 30 | P1 Study | Explanations/source citations | Implemented: authoring, backups and post-check explanations, attribution/page/source passages. |
-| 31 | P1 Quality | Expanded unit tests | Implemented: 48 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction and permissions. |
+| 31 | P1 Quality | Expanded unit tests | Implemented: 51 unit/socket tests pass for schema, scoring, imports, backups, matching, extraction, permissions and projection/guard regressions. |
 | 32 | P1 Quality | Playwright host/player E2E | Partial acceptance: all five Chromium scenarios pass; Firefox/WebKit projects await CI. |
 | 33 | P1 Quality | PostgreSQL integration tests | Partial acceptance: five API/relational tests pass on PGlite; native PostgreSQL 16 workflow awaits execution. |
 | 34 | P1 Quality | Dependency/license audits | Implemented audit: production has zero reported vulnerabilities; eight development advisories remain. Inventory records 280 packages with no missing/review-required license metadata. |
 | 35 | P1 Quality | Deployment smoke tests | Implemented: HTTP/DB/real-WS smoke passes locally; production smoke pending deployment. |
-| 36 | P1 Quality | Reconcile main/research branches | Implemented locally: main plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; remote PR pending authorization. |
+| 36 | P1 Quality | Reconcile main/research branches | Implemented: main (including PR #7 projections/guards) plus Phase 1/3/4 ancestry, research catalogs and unified account/schema integration; prepared for draft PR review. |
 | 37 | P1 Experience | Host/player feedback/errors | Implemented: visible reconnect state, invalid action/deadline errors, acknowledgments and restored answered state. |
 | 38 | P1 Experience | Mobile/accessibility audit | Partial: phone overflow, keyboard, labels, menu alternatives, reduced motion and representative axe checks pass; full manual screen-reader/touch audit pending. |
 | 39 | P1 Experience | Draft save/recovery | Implemented: private server drafts, optimistic revisions, recovery, keepalive flush and visible save/conflict feedback. |

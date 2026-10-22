@@ -9,6 +9,7 @@ import {
 import type { IStorage } from "./storage";
 import { scoreRound, UPGRADE_COST, type GameMode } from "./game-modes";
 import { consumeRate } from "./rate-limit";
+import { canSubmitAnswer, publicPlayerView } from "./room-projections";
 
 const MAX_PLAYERS = 100;
 const QUESTION_MS = 30_000;
@@ -50,8 +51,8 @@ function send(ws: WebSocket, type: string, payload: unknown) {
 }
 function publicPlayers(room: Room): PublicPlayer[] {
   return [...room.players.values()].map(p => ({
-    playerId: p.id, name: p.name, score: p.score, connected: p.connected, ...(room.mode==="teams"?{teamId:p.teamId}:{}),
-  })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    ...publicPlayerView(p), ...(room.mode==="teams"?{teamId:p.teamId}:{}),
+  })).sort((a, b) => b.score - a.score || a.playerId.localeCompare(b.playerId));
 }
 function broadcast(room: Room, type: string, payload: unknown) {
   send(room.hostWs, type, payload);
@@ -315,6 +316,13 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if (room.answers.has(playerId)) { error("Answer already submitted"); return; }
           const player = room.players.get(playerId)!;
           const current=room.questions[room.questionIndex];
+          if (!canSubmitAnswer({
+            gameState: room.state,
+            connected: player.connected,
+            socketMatchesPlayer: player.ws === ws,
+            alreadyAnswered: room.answers.has(playerId),
+            questionExists: !!current,
+          })) { error("Cannot answer in the current state"); return; }
           if(["A","B","C","D"].indexOf(msg.payload.answer)>=(current.options as string[]).length){error("Invalid answer choice");return;}
           if(room.mode==="buzzer"&&room.buzzedPlayerId!==playerId){error("Buzz in before answering");return;}
           const correct = msg.payload.answer === current.correctOption;

@@ -1,6 +1,6 @@
 # Integrated branch review
 
-Verified on 2026-10-22 on `feature/integrated-learning-platform-20261022`, based on main `ab4133c7108e99dee5c41ce217d7e494f56518b8`. This branch merges Phase 1 PR #10, Phase 3 PR #15 and Phase 4 PR #11 while retaining main's visual exams and 11-kind question model. Research PR #5 supplies reference catalogs rather than application source.
+Verified on 2026-10-22 on `feature/integrated-learning-platform-20261022`. The branch integrates main `de81d9c0aaaa48f6994a11ca4da4d7a0a94acc50`, including PR #7's room projections and submission guard, with Phase 1 PR #10, Phase 3 PR #15 and Phase 4 PR #11 while retaining main's visual exams and 11-kind question model. Research PR #5 supplies reference catalogs rather than application source.
 
 The integration closes the original account/ownership gaps, replaces trusted player IDs with rotating credentials, and makes the server authoritative for multiplayer timing, scoring and state. It also joins private original documents, reviewed imports, editable questions, saved practice and FSRS under one account. Original teams, buzzer, wager, workshop and party modes reuse the secured game engine.
 
@@ -11,7 +11,7 @@ The [48-item status checklist](IMPLEMENTATION_CHECKLIST.md) identifies bounded i
 | Check | Actual result |
 |---|---|
 | TypeScript | `npm run check` passed. |
-| Unit and real WebSocket tests | `npm test`: 48 passed, zero failed or skipped. Includes timers, reconnect rotation, host/player permissions, scoring, portable formats, extraction, schemas, matching and rate limits. |
+| Unit and real WebSocket tests | `npm test`: 51 passed, zero failed or skipped. Includes timers, reconnect rotation, host/player permissions, scoring, portable formats, extraction, schemas, matching, rate limits and main's projection/guard regressions. |
 | Migrations | All five ordered migrations applied twice against the disposable local test database. |
 | Database/API integration | Five passed, zero skipped, using PGlite's PostgreSQL engine over its socket adapter. Covers ownership, retained originals, FK cascades/rollback, study idempotency, drafts, reviewed publication, card editing and JSON restore. This does not substitute for native PostgreSQL 16 acceptance. |
 | Browser acceptance | Five Chromium tests passed with retries disabled: join keyboard/axe/phone layout; cross-device private history and legacy practice saving; imported-card edit/reorder/reload; host/player match with both reconnecting; visual authoring/reopen/MCQ/matching/hotspot practice. |
@@ -42,4 +42,4 @@ Rooms and WebSocket throttles are process-local. Use one long-running app proces
 
 ## Publication status
 
-All changes are on the local development branch. No deployment or main-branch merge was performed. Automatic approval review rejected the remote push because publishing the combined source required explicit user authorization. No push or pull request was completed; a separate authorization is required for that publication step.
+Publication of the development branch and a draft pull request was explicitly authorized on 2026-10-22. This change is prepared for review; no production deployment or merge into main is included.

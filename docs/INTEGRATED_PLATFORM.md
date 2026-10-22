@@ -39,7 +39,7 @@ Set `DATABASE_URL` and absolute encrypted durable `BACKUP_DIR`, then run `npm ru
 
 ## Verification limits
 
-The [review record](INTEGRATION_REVIEW.md) records 48 passing unit/socket tests, five passing database/API tests using PGlite, five passing Chromium browser tests, type checking, build and smoke results. Native PostgreSQL 16, native archive restoration, Firefox and WebKit remain unverified here. Constituent PR results do not validate this combined branch.
+The [review record](INTEGRATION_REVIEW.md) records 51 passing unit/socket tests, five passing database/API tests using PGlite, five passing Chromium browser tests, type checking, build and smoke results. Native PostgreSQL 16, native archive restoration, Firefox and WebKit remain unverified here. Constituent PR results do not validate this combined branch.
 
 Automated accessibility checks cover representative join/home flows, authoring alternatives and phone overflow; this is not a full WCAG conformance audit. Production dependency audit is clear at the current lockfile. Eight development build-tool advisories remain (five high, three moderate) in the Tailwind 3 selector/glob dependency chain; a forced Tailwind 4 migration was not applied. License metadata is an inventory; inspect the distributed license files before redistribution.
 
