@@ -110,8 +110,9 @@ export function registerUniversalQuestionRoutes(app: Express) {
       // Authoritative scoring for solo practice only; not a competitive, anti-cheat endpoint.
       const {response,requestId,skipped} = z.object({ response: z.unknown(), requestId:z.string().uuid().default(randomUUID),skipped:z.boolean().default(false) }).parse(req.body);
       const correct = skipped?false:gradeUniversalAnswer(existing.question, response);
-      const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,{response,skipped},correct,existing.question.answer);
+      const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,{response,skipped},correct,existing.question);
       if(saved==="conflict"){res.status(409).json({message:"This answer request was already used for a different response"});return;}
+      if(saved==="stale"){res.status(409).json({message:"This question changed while you were studying. Reload for the latest answer."});return;}
       res.json({ correct, answer: existing.question.answer, explanation: existing.question.explanation ?? "", source:existing.question.source });
     } catch (err) { failure(err, res); }
   });
