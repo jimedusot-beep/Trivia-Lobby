@@ -222,19 +222,41 @@ export default function ExamBuilder() {
       {notice && <p role="status" className="rounded border p-3">{notice}</p>}
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-6">
         <Card>
-          <CardHeader><CardTitle>Saved questions ({saved.length})</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Question bank ({saved.length})</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {saved.length === 0 && <p>No visual questions saved yet.</p>}
-            {saved.map((item, index) => <div className="border p-3 rounded space-y-2" key={item.id}>
-              <p className="text-sm font-semibold break-words">{index+1}. {item.question.prompt}</p>
-              <p className="text-xs text-muted-foreground">{item.question.answer.kind}</p>
-              <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="outline" onClick={()=>edit(item)}>Edit</Button>
-                <Button size="sm" variant="outline" onClick={()=>void move(index,-1)} disabled={index===0||busy} aria-label={`Move question ${index+1} up`}>↑</Button>
-                <Button size="sm" variant="outline" onClick={()=>void move(index,1)} disabled={index===saved.length-1||busy} aria-label={`Move question ${index+1} down`}>↓</Button>
-                <Button size="sm" variant="destructive" onClick={()=>void remove(item.id)} disabled={busy}>Delete</Button>
-              </div>
-            </div>)}
+            <Label htmlFor="question-search">Search saved questions</Label>
+            <Input id="question-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search prompts or tags"/>
+            <Label htmlFor="question-filter">Filter question types</Label>
+            <select id="question-filter" value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} className="w-full p-2 rounded border bg-background">
+              <option value="all">All questions</option>
+              <option value="live">Live playable</option><option value="study">Study only</option>
+              <option value="multiple_choice">Multiple choice</option>
+              <option value="multiple_select">Multiple select</option><option value="true_false">True / false</option>
+              <option value="ordering">Ordering</option><option value="matching">Matching</option>
+              <option value="image_hotspot">Image hotspot</option><option value="flashcard">Flashcard</option>
+              <option value="short_answer">Short answer</option>
+            </select>
+            {saved.length === 0 && <p>No questions saved yet.</p>}
+            {saved.length > 0 && visible.length === 0 && <p role="status">No saved questions match these filters.</p>}
+            {visible.map((item) => {
+              const index = saved.findIndex(candidate=>candidate.id===item.id);
+              return <div className="border p-3 rounded space-y-2" key={item.id}>
+                <p className="text-sm font-semibold break-words">{index+1}. {item.question.prompt}</p>
+                <p className="text-xs text-muted-foreground">{item.question.answer.kind.replaceAll("_"," ")} · {isLiveReady(item.question)?"Live playable":"Study only"} · {item.question.gameplay?.timeLimitSeconds??30}s</p>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={()=>edit(item)}>Edit</Button>
+                  <Button size="sm" variant="outline" onClick={()=>setPreviewQuestion(item)}>Preview</Button>
+                  <Button size="sm" variant="outline" disabled={busy} onClick={()=>void duplicate(item)}>Duplicate</Button>
+                  <Button size="sm" variant="outline" disabled={!canReorder||index===0||busy} aria-label={"Move question "+(index+1)+" up"} onClick={()=>void move(index,-1)}>↑</Button>
+                  <Button size="sm" variant="outline" disabled={!canReorder||index===saved.length-1||busy} aria-label={"Move question "+(index+1)+" down"} onClick={()=>void move(index,1)}>↓</Button>
+                  <Button size="sm" variant="destructive" onClick={()=>void remove(item.id)} disabled={busy}>Delete</Button>
+                </div>
+              </div>;
+            })}
+            {previewQuestion&&<div className="space-y-2">
+              <Button variant="outline" size="sm" onClick={()=>setPreviewQuestion(null)}>Close preview</Button>
+              <QuestionPreview question={previewQuestion.question}/>
+            </div>}
           </CardContent>
         </Card>
         <Card>
