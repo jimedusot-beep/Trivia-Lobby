@@ -13,6 +13,8 @@ type Dashboard = { visual:{attempts:number;correct:number;due:number}; attempts:
 type WrongEvent = { id: string; kind: "card" | "visual"; deckId: number; front: string; subject: string; reviewedAt: string | null };
 type LegacyWrongEvent = { cardId: number; deckId: number; front: string; subject: string; reviewedAt: string };
 type VisualWrongEvent = { questionId: number; deckId: number; front: string; subject: string; reviewedAt: string | null };
+type HistoricalAttempt = { id: string; front: string; deckTitle: string; subject: string; reviewedAt: string; correct: boolean; archived: boolean };
+type ArchivedAttempt = HistoricalAttempt & { kind: "Flashcard" | "Visual question" };
 const api = async <T,>(url: string, method = "GET", body?: unknown): Promise<T> => {
   const response = await fetch(url, { method, credentials: "same-origin", headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
   if (!response.ok) {
@@ -66,13 +68,14 @@ export default function Learning() {
   const { user, setUser, loading } = useStudyUser();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [wrong, setWrong] = useState<WrongEvent[]>([]);
+  const [archived, setArchived] = useState<ArchivedAttempt[]>([]);
   const [error, setError] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const load = useCallback(async () => {
     try {
       const [summary, history] = await Promise.all([
         api<Dashboard>("/api/study/dashboard"),
-        api<{ wrongAnswers: LegacyWrongEvent[]; visualWrongAnswers: VisualWrongEvent[] }>("/api/study/history"),
+        api<{ wrongAnswers: LegacyWrongEvent[]; visualWrongAnswers: VisualWrongEvent[]; events: HistoricalAttempt[]; visualHistory: HistoricalAttempt[] }>("/api/study/history"),
       ]);
       setDashboard(summary);
       setWrong([
@@ -81,6 +84,10 @@ export default function Learning() {
         ...(history.visualWrongAnswers ?? []).map(x => ({ id: "visual:" + x.questionId, kind: "visual" as const,
           deckId: x.deckId, front: x.front, subject: x.subject, reviewedAt: x.reviewedAt })),
       ]);
+      setArchived([
+        ...(history.events ?? []).filter(x => x.archived).map(x => ({ ...x, kind: "Flashcard" as const })),
+        ...(history.visualHistory ?? []).filter(x => x.archived).map(x => ({ ...x, kind: "Visual question" as const })),
+      ].sort((a, b) => Date.parse(b.reviewedAt) - Date.parse(a.reviewedAt)).slice(0, 100));
       setError("");
     } catch (err) { setError((err as Error).message); }
   }, []);
@@ -152,6 +159,15 @@ export default function Learning() {
               <Button asChild variant="outline"><Link href={item.kind === "visual" ? `/visual-practice/${item.deckId}?mode=adaptive` : `/learning/review/${item.deckId}?mode=missed`}>Retry</Link></Button>
             </li>)}</ul>}
       </section>
+      {archived.length > 0 && <section className="space-y-3" aria-label="Saved history of deleted questions">
+        <h2 className="text-2xl font-bold">Preserved learning history</h2>
+        <p className="text-sm text-muted-foreground">Deleting a deck removes it from your active review queue, but your earlier results and the original reviewed wording remain private and saved. Export progress for a complete archive.</p>
+        <ul className="space-y-2">{archived.map(item =>
+          <li key={item.kind + item.id} className="border rounded-lg bg-card p-3 space-y-1">
+            <p className="font-semibold whitespace-pre-wrap">{item.front}</p>
+            <p className="text-sm text-muted-foreground">{item.deckTitle} · {item.subject} · {item.kind} · {item.correct ? "Recalled" : "Missed"} · {new Date(item.reviewedAt).toLocaleDateString()} · Archived</p>
+          </li>)}</ul>
+      </section>}
     </div>
   </main>;
 }
