@@ -45,7 +45,7 @@ test("self-paced assignment persists guest progress, grades privately and guards
     const token={attemptId:start.data.attemptId,secret:start.data.secret};
     assert.equal((await request("/api/assignments/public/"+id+"/start","POST",{name:"Student"})).status,409);
     assert.equal((await request("/api/assignments/public/"+id+"/attempt","PUT",{
-      ...token,answers:[{questionId:saved.data.question.id,response:{selectedIds:["a"]}}]
+      ...token,answers:[{questionId:saved.data.question.id,response:{selectedIds:[guestChoice]}}]
     })).status,200);
     const resumed=await request("/api/assignments/public/"+id+"/resume","POST",token);
     assert.equal(resumed.status,200);assert.equal(resumed.data.answers.length,1);
