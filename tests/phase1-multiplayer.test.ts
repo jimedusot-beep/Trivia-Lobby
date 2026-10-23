@@ -218,3 +218,49 @@ test("new rooms require authenticated ownership; workshop and buzzer actions enf
  a.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode:code2,questionIndex:0,answer:"A"});await a.take(WS_EVENTS.ANSWER_ACCEPTED);
  b.send(WS_EVENTS.BUZZ,{roomCode:code2,questionIndex:0});b.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode:code2,questionIndex:0,answer:"B"});assert.equal((await b.take(WS_EVENTS.ANSWER_RESULT)).payload.isCorrect,true);
 });
+
+test("five players complete four question kinds with reveal-only keys, validated answers and configured scoring", async t => {
+  const { universalQuestionSchema } = await import("../shared/universal-questions");
+  const { liveCardFromUniversal } = await import("../server/live-question-adapter");
+  const definitions = [
+    {schemaVersion:1, id:"a", prompt:"Select one", answer:{kind:"multiple_choice",options:[{id:"a",label:"Alpha"},{id:"b",label:"Beta"}],correctOptionIds:["a"]}},
+    {schemaVersion:1, id:"b", prompt:"True?", gameplay:{timeLimitSeconds:5,points:"double"},answer:{kind:"true_false",correct:true}},
+    {schemaVersion:1, id:"c", prompt:"Select two",answer:{kind:"multiple_select",options:[{id:"x",label:"X"},{id:"y",label:"Y"},{id:"z",label:"Z"}],correctOptionIds:["x","z"]}},
+    {schemaVersion:1, id:"d", prompt:"Order it",answer:{kind:"ordering",items:[{id:"second",label:"Second"},{id:"first",label:"First"},{id:"third",label:"Third"}],correctOrderIds:["first","second","third"]}},
+  ].map(value=>universalQuestionSchema.parse(value));
+  const extras=definitions.map((q,i)=>liveCardFromUniversal(1,i+1,q)!);
+  const storage={async getDeck(){return {id:1,cards:[]};}} as unknown as IStorage;
+  const server=createServer(), wss=attachGameSocket(server,storage,{authorizeHost:async()=>"owner",questionMs:2500,extraQuestions:async()=>extras});
+  server.listen(0,"127.0.0.1"); await once(server,"listening");
+  const addr=server.address();assert(addr&&typeof addr!=="string");
+  const sockets:WebSocket[]=[];
+  const open=async()=>{const ws=new WebSocket(`ws://127.0.0.1:${addr.port}/ws`);sockets.push(ws);const inbox=client(ws);await once(ws,"open");return inbox;};
+  t.after(async()=>{sockets.forEach(ws=>ws.terminate());await new Promise<void>(resolve=>wss.close(()=>server.close(()=>resolve())));});
+  const host=await open();host.send(WS_EVENTS.CREATE_ROOM,{deckId:1});
+  const {roomCode}=(await host.take(WS_EVENTS.ROOM_CREATED)).payload;
+  const players=await Promise.all(Array.from({length:5},async(_,i)=>{const p=await open();p.send(WS_EVENTS.JOIN_ROOM,{roomCode,playerName:"P"+i});await p.take(WS_EVENTS.ROOM_JOINED);return p;}));
+  host.send(WS_EVENTS.START_GAME,{roomCode});
+  for(let i=0;i<4;i++){
+    const question=(await host.take(WS_EVENTS.QUESTION_START)).payload;
+    assert.equal(question.questionIndex,i);
+    assert.equal(question.kind,definitions[i].answer.kind);
+    assert(!JSON.stringify(question).includes("correctOptionIds")&&!JSON.stringify(question).includes("correctOrderIds")&&!JSON.stringify(question).includes('"correct":'));
+    if(i===1)assert.equal(question.timeLimitMs,5000);
+    if(i===2){
+      players[0].send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:i,answer:{selectedIds:["unlisted"]}});
+      assert.match((await players[0].take(WS_EVENTS.ERROR)).payload.message,/Invalid answer option/);
+    }
+    const answer=i===0?"A":i===1?{value:true}:i===2?{selectedIds:["x","z"]}:{orderIds:["first","second","third"]};
+    players.forEach(p=>p.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:i,answer}));
+    const reveals=await Promise.all(players.map(p=>p.take(WS_EVENTS.ANSWER_RESULT)));
+    assert(reveals.every(r=>r.payload.isCorrect===true));
+    if(i===1)assert.equal(reveals[0].payload.awarded,220);
+    if(i===3)assert.deepEqual(reveals[0].payload.correctAnswers,["First","Second","Third"]);
+    await host.take(WS_EVENTS.ANSWER_RESULT);
+    host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});await host.take(WS_EVENTS.LEADERBOARD);
+    host.send(WS_EVENTS.NEXT_QUESTION,{roomCode});
+  }
+  const finish=(await host.take(WS_EVENTS.GAME_OVER)).payload;
+  assert.equal(finish.leaderboard.length,5);
+  assert(finish.leaderboard.every((p:any)=>p.score>0));
+});
