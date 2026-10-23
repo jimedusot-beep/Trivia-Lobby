@@ -1,5 +1,6 @@
 import type { Card } from "@shared/schema";
 import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
+import { withOpaqueOptionIds } from "./opaque-question-options";
 
 /** Server-owned metadata is NEVER sent to players. */
 export type LiveCard = Card & { universal?: UniversalQuestion; timeLimitMs?: number; pointsFactor?: number };
