@@ -72,3 +72,29 @@ test("a key-free payload never includes solution keys or explanation",()=>{
   assert.ok(!JSON.stringify(view).includes("The correct answer is B"));
   assert.throws(()=>gradeUniversalAnswer(q,{selectedIds:"B"}));
 });
+
+test("guest-facing option IDs are opaque, freshly randomized and preserve grading",async()=>{
+  const { withOpaqueOptionIds } = await import("../server/opaque-question-options");
+  const single=parse({kind:"multiple_choice",options:[{id:"secret-correct",label:"Yes"},{id:"known-wrong",label:"No"}],correctOptionIds:["secret-correct"]});
+  const multi=parse({kind:"multiple_select",options:[{id:"secret-correct",label:"Yes"},{id:"known-wrong",label:"No"}],correctOptionIds:["secret-correct"]});
+  const order=parse({kind:"ordering",items:[{id:"first-correct",label:"Begin"},{id:"last-correct",label:"Finish"}],correctOrderIds:["first-correct","last-correct"]});
+  for (const original of [single,multi,order]){
+    const q=withOpaqueOptionIds(original),another=withOpaqueOptionIds(original);
+    if(q.answer.kind==="ordering"&&another.answer.kind==="ordering"){
+      const ids=q.answer.items.map(item=>item.id);
+      assert(ids.every(id=>/^[a-f0-9-]{36}$/.test(id)));
+      assert(!ids.includes("first-correct"));
+      assert.notDeepEqual(ids,another.answer.items.map(item=>item.id));
+      assert.equal(gradeUniversalAnswer(q,{orderIds:q.answer.correctOrderIds}),true);
+      assert.equal(gradeUniversalAnswer(q,{orderIds:["first-correct","last-correct"]}),false);
+    }else if((q.answer.kind==="multiple_choice"||q.answer.kind==="multiple_select")&&
+      (another.answer.kind==="multiple_choice"||another.answer.kind==="multiple_select")){
+      const ids=q.answer.options.map(option=>option.id);
+      assert(ids.every(id=>/^[a-f0-9-]{36}$/.test(id)));
+      assert(!ids.includes("secret-correct"));
+      assert.notDeepEqual(ids,another.answer.options.map(option=>option.id));
+      assert.equal(gradeUniversalAnswer(q,{selectedIds:q.answer.correctOptionIds}),true);
+      assert.equal(gradeUniversalAnswer(q,{selectedIds:["secret-correct"]}),false);
+    }else assert.fail("Question kind unexpectedly changed during re-keying");
+  }
+});
