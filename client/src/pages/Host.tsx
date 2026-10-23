@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { TimerBar } from "@/components/TimerBar";
 import { ArrowLeft, Users, Play, Copy, Trophy, Maximize, Minimize, Volume2, VolumeX, Share2 } from "lucide-react";
 import { enableGameAudio, playGameCue } from "@/lib/game-audio";
+import { JoinQrCode } from "@/components/JoinQrCode";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
@@ -151,7 +152,8 @@ export default function Host() {
               <Button variant="ghost" size="sm" onClick={copyCode} className="text-slate-400 hover:text-white">
                 {copied ? "Copied!" : <><Copy className="w-4 h-4 mr-2" /> Click to Copy</>}
               </Button>
-              {invitationUrl && <div className="space-y-2 max-w-xl mx-auto">
+              {invitationUrl && <div className="space-y-4 max-w-xl mx-auto">
+                <JoinQrCode url={invitationUrl} code={gameState.roomCode!}/>
                 <label htmlFor="invite-link" className="block text-sm text-slate-300">Direct invitation link</label>
                 <input id="invite-link" type="text" readOnly value={invitationUrl} onFocus={e=>e.target.select()} className="w-full bg-slate-800 border rounded p-3 text-sm text-white" />
                 <div className="flex gap-2 justify-center flex-wrap">
