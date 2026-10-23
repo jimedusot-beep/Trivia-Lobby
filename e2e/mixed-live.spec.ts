@@ -30,6 +30,9 @@ test("creator-backed four-kind live quiz works through host and mobile player", 
     await expect(room).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/);
     const code=(await room.innerText()).trim();
     await expect(host.getByLabel("Direct invitation link")).toHaveValue(new RegExp(`/join\\?code=${code}`));
+    const qr=host.getByRole("img",{name:"Scan QR code to join room "+code});
+    await expect(qr).toBeVisible();
+    await expect(qr.locator("path")).toHaveAttribute("d",/M[0-9]+,[0-9]+h1v1h-1z/);
     await guest.goto(baseURL+`/join?code=${code}`);
     await expect(guest.getByLabel("Room Code")).toHaveValue(code);
     await guest.getByLabel("Your Name").fill("A guest");
