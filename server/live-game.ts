@@ -12,6 +12,7 @@ import { consumeRate } from "./rate-limit";
 import { canSubmitAnswer, publicPlayerView } from "./room-projections";
 import { gradeUniversalAnswer } from "@shared/universal-questions";
 import type { LiveCard, LiveKind } from "./live-question-adapter";
+import type { GameReportSink } from "./game-report-types";
 
 const MAX_PLAYERS = 100;
 const QUESTION_MS = 30_000;
@@ -23,10 +24,11 @@ type Player = {
 };
 type Room = {
   mode:GameMode; buzzedPlayerId:string|null; buzzTimer?:ReturnType<typeof setTimeout>;
-  code: string; hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
+  code: string; reportId: string; reportSink?: GameReportSink; reportChain: Promise<void>; reportFailed: boolean;
+  hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
   players: Map<string, Player>; questions: LiveCard[]; state: RoomState;
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
-  answers: Map<string, { answer: unknown; correct: boolean; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
+  answers: Map<string, { answer: unknown; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
 };
 
@@ -102,6 +104,25 @@ function reveal(room: Room) {
     const missed = scoreRound({mode:room.mode,correct:false,streak:player.streak,score:player.score,wager:0,focus:player.focus,guard:player.guard,round:room.questionIndex});
     player.streak=missed.streak;player.focus=missed.focus;player.guard=missed.guard;
   }
+  if (room.reportSink && room.question) {
+    const details = resultFor(room);
+    const round = {
+      id: room.reportId, questionIndex: room.questionIndex,
+      prompt: room.question.prompt, kind: room.question.kind ?? "multiple_choice",
+      options: room.question.choices, durationMs: room.question.timeLimitMs,
+      correctAnswers: details.correctAnswers ??
+        (details.correctLetter ? [room.question.choices[["A","B","C","D"].indexOf(details.correctLetter)]] : []),
+      playerAnswers: [...room.players.values()].map(player => {
+        const record = room.answers.get(player.id);
+        return { playerId:player.id,name:player.name,response:record?.answer ?? null,
+          correct:record?.correct ?? false,awarded:record?.awarded ?? 0,responseMs:record?.responseMs ?? null };
+      }),
+    };
+    room.reportChain = room.reportChain.then(() => room.reportSink!.round(round)).catch(() => {
+      room.reportFailed = true;
+      send(room.hostWs, WS_EVENTS.ERROR, { message: "This round could not be saved to the game report." });
+    });
+  }
   lobbyUpdate(room);
   send(room.hostWs, WS_EVENTS.ANSWER_RESULT, resultFor(room));
   for (const p of room.players.values()) if (p.connected) {
@@ -140,13 +161,24 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.timer = setTimeout(() => reveal(room), questionDuration);
   room.timer.unref?.();
 }
-function next(room: Room, durationMs: number) {
+async function next(room: Room, durationMs: number) {
   if (room.state === "reveal") {
     room.state = "leaderboard";
     broadcast(room, WS_EVENTS.LEADERBOARD, { leaderboard: publicPlayers(room) });
   } else if (room.state === "leaderboard") {
     if (room.questionIndex === room.questions.length - 1) {
       room.state = "finished";
+      if (room.reportSink) {
+        await room.reportChain;
+        if (!room.reportFailed) {
+          try {
+            await room.reportSink.finished({ id:room.reportId,mode:room.mode,leaderboard:publicPlayers(room) });
+          } catch {
+            room.reportFailed = true;
+            send(room.hostWs, WS_EVENTS.ERROR, { message: "Game finished, but its report could not be finalized." });
+          }
+        }
+      }
       broadcast(room, WS_EVENTS.GAME_OVER, { leaderboard: publicPlayers(room) });
     } else {
       room.questionIndex++;
@@ -168,7 +200,7 @@ function eligible(card: LiveCard) {
 }
 
 /** In-memory match authority: per-room state, deadline, single answer, credentials. */
-export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<LiveCard[]> } = {}) {
+export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<LiveCard[]>; reportSink?:GameReportSink } = {}) {
   const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
   const createLimits = new Map<string, { count: number; resetAt: number }>();
@@ -239,9 +271,14 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if (rooms.size >= 500) { error("Room capacity reached"); return; }
           if(!consumeRate(`host:${ownerId}`,5,60_000)){error("Room creation rate limit");return;}
           const code = makeRoomCode(rooms);
+          const reportId = randomUUID();
+          if (options.reportSink) await options.reportSink.created({
+            id:reportId, ownerId, deckId:msg.payload.deckId, deckTitle:deck?.title ?? "Untitled quiz",
+          });
           const hostToken = mintToken();
           room = {
-            mode:"classic",buzzedPlayerId:null,code, hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
+            mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
+            reportChain:Promise.resolve(),reportFailed:false,hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
           };
@@ -336,7 +373,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if (role !== "host" || room.hostWs !== ws || !["reveal", "leaderboard"].includes(room.state)) {
             error("Host can advance only after reveal"); return;
           }
-          next(room, durationMs);
+          await next(room, durationMs);
         } else if (msg.type === WS_EVENTS.SUBMIT_ANSWER) {
           if (role !== "player" || !playerId || room.players.get(playerId)?.ws !== ws) {
             error("Players only"); return;
@@ -382,7 +419,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             correct = received === current.correctOption;
           }
           const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor});
-          room.answers.set(playerId, { answer:msg.payload.answer,correct,...scored });
+          room.answers.set(playerId, { answer:msg.payload.answer,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
           send(ws,WS_EVENTS.ANSWER_ACCEPTED,{questionIndex:room.questionIndex});
           if(room.mode==="buzzer"){
             clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
