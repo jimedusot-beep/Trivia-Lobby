@@ -11,7 +11,7 @@ export type LiveKind = "multiple_choice" | "true_false" | "multiple_select" | "o
  * question kinds are left in the study bank and cannot silently enter live play.
  */
 export function liveCardFromUniversal(deckId: number, id: number, raw: UniversalQuestion): LiveCard | null {
-  const q = universalQuestionSchema.parse(raw);
+  const q = withOpaqueOptionIds(universalQuestionSchema.parse(raw));
   const a = q.answer;
   if (a.kind !== "multiple_choice" && a.kind !== "true_false" &&
       a.kind !== "multiple_select" && a.kind !== "ordering") return null;
