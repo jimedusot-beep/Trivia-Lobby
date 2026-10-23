@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TimerBar } from "@/components/TimerBar";
-import { ArrowLeft, Users, Play, Copy, Trophy } from "lucide-react";
+import { ArrowLeft, Users, Play, Copy, Trophy, Maximize, Minimize, Volume2, VolumeX, Share2 } from "lucide-react";
+import { enableGameAudio, playGameCue } from "@/lib/game-audio";
 import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 export default function Host() {
   const { deckId } = useParams();
@@ -16,6 +17,44 @@ export default function Host() {
   const createRequested = useRef(false);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [presenting, setPresenting] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const lastCountdownCue = useRef("");
+  useEffect(() => {
+    const sync = () => setPresenting(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  useEffect(() => {
+    if (!soundEnabled) return;
+    if (gameState.phase === "reveal") playGameCue("reveal");
+    if (gameState.phase === "finished") playGameCue("finish");
+  }, [gameState.phase, soundEnabled]);
+  useEffect(() => {
+    if (!soundEnabled || gameState.phase !== "playing" || !gameState.currentQuestion) return;
+    const question = gameState.currentQuestion;
+    const interval = window.setInterval(() => {
+      const seconds=Math.ceil((question.deadlineTs-Date.now())/1000);
+      const id=question.serverStartTs + ":" + seconds;
+      if (seconds>0 && seconds<=5 && lastCountdownCue.current!==id) {
+        lastCountdownCue.current=id;
+        playGameCue("countdown");
+      }
+    },250);
+    return () => window.clearInterval(interval);
+  }, [soundEnabled, gameState.phase, gameState.currentQuestion?.serverStartTs]);
+  const toggleSound = async () => {
+    if (soundEnabled) { setSoundEnabled(false); return; }
+    if (await enableGameAudio()) { setSoundEnabled(true); playGameCue("start"); }
+    else toast({title:"Sound unavailable", description:"Your browser blocked audio. Gameplay will continue normally."});
+  };
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {toast({title:"Fullscreen unavailable",description:"Your browser does not permit presenter fullscreen."});}
+  };
   const invitationUrl = gameState.roomCode ? `${window.location.origin}/join?code=${encodeURIComponent(gameState.roomCode)}` : "";
 
   // Auto-create room on mount
@@ -36,6 +75,13 @@ export default function Host() {
     }
   };
 
+  const shareInvite = async () => {
+    if (!invitationUrl) return;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Join Trivia Lobby", text: "Join my live quiz!", url: invitationUrl }); }
+      catch (error) { if ((error as Error)?.name !== "AbortError") await copyInvite(); }
+    } else await copyInvite();
+  };
   const copyInvite = async () => {
     if (!invitationUrl) return;
     try {
@@ -69,7 +115,11 @@ export default function Host() {
          <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
            </Link></Button>
-         <div className="flex items-center gap-4">
+         <div className="flex flex-wrap items-center gap-2">
+           <Button size="sm" variant="outline" onClick={() => void toggleSound()} aria-label={soundEnabled?"Mute game audio":"Enable game audio"} aria-pressed={soundEnabled}
+             className="text-slate-900">{soundEnabled?<><Volume2 className="w-4 h-4 mr-2"/>Sound on</>:<><VolumeX className="w-4 h-4 mr-2"/>Sound off</>}</Button>
+           <Button size="sm" variant="outline" onClick={() => void toggleFullscreen()} aria-label={presenting?"Exit fullscreen presentation":"Enter fullscreen presentation"}
+             className="text-slate-900">{presenting?<Minimize className="w-4 h-4 mr-2"/>:<Maximize className="w-4 h-4 mr-2"/>}{presenting?"Exit full screen":"Present full screen"}</Button>
            <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full">
              <Users className="h-4 w-4" />
              <span className="font-bold">{gameState.players.length} Players</span>
@@ -104,7 +154,10 @@ export default function Host() {
               {invitationUrl && <div className="space-y-2 max-w-xl mx-auto">
                 <label htmlFor="invite-link" className="block text-sm text-slate-300">Direct invitation link</label>
                 <input id="invite-link" type="text" readOnly value={invitationUrl} onFocus={e=>e.target.select()} className="w-full bg-slate-800 border rounded p-3 text-sm text-white" />
-                <Button variant="outline" onClick={()=>void copyInvite()} className="text-slate-900"><Copy className="mr-2 w-4 h-4"/> Copy invitation link</Button>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button variant="outline" onClick={()=>void copyInvite()} className="text-slate-900"><Copy className="mr-2 w-4 h-4"/> Copy invitation link</Button>
+                  <Button variant="outline" onClick={()=>void shareInvite()} className="text-slate-900"><Share2 className="mr-2 w-4 h-4"/> Share game</Button>
+                </div>
               </div>}
             </div>
 
@@ -112,11 +165,12 @@ export default function Host() {
               {gameState.players.map((p) => (
                 <motion.div 
                   key={p.playerId}
-                  initial={{ scale: 0, opacity: 0 }}
+                  initial={reducedMotion ? false : { scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   className="bg-white/10 backdrop-blur-xs p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
                   {p.name}
+                  <span className={"block text-sm " + (p.connected?"text-green-300":"text-amber-200")}>{p.connected?"Connected":"Disconnected"}</span>
                   {gameState.mode==="teams"&&<span className="block text-sm">Team {p.teamId}</span>}
                 </motion.div>
               ))}
@@ -143,6 +197,7 @@ export default function Host() {
              {/* Question Screen */}
              {gameState.currentQuestion && !gameState.lastAnswerResult && (
                <div className="space-y-8 animate-in zoom-in-90 duration-300">
+                 <p role="status" className="text-center text-xl font-semibold">Question {gameState.currentQuestion?.questionIndex !== undefined ? gameState.currentQuestion.questionIndex+1 : "…"} of {gameState.currentQuestion?.totalQuestions ?? "?"}</p>
                  <div className="w-full bg-white/5 rounded-full p-1">
                     <TimerBar 
                       durationMs={gameState.timeRemainingMs || 10000} 
@@ -199,9 +254,9 @@ export default function Host() {
                      {gameState.leaderboard?.slice(0, 5).map((player: any, i: number) => (
                        <motion.div 
                          key={player.playerId}
-                         initial={{ x: -20, opacity: 0 }}
+                         initial={reducedMotion ? false : { x: -20, opacity: 0 }}
                          animate={{ x: 0, opacity: 1 }}
-                         transition={{ delay: i * 0.1 }}
+                         transition={reducedMotion ? {duration: 0} : { delay: i * 0.1 }}
                          className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10"
                        >
                          <div className="flex items-center gap-4">
@@ -231,7 +286,7 @@ export default function Host() {
         {/* GAME OVER */}
         {gameState.gameStatus === 'ended' && (
            <div className="text-center space-y-8 animate-in zoom-in duration-700">
-             <Trophy className="w-32 h-32 text-yellow-400 mx-auto drop-shadow-glow animate-bounce" />
+             <Trophy className="w-32 h-32 text-yellow-400 mx-auto drop-shadow-glow motion-safe:animate-bounce" />
              <h1 className="text-6xl font-black">GAME OVER</h1>
              
              <div className="flex items-end justify-center gap-4 h-64 pb-4">
