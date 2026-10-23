@@ -114,6 +114,21 @@ test("adaptive cards survive reload and second-device login without leaking to a
     expect(blocked.status()).toBe(403);
     const history=await pageOther.request.get(base+"/api/study/history");
     expect((await history.json()).events).toEqual([]);
+
+    // Deleted material is absent from the active queue but keeps its private
+    // historical prompt, review results and original deck name.
+    const removal=await pageA.request.delete(base+`/api/decks/${deckId}`);
+    expect(removal.status()).toBe(204);
+    const archivedResponse=await pageA.request.get(base+"/api/study/history");
+    expect(archivedResponse.status()).toBe(200);
+    const archivedHistory=await archivedResponse.json();
+    expect(archivedHistory.events.some((e: {front:string;archived:boolean}) => e.front===question && e.archived)).toBe(true);
+    await pageA.goto(base+"/learning");
+    await expect(pageA.getByRole("heading",{name:"Preserved learning history"})).toBeVisible();
+    await expect(pageA.getByText(question).first()).toBeVisible();
+    await pageOther.goto(base+"/learning");
+    await expect(pageOther.getByRole("heading",{name:"Preserved learning history"})).toHaveCount(0);
+    deckId=null;
   } finally {
     if (deckId !== null) await pageA.request.delete(base + `/api/decks/${deckId}`).catch(() => {});
     await first.close(); await second.close(); await other.close();
