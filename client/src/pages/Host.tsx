@@ -16,6 +16,7 @@ export default function Host() {
   const createRequested = useRef(false);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const invitationUrl = gameState.roomCode ? `${window.location.origin}/join?code=${encodeURIComponent(gameState.roomCode)}` : "";
 
   // Auto-create room on mount
   useEffect(() => {
@@ -33,6 +34,14 @@ export default function Host() {
       setTimeout(() => setCopied(false), 2000);
       toast({ title: "Copied!", description: "Room code copied to clipboard" });
     }
+  };
+
+  const copyInvite = async () => {
+    if (!invitationUrl) return;
+    try {
+      await navigator.clipboard.writeText(invitationUrl);
+      toast({ title: "Invite copied", description: "Send this link to players. It contains no host credentials." });
+    } catch { toast({ title: "Clipboard unavailable", description: "Copy the visible invitation URL instead.", variant: "destructive" }); }
   };
 
   const startGame = () => {
@@ -92,6 +101,11 @@ export default function Host() {
               <Button variant="ghost" size="sm" onClick={copyCode} className="text-slate-400 hover:text-white">
                 {copied ? "Copied!" : <><Copy className="w-4 h-4 mr-2" /> Click to Copy</>}
               </Button>
+              {invitationUrl && <div className="space-y-2 max-w-xl mx-auto">
+                <label htmlFor="invite-link" className="block text-sm text-slate-300">Direct invitation link</label>
+                <input id="invite-link" type="text" readOnly value={invitationUrl} onFocus={e=>e.target.select()} className="w-full bg-slate-800 border rounded p-3 text-sm text-white" />
+                <Button variant="outline" onClick={()=>void copyInvite()} className="text-slate-900"><Copy className="mr-2 w-4 h-4"/> Copy invitation link</Button>
+              </div>}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -143,7 +157,9 @@ export default function Host() {
                  </Card>
 
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   {gameState.currentQuestion.choices.map((choice: string, i: number) => {
+                   {gameState.currentQuestion.kind==="ordering" && <p className="col-span-full text-center text-sm">Players are arranging these items in order.</p>}
+                    {gameState.currentQuestion.kind==="multiple_select" && <p className="col-span-full text-center text-sm">Players may select more than one answer.</p>}
+                    {gameState.currentQuestion.choices.map((choice: string, i: number) => {
                      const colors = [
                        "bg-red-500 border-red-700", 
                        "bg-blue-500 border-blue-700", 
@@ -153,9 +169,9 @@ export default function Host() {
                      const symbols = ["▲", "◆", "●", "■"];
                      
                      return (
-                       <div key={i} className={`${colors[i]} border-b-4 rounded-xl p-6 flex items-center shadow-lg text-white`}>
+                       <div key={i} className={`${colors[i%colors.length]} border-b-4 rounded-xl p-6 flex items-center shadow-lg text-white`}>
                          <div className="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center font-bold text-lg mr-4">
-                           {symbols[i]}
+                           {symbols[i%symbols.length]}
                          </div>
                          <span className="text-2xl font-bold">{choice}</span>
                        </div>
@@ -171,7 +187,7 @@ export default function Host() {
                  <div className="space-y-2">
                    <h2 className="text-2xl text-slate-400">Correct Answer:</h2>
                    <div className="text-4xl font-bold text-green-400">
-                     {gameState.currentQuestion.choices[["A", "B", "C", "D"].indexOf(gameState.lastAnswerResult.correctLetter)]}
+                     {gameState.lastAnswerResult.correctAnswers?.join(gameState.currentQuestion.kind==="ordering" ? " → " : ", ") ?? (gameState.lastAnswerResult.correctLetter && gameState.currentQuestion.choices[["A", "B", "C", "D"].indexOf(gameState.lastAnswerResult.correctLetter)]) ?? "Not available"}
                    </div>
                  </div>
 
