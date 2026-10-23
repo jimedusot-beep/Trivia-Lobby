@@ -35,6 +35,8 @@ test("creator-backed four-kind live quiz works through host and mobile player", 
     await guest.getByLabel("Your Name").fill("A guest");
     await guest.getByRole("button",{name:"Enter Game"}).click();
     await expect(guest.getByRole("heading",{name:"Joined lobby"})).toBeVisible();
+    await expect(host.getByRole("button",{name:"Enable game audio"})).toHaveAttribute("aria-pressed","false");
+    await expect(host.getByRole("button",{name:"Enter fullscreen presentation"})).toBeVisible();
     await host.getByRole("button",{name:"Start Game"}).click();
 
     await expect(guest.getByText("Choose the original")).toBeVisible();
