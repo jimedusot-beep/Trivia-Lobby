@@ -58,7 +58,8 @@ export function registerStudyRoutes(app: Express) {
       // Serialize recall against content edits: a changed answer invalidates
       // the schedule only after every earlier in-flight review has committed.
       const locked = await tx.execute(sql`
-        SELECT c.id FROM cards c JOIN decks d ON d.id=c.deck_id
+        SELECT c.id, c.front, c.deck_id, d.title AS deck_title, d.category
+        FROM cards c JOIN decks d ON d.id=c.deck_id
         WHERE c.id=${input.cardId} AND d.owner_id=${user.id} FOR UPDATE OF c`);
       if (!locked.rows.length) return null;
       const [previous] = await tx.select().from(studySchedule)
@@ -77,6 +78,9 @@ export function registerStudyRoutes(app: Express) {
         .onConflictDoUpdate({ target: [studySchedule.userId, studySchedule.cardId], set: updated });
       const [event] = await tx.insert(studyEvents).values({
         id: randomUUID(), userId: user.id, cardId: input.cardId, requestId: input.requestId,
+        originalCardId: input.cardId, originalDeckId: Number(locked.rows[0].deck_id),
+        frontSnapshot: String(locked.rows[0].front), deckTitleSnapshot: String(locked.rows[0].deck_title),
+        subjectSnapshot: String(locked.rows[0].category ?? "General"),
         rating: input.rating, correct: input.rating >= 3, reviewedAt: now,
         dueBefore: previous?.dueAt ?? null, dueAfter: computed.after.due,
         stateBefore: computed.before, stateAfter: computed.after,
@@ -92,11 +96,18 @@ export function registerStudyRoutes(app: Express) {
     const user = await findStudyUser(req);
     if (!user) { res.status(401).json({ message: "Authentication required" }); return; }
     const events = await db.select({
-      id: studyEvents.id, cardId: studyEvents.cardId, rating: studyEvents.rating,
-      correct: studyEvents.correct, reviewedAt: studyEvents.reviewedAt, dueAfter: studyEvents.dueAfter,
-      front: cards.front, deckId: cards.deckId, subject: decks.category,
-    }).from(studyEvents).innerJoin(cards, eq(studyEvents.cardId, cards.id))
-      .innerJoin(decks, eq(cards.deckId, decks.id))
+      id: studyEvents.id, cardId: studyEvents.cardId, originalCardId: studyEvents.originalCardId,
+      rating: studyEvents.rating, correct: studyEvents.correct, reviewedAt: studyEvents.reviewedAt,
+      dueAfter: studyEvents.dueAfter,
+      // Review-time wording must not change when a card is subsequently edited
+      // or disappear when the owner deletes the deck.
+      front: sql<string>`coalesce(${studyEvents.frontSnapshot}, ${cards.front}, '[deleted card]')`,
+      deckId: sql<number | null>`coalesce(${studyEvents.originalDeckId}, ${cards.deckId})`,
+      deckTitle: sql<string>`coalesce(${studyEvents.deckTitleSnapshot}, ${decks.title}, '[deleted deck]')`,
+      subject: sql<string>`coalesce(${studyEvents.subjectSnapshot}, ${decks.category}, 'General')`,
+      archived: sql<boolean>`${studyEvents.cardId} is null`,
+    }).from(studyEvents).leftJoin(cards, eq(studyEvents.cardId, cards.id))
+      .leftJoin(decks, eq(cards.deckId, decks.id))
       .where(eq(studyEvents.userId, user.id)).orderBy(desc(studyEvents.reviewedAt)).limit(2000);
     // Derive the notebook from current per-user state, not a limited history slice.
     // A forgotten card can remain weak even if its last miss is older than 2,000 events.
@@ -159,7 +170,7 @@ export function registerStudyRoutes(app: Express) {
       } else stat.due++;
     }
     for (const event of events) {
-      const deck = byId.get(event.cardId);
+      const deck = event.cardId === null ? undefined : byId.get(event.cardId);
       const stat = deck ? stats.get(deck.deckId) : null;
       if (stat) { stat.attempts++; if (event.correct) stat.correct++; }
     }
