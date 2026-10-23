@@ -3,7 +3,9 @@ import { useLocation } from "wouter";
 import { useGameSocket } from "@/hooks/use-game-socket";
 import { WS_EVENTS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Volume2, VolumeX } from "lucide-react";
+import { TimerBar } from "@/components/TimerBar";
+import { enableGameAudio, playGameCue } from "@/lib/game-audio";
 import confetti from "canvas-confetti";
 
 const letters = ["A", "B", "C", "D"] as const;
@@ -19,6 +21,11 @@ export default function Play() {
   const [, setLocation] = useLocation();
   const { connected, gameState, emit, lastError } = useGameSocket("player");
   const [wager,setWager]=useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const toggleSound = async () => {
+    if (soundEnabled) { setSoundEnabled(false); return; }
+    if (await enableGameAudio()) setSoundEnabled(true);
+  };
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
@@ -37,6 +44,13 @@ export default function Play() {
   useEffect(() => {
     if (result?.isCorrect) confetti({ disableForReducedMotion: true, particleCount: 100, spread: 60, origin: { y: 0.7 } });
   }, [result]);
+  useEffect(() => {
+    if (!soundEnabled || gameState.phase !== "reveal" || !result) return;
+    playGameCue(result.isCorrect ? "correct" : "incorrect");
+  }, [soundEnabled, gameState.phase, result?.questionIndex]);
+  useEffect(() => {
+    if (soundEnabled && gameState.phase === "finished") playGameCue("finish");
+  }, [soundEnabled, gameState.phase]);
   useEffect(() => {
     if (gameState.phase !== "playing") return;
     const timer = window.setInterval(() => setNow(Date.now()), 250);
@@ -65,7 +79,11 @@ export default function Play() {
     <div className="min-h-screen bg-slate-100 p-4 flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <div className="font-bold text-slate-500">{gameState.roomCode}</div>
-        <div className="font-bold text-xl text-primary">{score} pts</div>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-xl text-primary">{score} pts</span>
+          <Button variant="outline" size="sm" onClick={() => void toggleSound()} aria-pressed={soundEnabled}
+            aria-label={soundEnabled?"Mute game audio":"Enable game audio"}>{soundEnabled?<Volume2 className="w-4 h-4"/>:<VolumeX className="w-4 h-4"/>}</Button>
+        </div>
       </div>
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full space-y-6">
         {lastError&&<p role="alert" className="bg-white border p-3 rounded">{lastError} <Button variant="outline" onClick={()=>{localStorage.removeItem("trivia_player");setLocation("/join");}}>Return to join</Button></p>}
@@ -81,8 +99,9 @@ export default function Play() {
         {gameState.gameStatus === "playing" && gameState.phase === "playing" && question && (
           <>
             <div className="text-center font-bold text-lg" aria-live="off">
-              Question {question.questionIndex + 1} · {seconds}s remaining
+              Question {question.questionIndex + 1} of {question.totalQuestions ?? "?"} · {seconds}s remaining
             </div>
+            <TimerBar durationMs={question.timeLimitMs} serverStartTs={question.serverStartTs} />
             <div className="text-center text-lg font-semibold">{question.prompt}</div>
             {gameState.mode==="buzzer"&&<Button disabled={!!gameState.buzzedPlayerId||!!selectedAnswer||!!gameState.answered||seconds===0} onClick={()=>emit(WS_EVENTS.BUZZ,{roomCode:gameState.roomCode,questionIndex:question.questionIndex})}>Buzz in</Button>}
             {gameState.mode==="buzzer"&&gameState.buzzedPlayerId&&<p role="status">{gameState.buzzedPlayerId===gameState.playerId?"Your buzzer: answer within five seconds":"Another player has the buzzer"}</p>}
