@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { QuestionPreview } from "@/components/QuestionPreview";
 
 type Kind = "multiple_choice" | "multiple_select" | "ordering" | "matching" | "image_hotspot" | "short_answer" | "flashcard" | "true_false";
 type Option = { id: string; label: string };
@@ -36,6 +37,23 @@ export default function ExamBuilder() {
   const deckId = Number(id);
   const { data: deck } = useDeck(deckId);
   const [saved, setSaved] = useState<Saved[]>([]);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [previewQuestion, setPreviewQuestion] = useState<Saved | null>(null);
+  const isLiveReady = (q: UniversalQuestion): boolean => {
+    const a=q.answer;
+    return a.kind==="true_false" ||
+      (a.kind==="multiple_choice" && a.options.length<=4) ||
+      (a.kind==="multiple_select" && a.options.length<=8) ||
+      (a.kind==="ordering" && a.items.length<=8);
+  };
+  const visible = saved.filter(item => (
+    (typeFilter==="all" || (typeFilter==="live" && isLiveReady(item.question)) ||
+      (typeFilter==="study" && !isLiveReady(item.question)) || item.question.answer.kind===typeFilter) &&
+    (item.question.prompt.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) ||
+      item.question.tags.some(tag=>tag.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())))
+  ));
+  const canReorder = search.trim().length===0 && typeFilter==="all";
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [kind, setKind] = useState<Kind>("multiple_choice");
   const [answerText,setAnswerText]=useState("");
@@ -154,11 +172,26 @@ export default function ExamBuilder() {
     } catch (err) { setNotice(messageFrom(err)); }
     finally { setBusy(false); }
   }
+  async function duplicate(item: Saved) {
+    setBusy(true); setNotice("");
+    try {
+      const { id:_sourceId, ...base }=item.question;
+      const suffix=" (copy " + Date.now().toString(36) + ")";
+      const cloned=universalQuestionSchema.omit({id:true}).parse({
+        ...base, prompt:item.question.prompt.slice(0,2000-suffix.length)+suffix,
+      });
+      await request(endpoint,"POST",cloned);
+      await reload();
+      setNotice("Question duplicated. You can edit the new copy independently.");
+    } catch(err) {setNotice(messageFrom(err));}
+    finally {setBusy(false);}
+  }
   async function remove(id: number) {
     if (!window.confirm("Delete this saved question?")) return;
     setBusy(true);
     try {
       await request(`${endpoint}/${id}`, "DELETE");
+      setPreviewQuestion(old=>old?.id===id?null:old);
       reset(); await reload(); setNotice("Question deleted.");
     } catch (err) { setNotice(messageFrom(err)); }
     finally { setBusy(false); }
