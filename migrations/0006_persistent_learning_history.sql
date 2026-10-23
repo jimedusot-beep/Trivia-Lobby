@@ -19,7 +19,7 @@ WHERE se.card_id = c.id AND (
   se.original_card_id IS NULL OR se.original_deck_id IS NULL OR
   se.front_snapshot IS NULL OR se.deck_title_snapshot IS NULL OR se.subject_snapshot IS NULL
 );
-DO $ BEGIN
+DO $retain$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid='study_events'::regclass
     AND attname='card_id' AND attnotnull) THEN
     ALTER TABLE study_events ALTER COLUMN card_id DROP NOT NULL;
@@ -31,7 +31,7 @@ DO $ BEGIN
     ALTER TABLE study_events ADD CONSTRAINT study_events_card_id_retained_fk
       FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL;
   END IF;
-END $;
+END $retain$;
 CREATE INDEX IF NOT EXISTS study_events_original_card_idx ON study_events (user_id, original_card_id);
 
 ALTER TABLE question_attempts
@@ -51,7 +51,7 @@ WHERE qa.question_id=uq.id AND (
   qa.original_question_id IS NULL OR qa.original_deck_id IS NULL OR
   qa.prompt_snapshot IS NULL OR qa.deck_title_snapshot IS NULL OR qa.subject_snapshot IS NULL
 );
-DO $ BEGIN
+DO $retain$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid='question_attempts'::regclass
     AND attname='question_id' AND attnotnull) THEN
     ALTER TABLE question_attempts ALTER COLUMN question_id DROP NOT NULL;
@@ -63,6 +63,6 @@ DO $ BEGIN
     ALTER TABLE question_attempts ADD CONSTRAINT question_attempts_question_id_retained_fk
       FOREIGN KEY (question_id) REFERENCES universal_questions(id) ON DELETE SET NULL;
   END IF;
-END $;
+END $retain$;
 CREATE INDEX IF NOT EXISTS question_attempts_original_question_idx ON question_attempts (owner_id, original_question_id);
 COMMIT;
