@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-type Kind = "multiple_choice" | "matching" | "image_hotspot" | "short_answer" | "flashcard" | "true_false";
+type Kind = "multiple_choice" | "multiple_select" | "ordering" | "matching" | "image_hotspot" | "short_answer" | "flashcard" | "true_false";
 type Option = { id: string; label: string };
 type Pair = { id: string; prompt: string; match: string };
 type Target = { id: string; label: string; x: number; y: number; radius: number };
@@ -46,6 +46,9 @@ export default function ExamBuilder() {
   const [options, setOptions] = useState<Option[]>(newOptions);
   const [pairs, setPairs] = useState<Pair[]>(newPairs);
   const [correctId, setCorrectId] = useState("A");
+  const [selectedCorrectIds,setSelectedCorrectIds]=useState<string[]>(["A"]);
+  const [timeLimitSeconds,setTimeLimitSeconds]=useState(30);
+  const [points,setPoints]=useState<"standard"|"double">("standard");
   const [files,setFiles]=useState<{id:string;originalName:string;mimeType:string}[]>([]);
   const [imageAssetId,setImageAssetId]=useState("");
   const [sourceFileId,setSourceFileId]=useState("");
@@ -58,9 +61,12 @@ export default function ExamBuilder() {
   const [targets, setTargets] = useState<Target[]>([]);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const draftStatus = useAuthorDraft(deckId, { selectedId,kind,prompt,explanation,options,pairs,correctId,imageUrl,imageAlt,targets,imageAssetId,sourceFileId,sourceAttribution,sourcePage,sourcePassage,answerText,caseSensitive,correctTruth }, value => {
-    if(typeof value.prompt!=="string" || !["multiple_choice","matching","image_hotspot","short_answer","flashcard","true_false"].includes(String(value.kind)))return;
+  const draftStatus = useAuthorDraft(deckId, { selectedId,kind,prompt,explanation,options,pairs,correctId,imageUrl,imageAlt,targets,imageAssetId,sourceFileId,sourceAttribution,sourcePage,sourcePassage,answerText,caseSensitive,correctTruth,selectedCorrectIds,timeLimitSeconds,points }, value => {
+    if(typeof value.prompt!=="string" || !["multiple_choice","multiple_select","ordering","matching","image_hotspot","short_answer","flashcard","true_false"].includes(String(value.kind)))return;
     setAnswerText(String(value.answerText??""));setCaseSensitive(value.caseSensitive===true);setCorrectTruth(value.correctTruth!==false);
+    setSelectedCorrectIds(Array.isArray(value.selectedCorrectIds) ? value.selectedCorrectIds as string[] : ["A"]);
+    setTimeLimitSeconds(typeof value.timeLimitSeconds === "number" ? value.timeLimitSeconds : 30);
+    setPoints(value.points === "double" ? "double" : "standard");
     setSelectedId(typeof value.selectedId==="number"?value.selectedId:null);setKind(value.kind as Kind);setPrompt(value.prompt);
     setExplanation(String(value.explanation??""));setOptions(Array.isArray(value.options)?value.options as Option[]:newOptions());
     setPairs(Array.isArray(value.pairs)?value.pairs as Pair[]:newPairs());setCorrectId(String(value.correctId??"A"));
@@ -76,6 +82,7 @@ export default function ExamBuilder() {
   useEffect(() => { void reload(); }, [reload]);
   function reset() {
     setAnswerText("");setCaseSensitive(false);setCorrectTruth(true);
+    setSelectedCorrectIds(["A"]);setTimeLimitSeconds(30);setPoints("standard");
     setSelectedId(null); setKind("multiple_choice"); setPrompt(""); setExplanation("");
     setOptions(newOptions()); setPairs(newPairs()); setCorrectId("A");
     setImageAssetId("");setSourceFileId("");setSourceAttribution("");setSourcePage("");setSourcePassage("");
@@ -83,13 +90,14 @@ export default function ExamBuilder() {
   }
   function edit(item: Saved) {
     const q = item.question;
-    if (!["multiple_choice","matching","image_hotspot","text","short_answer","flashcard","true_false"].includes(q.answer.kind)) {
+    if (!["multiple_choice","multiple_select","ordering","matching","image_hotspot","text","short_answer","flashcard","true_false"].includes(q.answer.kind)) {
       setNotice(`This question format (${q.answer.kind}) is supported by the model but not by this visual editor yet.`);
       return;
     }
     setSelectedId(item.id); setKind(q.answer.kind==="text"?"short_answer":q.answer.kind as Kind); setPrompt(q.prompt);
     setSourceFileId(q.source?.documentId??"");setSourceAttribution(q.source?.attribution??"");setSourcePage(q.source?.page?String(q.source.page):"");setSourcePassage(q.source?.passage??"");
     setExplanation(q.explanation ?? "");
+    setTimeLimitSeconds(q.gameplay?.timeLimitSeconds ?? 30);setPoints(q.gameplay?.points ?? "standard");
     if(q.answer.kind==="short_answer"||q.answer.kind==="text"){setAnswerText(q.answer.acceptedAnswers.join("\n"));setCaseSensitive(q.answer.caseSensitive);}
     if(q.answer.kind==="flashcard")setAnswerText(q.answer.back);
     if(q.answer.kind==="true_false")setCorrectTruth(q.answer.correct);
@@ -97,6 +105,8 @@ export default function ExamBuilder() {
     if (q.answer.kind === "multiple_choice") {
       setOptions(q.answer.options); setCorrectId(q.answer.correctOptionIds[0]);
     }
+    if (q.answer.kind === "multiple_select") {setOptions(q.answer.options);setSelectedCorrectIds(q.answer.correctOptionIds);}
+    if (q.answer.kind === "ordering") setOptions(q.answer.correctOrderIds.map(id=>q.answer.kind==="ordering" ? q.answer.items.find(item=>item.id===id)! : {id,label:""}));
     if (q.answer.kind === "matching") setPairs(q.answer.pairs);
     if (q.answer.kind === "image_hotspot") {
       setImageAssetId(q.answer.imageAssetId??"");
@@ -118,6 +128,8 @@ export default function ExamBuilder() {
       let answer: unknown;
       if (kind === "multiple_choice") {
         answer = {kind, options, correctOptionIds:[correctId]};
+      } else if(kind==="multiple_select"){answer={kind,options,correctOptionIds:selectedCorrectIds};
+      } else if(kind==="ordering"){answer={kind,items:options,correctOrderIds:options.map(o=>o.id)};
       } else if (kind === "matching") {
         answer = {kind, pairs};
       } else if(kind==="short_answer"){answer={kind,acceptedAnswers:answerText.split("\n").map(s=>s.trim()).filter(Boolean),caseSensitive};
@@ -128,6 +140,7 @@ export default function ExamBuilder() {
       }
       const question = universalQuestionSchema.omit({ id: true }).parse({
         schemaVersion:1, prompt, explanation, tags:[], answer,
+        gameplay:{timeLimitSeconds,points},
         ...(sourceFileId||sourceAttribution||sourcePassage?{source:{documentId:sourceFileId||undefined,attribution:sourceAttribution||files.find(f=>f.id===sourceFileId)?.originalName,page:sourcePage?Number(sourcePage):undefined,passage:sourcePassage||undefined}}:{}),
       });
       await request(selectedId === null ? endpoint : `${endpoint}/${selectedId}`,
@@ -136,6 +149,7 @@ export default function ExamBuilder() {
       setSelectedId(null);
       setPrompt(""); setExplanation(""); setAnswerText(""); setCaseSensitive(false); setCorrectTruth(true);
       setOptions(newOptions()); setPairs(newPairs()); setTargets([]); setCorrectId("A");
+       setSelectedCorrectIds(["A"]);setTimeLimitSeconds(30);setPoints("standard");
       await reload();
     } catch (err) { setNotice(messageFrom(err)); }
     finally { setBusy(false); }
@@ -198,6 +212,7 @@ export default function ExamBuilder() {
               <select id="format" className="w-full border rounded p-3 bg-background" value={kind}
                 onChange={e=>setKind(e.target.value as Kind)}>
                 <option value="multiple_choice">Multiple choice</option>
+                <option value="multiple_select">Multiple select</option><option value="ordering">Ordering / sequence</option>
                 <option value="short_answer">Short answer</option><option value="flashcard">Flashcard</option><option value="true_false">True / false</option>
                 <option value="matching">Matching</option>
                 <option value="image_hotspot">Image hotspot</option>
@@ -205,17 +220,25 @@ export default function ExamBuilder() {
             </div>
             <div><Label htmlFor="prompt">Question prompt</Label>
               <Textarea id="prompt" value={prompt} onChange={e=>setPrompt(e.target.value)} maxLength={2000}/></div>
-            {kind==="multiple_choice" && <fieldset className="space-y-3">
-              <legend className="font-semibold">Answer choices (select the correct answer)</legend>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div><Label htmlFor="live-timer">Live time limit</Label><select id="live-timer" className="w-full border rounded p-3 bg-background" value={timeLimitSeconds} onChange={e=>setTimeLimitSeconds(Number(e.target.value))}>{[5,10,15,20,30,45,60,90,120].map(n=><option key={n} value={n}>{n} seconds</option>)}</select></div>
+              <div><Label htmlFor="live-points">Live scoring</Label><select id="live-points" className="w-full border rounded p-3 bg-background" value={points} onChange={e=>setPoints(e.target.value as "standard"|"double")}><option value="standard">Standard points</option><option value="double">Double points</option></select></div>
+            </div>
+            {["multiple_choice","multiple_select","ordering"].includes(kind) && <fieldset className="space-y-3">
+              <legend className="font-semibold">{kind==="ordering"?"Items (move into correct order)":kind==="multiple_select"?"Answer choices (check all correct choices)":"Answer choices (select the correct answer)"}</legend>
               {options.map((o,i)=><div className="flex items-center gap-2" key={o.id}>
-                <input type="radio" name="correct-choice" checked={correctId===o.id}
-                  aria-label={`Choice ${i+1} is correct`} onChange={()=>setCorrectId(o.id)}/>
+                {kind==="multiple_choice" && <input type="radio" name="correct-choice" checked={correctId===o.id}
+                  aria-label={`Choice ${i+1} is correct`} onChange={()=>setCorrectId(o.id)}/>}
+                {kind==="multiple_select" && <input type="checkbox" checked={selectedCorrectIds.includes(o.id)}
+                  aria-label={`Choice ${i+1} is correct`} onChange={e=>setSelectedCorrectIds(old=>e.target.checked?[...old,o.id]:old.filter(id=>id!==o.id))}/>}
+                {kind==="ordering" && <span className="font-bold">{i+1}.</span>}
                 <Input aria-label={`Choice ${i+1} text`} value={o.label}
                   onChange={e=>setOptions(old=>old.map((v,j)=>j===i?{...v,label:e.target.value}:v))}/>
                 <Button size="sm" variant="outline" disabled={options.length<=2}
-                  onClick={()=>{setOptions(old=>old.filter(v=>v.id!==o.id));if(correctId===o.id)setCorrectId(options.find(v=>v.id!==o.id)?.id??"");}}>Remove</Button>
+                  onClick={()=>{setOptions(old=>old.filter(v=>v.id!==o.id));setSelectedCorrectIds(old=>old.filter(id=>id!==o.id));if(correctId===o.id)setCorrectId(options.find(v=>v.id!==o.id)?.id??"");}}>Remove</Button>
+                {kind==="ordering" && <><Button size="sm" variant="outline" disabled={i===0} aria-label={`Move item ${i+1} up`} onClick={()=>setOptions(old=>{const next=[...old];[next[i-1],next[i]]=[next[i],next[i-1]];return next;})}>↑</Button><Button size="sm" variant="outline" disabled={i===options.length-1} aria-label={`Move item ${i+1} down`} onClick={()=>setOptions(old=>{const next=[...old];[next[i+1],next[i]]=[next[i],next[i+1]];return next;})}>↓</Button></>}
               </div>)}
-              <Button variant="outline" disabled={options.length>=12} onClick={()=>setOptions(old=>[...old,{id:crypto.randomUUID(),label:""}])}>Add choice</Button>
+              <Button variant="outline" disabled={options.length>=(kind==="multiple_choice"?4:8)} onClick={()=>setOptions(old=>[...old,{id:crypto.randomUUID(),label:""}])}>Add choice</Button>
             </fieldset>}
             {(kind==="short_answer"||kind==="flashcard")&&<div className="space-y-2"><Label htmlFor="text-answer">{kind==="short_answer"?"Accepted answers (one per line)":"Card answer"}</Label><Textarea id="text-answer" value={answerText} onChange={e=>setAnswerText(e.target.value)} maxLength={10000}/>{kind==="short_answer"&&<label className="flex gap-2"><input type="checkbox" checked={caseSensitive} onChange={e=>setCaseSensitive(e.target.checked)}/>Match case</label>}</div>}
             {kind==="true_false"&&<fieldset><legend>Correct answer</legend>{[true,false].map(value=><label className="inline-flex p-3 gap-2" key={String(value)}><input type="radio" name="correct-truth" checked={correctTruth===value} onChange={()=>setCorrectTruth(value)}/>{String(value)}</label>)}</fieldset>}
