@@ -142,7 +142,21 @@ export function registerStudyRoutes(app: Express) {
       reviewedAt: row.reviewedAt instanceof Date ? row.reviewedAt.toISOString()
         : row.reviewedAt ? new Date(String(row.reviewedAt)).toISOString() : null,
     }));
-    res.json({ events, wrongAnswers, visualWrongAnswers, historyLimited: events.length === 2000,
+    // Visual attempts are also immutable learning history. Refer to owner-scoped
+    // snapshots when the active question/deck has been edited or deleted.
+    const visualHistory = await db.execute(sql`
+      SELECT qa.id, qa.question_id AS "questionId", qa.original_question_id AS "originalQuestionId",
+        qa.correct, qa.created_at AS "reviewedAt",
+        coalesce(qa.prompt_snapshot, uq.definition->>'prompt', '[deleted question]') AS "front",
+        coalesce(qa.deck_title_snapshot, d.title, '[deleted deck]') AS "deckTitle",
+        coalesce(qa.subject_snapshot, d.category, 'General') AS "subject",
+        qa.question_id IS NULL AS "archived"
+      FROM question_attempts qa
+      LEFT JOIN universal_questions uq ON uq.id=qa.question_id
+      LEFT JOIN decks d ON d.id=uq.deck_id
+      WHERE qa.owner_id=${user.id} ORDER BY qa.created_at DESC LIMIT 2000`);
+    res.json({ events, wrongAnswers, visualWrongAnswers, visualHistory: visualHistory.rows,
+      historyLimited: events.length === 2000 || visualHistory.rows.length === 2000,
       notebookLimited: wrongAnswers.length === 5000 || visualWrongAnswers.length === 5000 });
   }));
 
