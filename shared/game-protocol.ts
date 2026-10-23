@@ -48,7 +48,7 @@ export type PublicPlayer = z.infer<typeof publicPlayerSchema>;
 export const questionSchema = z.object({
   questionIndex: z.number().int(), prompt: z.string(), choices: z.array(z.string()).min(2).max(8),
   kind: liveKindSchema.optional(), optionIds: z.array(z.string().min(1).max(80)).min(2).max(8).optional(),
-  timeLimitMs: z.number().int().positive(), serverStartTs: z.number(),
+  timeLimitMs: z.number().int().positive(), totalQuestions: z.number().int().min(1).max(500).optional(), serverStartTs: z.number(),
   deadlineTs: z.number(),
 }).strict();
 export type PublicQuestion = z.infer<typeof questionSchema>;
