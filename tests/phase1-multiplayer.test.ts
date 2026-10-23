@@ -250,7 +250,9 @@ test("five players complete four question kinds with reveal-only keys, validated
       players[0].send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:i,answer:{selectedIds:["unlisted"]}});
       assert.match((await players[0].take(WS_EVENTS.ERROR)).payload.message,/Invalid answer option/);
     }
-    const answer=i===0?"A":i===1?{value:true}:i===2?{selectedIds:["x","z"]}:{orderIds:["first","second","third"]};
+    if(i===2 || i===3) assert(question.optionIds.every((id:string)=>/^[0-9a-f-]{36}$/.test(id)));
+    const optionId=(label:string)=>question.optionIds[question.choices.indexOf(label)];
+    const answer=i===0?"A":i===1?{value:true}:i===2?{selectedIds:[optionId("X"),optionId("Z")]}:{orderIds:[optionId("First"),optionId("Second"),optionId("Third")]};
     players.forEach(p=>p.send(WS_EVENTS.SUBMIT_ANSWER,{roomCode,questionIndex:i,answer}));
     const reveals=await Promise.all(players.map(p=>p.take(WS_EVENTS.ANSWER_RESULT)));
     assert(reveals.every(r=>r.payload.isCorrect===true));
