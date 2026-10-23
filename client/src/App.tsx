@@ -20,6 +20,7 @@ import Learning, { AdaptiveReview } from "@/pages/Learning";
 import LearningSources from "@/pages/LearningSources";
 import AuthGate from "@/components/AuthGate";
 import Library from "@/pages/Library";
+import Reports from "@/pages/Reports";
 
 function Router() {
   return (
@@ -38,6 +39,8 @@ function Router() {
       <Route path="/learning/review/:deckId"><AuthGate><AdaptiveReview /></AuthGate></Route>
       <Route path="/learning"><AuthGate><Learning /></AuthGate></Route>
       <Route path="/learning/sources"><AuthGate><LearningSources /></AuthGate></Route>
+      <Route path="/reports/:id"><AuthGate><Reports /></AuthGate></Route>
+      <Route path="/reports"><AuthGate><Reports /></AuthGate></Route>
       <Route path="/join" component={Join} />
       <Route path="/play" component={Play} />
       <Route component={NotFound} />
