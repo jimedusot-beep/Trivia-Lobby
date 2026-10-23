@@ -6,6 +6,7 @@ import { requireUser } from "./auth";
 import { storage } from "./storage";
 import { listUniversalQuestions } from "./universal-question-store";
 import { gradeUniversalAnswer, withoutAnswerKeys, legacyCardToQuestion, universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
+import { withOpaqueOptionIds } from "./opaque-question-options";
 
 const uuid=z.string().uuid();
 const requestToCreate=z.object({
