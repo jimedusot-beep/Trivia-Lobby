@@ -26,7 +26,7 @@ For production, run `npm run build` then `npm start` with deployment secrets set
 - Retained originals, course/folder/tag organization, extracted-content search, reviewed imports and source-linked drafting.
 - MCQ, short-answer, flashcard, true/false, matching and hotspot authoring with editing, reordering and server autosave. Eleven graded model kinds. Imported legacy cards also support editing and reordering.
 - Visual practice with saved attempts, FSRS schedules, timed/untimed/adaptive modes, explanations and citations.
-- Due reviews, wrong-answer notebook, course/subject statistics, cross-device persistence and progress export.
+- Due reviews, unified wrong-answer notebook, course/subject statistics, cross-device persistence and progress export. Completed attempt history now retains original prompt/deck snapshots even when the owner deletes or revises study materials.
 - Server-authoritative live quiz state, rotating reconnect credentials and deadlines. Classic, teams, buzzer, virtual-point wagers, original workshop upgrades and party rounds.
 - V2 JSON backups preserve legacy cards and visual definitions/order/citations. Anki text and supported QTI item export; supported QTI and basic legacy APKG text import.
 
@@ -54,4 +54,4 @@ All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE
 
 Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. Provision persistent storage and database backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
 
-Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.
+Read the [persistent learning history migration](docs/PERSISTENT_LEARNING_HISTORY.md), the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.
