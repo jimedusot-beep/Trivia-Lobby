@@ -24,10 +24,10 @@ test("question bank offers type filtering, text search, independent duplication 
     await expect(page.getByText("1. What is a quasar?")).toBeVisible();
     await expect(page.getByText("2. Review Greek mythology")).toHaveCount(0);
     await page.getByLabel("Search saved questions").fill("");
-    await page.getByLabel("Filter question types").selectOption("study");
+    await page.getByLabel("Filter saved questions").selectOption("study");
     await expect(page.getByText("2. Review Greek mythology")).toBeVisible();
     await expect(page.getByText("1. What is a quasar?")).toHaveCount(0);
-    await page.getByLabel("Filter question types").selectOption("live");
+    await page.getByLabel("Filter saved questions").selectOption("live");
     await expect(page.getByText("1. What is a quasar?")).toBeVisible();
     await page.getByRole("button",{name:"Preview"}).click();
     await expect(page.getByRole("region",{name:"Question player preview"})).toBeVisible();
