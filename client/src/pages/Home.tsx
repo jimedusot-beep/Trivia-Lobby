@@ -3,7 +3,7 @@ import { useDecks } from "@/hooks/use-decks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search } from "lucide-react";
+import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search, ChartBar } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useDeleteDeck } from "@/hooks/use-decks";
