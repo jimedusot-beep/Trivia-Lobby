@@ -20,6 +20,8 @@ export default function Play() {
   const { connected, gameState, emit, lastError } = useGameSocket("player");
   const [wager,setWager]=useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [now, setNow] = useState(Date.now());
   const question = gameState.currentQuestion;
   const result = gameState.lastAnswerResult;
@@ -27,7 +29,11 @@ export default function Play() {
   useEffect(() => {
     if (!localStorage.getItem("trivia_player")) setLocation("/join");
   }, [setLocation]);
-  useEffect(() => { setSelectedAnswer(null); }, [question?.questionIndex, question?.serverStartTs]);
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setSelectedIds([]);
+    setOrderedIds(question?.optionIds ?? []);
+  }, [question?.questionIndex, question?.serverStartTs]);
   useEffect(() => {
     if (result?.isCorrect) confetti({ disableForReducedMotion: true, particleCount: 100, spread: 60, origin: { y: 0.7 } });
   }, [result]);
@@ -41,9 +47,9 @@ export default function Play() {
   const score = gameState.players.find(p => p.playerId === gameState.playerId)?.score ?? gameState.score ?? 0;
   const canAnswer = connected && gameState.phase === "playing" && !selectedAnswer && !gameState.answered && seconds > 0 && (gameState.mode!=="buzzer"||gameState.buzzedPlayerId===gameState.playerId);
 
-  const submitAnswer = (answer: typeof letters[number]) => {
+  const submitAnswer = (answer: typeof letters[number] | { value: boolean } | { selectedIds: string[] } | { orderIds: string[] }) => {
     if (!canAnswer || !question) return;
-    setSelectedAnswer(answer);
+    setSelectedAnswer(typeof answer === "string" ? answer : JSON.stringify(answer));
     emit(WS_EVENTS.SUBMIT_ANSWER, {
       roomCode: gameState.roomCode, questionIndex: question.questionIndex, answer, wager:gameState.mode==="wager"?Math.min(wager,score,100):0,
     });
@@ -81,21 +87,52 @@ export default function Play() {
             {gameState.mode==="buzzer"&&<Button disabled={!!gameState.buzzedPlayerId||!!selectedAnswer||!!gameState.answered||seconds===0} onClick={()=>emit(WS_EVENTS.BUZZ,{roomCode:gameState.roomCode,questionIndex:question.questionIndex})}>Buzz in</Button>}
             {gameState.mode==="buzzer"&&gameState.buzzedPlayerId&&<p role="status">{gameState.buzzedPlayerId===gameState.playerId?"Your buzzer: answer within five seconds":"Another player has the buzzer"}</p>}
             {gameState.mode==="wager"&&<label>Wager earned points (0–{Math.min(score,100)})<input className="border p-3 w-full rounded" type="number" min={0} max={Math.min(score,100)} value={wager} disabled={!canAnswer} onChange={e=>setWager(Math.max(0,Math.min(100,score,Math.trunc(Number(e.target.value)))))} /></label>}
-            <div className="grid grid-cols-2 gap-4 h-80">
-              {letters.slice(0,question.choices.length).map((letter, i) => (
-                <button
-                  key={letter}
-                  type="button"
-                  disabled={!canAnswer}
-                  aria-label={letter + ": " + question.choices[i]}
-                  onClick={() => submitAnswer(letter)}
-                  className={`rounded-2xl shadow-lg border-b-8 transition-all flex flex-col items-center justify-center gap-3 ${selectedAnswer === letter ? "bg-slate-800 text-white ring-4 ring-white/50" : colors[i]} ${!canAnswer && selectedAnswer !== letter ? "opacity-50" : ""}`}
-                >
-                  <span className="text-4xl text-white">{symbols[i]}</span>
-                  <span className="text-sm text-white font-medium px-2 text-center">{question.choices[i]}</span>
-                </button>
-              ))}
-            </div>
+            {question.kind === "multiple_select" && question.optionIds ? (
+              <fieldset className="space-y-3" disabled={!canAnswer}>
+                <legend className="font-semibold">Select all correct answers, then submit</legend>
+                {question.optionIds.map((id, i) => (
+                  <label key={id} className="flex gap-3 items-center bg-white border rounded-xl p-4">
+                    <input type="checkbox" checked={selectedIds.includes(id)} onChange={e => setSelectedIds(old => e.target.checked ? [...old, id] : old.filter(value => value !== id))} />
+                    <span>{question.choices[i]}</span>
+                  </label>
+                ))}
+                <Button className="w-full" disabled={!canAnswer || selectedIds.length === 0} onClick={() => submitAnswer({selectedIds})}>Submit selections</Button>
+              </fieldset>
+            ) : question.kind === "ordering" && question.optionIds ? (
+              <section aria-label="Put the answers in order" className="space-y-3">
+                <p className="font-semibold">Arrange the items from first to last</p>
+                <ol className="space-y-2">
+                  {orderedIds.map((id, i) => (
+                    <li key={id} className="flex items-center gap-2 bg-white rounded-xl border p-3">
+                      <span className="font-bold">{i+1}.</span>
+                      <span className="flex-1">{question.choices[question.optionIds!.indexOf(id)]}</span>
+                      <Button variant="outline" size="sm" aria-label={`Move item ${i+1} up`} disabled={!canAnswer || i===0} onClick={() => setOrderedIds(old => { const next=[...old]; [next[i-1],next[i]]=[next[i],next[i-1]];return next; })}>↑</Button>
+                      <Button variant="outline" size="sm" aria-label={`Move item ${i+1} down`} disabled={!canAnswer || i===orderedIds.length-1} onClick={() => setOrderedIds(old => { const next=[...old]; [next[i+1],next[i]]=[next[i],next[i+1]];return next; })}>↓</Button>
+                    </li>
+                  ))}
+                </ol>
+                <Button className="w-full" disabled={!canAnswer || orderedIds.length !== question.optionIds.length} onClick={() => submitAnswer({orderIds:orderedIds})}>Submit order</Button>
+              </section>
+            ) : question.kind === "true_false" ? (
+              <div className="grid grid-cols-2 gap-4">
+                <Button className="h-32 text-2xl" disabled={!canAnswer} onClick={() => submitAnswer({value:true})}>True</Button>
+                <Button className="h-32 text-2xl" disabled={!canAnswer} onClick={() => submitAnswer({value:false})}>False</Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 min-h-80">
+                {letters.slice(0,question.choices.length).map((letter, i) => (
+                  <button
+                    key={letter} type="button" disabled={!canAnswer}
+                    aria-label={letter + ": " + question.choices[i]}
+                    onClick={() => submitAnswer(letter)}
+                    className={`rounded-2xl shadow-lg border-b-8 transition-all flex flex-col items-center justify-center gap-3 ${selectedAnswer === letter ? "bg-slate-800 text-white ring-4 ring-white/50" : colors[i]} ${!canAnswer && selectedAnswer !== letter ? "opacity-50" : ""}`}
+                  >
+                    <span className="text-4xl text-white">{symbols[i]}</span>
+                    <span className="text-sm text-white font-medium px-2 text-center">{question.choices[i]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {(selectedAnswer||gameState.answered) && <p role="status" className="text-center">Answer received. Waiting for reveal…</p>}
           </>
         )}
@@ -113,7 +150,7 @@ export default function Play() {
                 <h2 className="text-3xl font-black text-red-600">{result.isCorrect === false ? "Incorrect or missed" : "Answer revealed"}</h2>
               </>
             )}
-            <p>Correct answer: <strong>{question?.choices[letters.indexOf(result.correctLetter)]}</strong></p>
+            <p>Correct answer: <strong>{result.correctAnswers?.join(question?.kind === "ordering" ? " → " : ", ") ?? (result.correctLetter && question?.choices[letters.indexOf(result.correctLetter)]) ?? "Not available"}</strong></p>
             {result.explanation&&<p>{result.explanation}</p>}
             {result.awarded<0&&<p>{result.awarded} pts</p>}
             {gameState.mode==="workshop"&&<section className="border bg-white rounded p-4 space-y-3" aria-label="Workshop shop"><h3 className="font-bold">Workshop · {gameState.status?.coins??0} coins</h3>
