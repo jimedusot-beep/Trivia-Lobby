@@ -155,7 +155,7 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.question = {
     questionIndex: room.questionIndex, prompt: card.front, kind,
     choices, ...(optionIds ? { optionIds } : {}),
-    timeLimitMs: questionDuration, serverStartTs: now, deadlineTs: room.deadlineTs,
+    timeLimitMs: questionDuration, totalQuestions: room.questions.length, serverStartTs: now, deadlineTs: room.deadlineTs,
   };
   broadcast(room, WS_EVENTS.QUESTION_START, room.question);
   room.timer = setTimeout(() => reveal(room), questionDuration);
