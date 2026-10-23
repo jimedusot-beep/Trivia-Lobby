@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 type Deck={id:number;title:string};
 type Summary={id:string;title:string;opensAt:string|null;closesAt:string|null;maxAttempts:number;questionCount:number;attempts:number;completed:number};
 type Attempt={id:string;name:string;score:number;correctCount:number;answers:unknown;submittedAt:string|null;createdAt:string};
-type Detail=Summary&{attempts:Attempt[]};
+type Detail=Omit<Summary,"attempts">&{attempts:Attempt[]};
 
 async function api<T>(path:string,method="GET",body?:unknown):Promise<T>{
   const result=await fetch(path,{method,credentials:"same-origin",headers:body===undefined?{}:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
