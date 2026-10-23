@@ -74,6 +74,13 @@ test("creator-backed four-kind live quiz works through host and mobile player", 
     await host.getByRole("button",{name:"Show leaderboard"}).click();
     await host.getByRole("button",{name:"Next / Finish"}).click();
     await expect(guest.getByRole("heading",{name:"Game Over!"})).toBeVisible();
+    await host.goto(baseURL+"/reports");
+    await expect(host.getByText("Mixed live acceptance").first()).toBeVisible();
+    await host.getByRole("link",{name:"Review report"}).first().click();
+    await expect(host.getByRole("heading",{name:"Question breakdown"})).toBeVisible();
+    await expect(host.getByText("Arrange by size",{exact:false}).first()).toBeVisible();
+    await expect(host.getByText("100%",{exact:false}).first()).toBeVisible();
+    await expect(host.getByRole("link",{name:"Export answers to CSV"})).toBeVisible();
   } finally {
     if(deckId) await hostContext.request.delete(baseURL+`/api/decks/${deckId}`).catch(()=>{});
     await hostContext.close();
