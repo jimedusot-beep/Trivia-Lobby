@@ -226,7 +226,7 @@ export default function ExamBuilder() {
           <CardContent className="space-y-3">
             <Label htmlFor="question-search">Search saved questions</Label>
             <Input id="question-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search prompts or tags"/>
-            <Label htmlFor="question-filter">Filter question types</Label>
+            <Label htmlFor="question-filter">Filter saved questions</Label>
             <select id="question-filter" value={typeFilter} onChange={e=>setTypeFilter(e.target.value)} className="w-full p-2 rounded border bg-background">
               <option value="all">All questions</option>
               <option value="live">Live playable</option><option value="study">Study only</option>
