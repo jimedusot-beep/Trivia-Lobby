@@ -38,6 +38,8 @@ test("self-paced assignment persists guest progress, grades privately and guards
     assert.equal(guest.status,200);
     assert.equal(guest.data.questions.length,1);
     assert(!JSON.stringify(guest.data).includes("correctOptionIds"));
+    const guestChoice=guest.data.questions[0].answer.options.find((option:any)=>option.label==="A").id;
+    assert.notEqual(guestChoice,"a");assert.match(guestChoice,/^[0-9a-f-]{36}$/);
     const start=await request("/api/assignments/public/"+id+"/start","POST",{name:"Student"});
     assert.equal(start.status,201);assert(start.data.secret.length>=32);
     const token={attemptId:start.data.attemptId,secret:start.data.secret};
