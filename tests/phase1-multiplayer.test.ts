@@ -221,7 +221,7 @@ test("new rooms require authenticated ownership; workshop and buzzer actions enf
 
 test("five players complete four question kinds with reveal-only keys, validated answers and configured scoring", async t => {
   const { universalQuestionSchema } = await import("../shared/universal-questions");
-  const { liveCardFromUniversal } = await import("../server/live-question-adapter");
+  const { liveCardFromUniversal } = await import("../server/live-question-projection");
   const definitions = [
     {schemaVersion:1, id:"a", prompt:"Select one", answer:{kind:"multiple_choice",options:[{id:"a",label:"Alpha"},{id:"b",label:"Beta"}],correctOptionIds:["a"]}},
     {schemaVersion:1, id:"b", prompt:"True?", gameplay:{timeLimitSeconds:5,points:"double"},answer:{kind:"true_false",correct:true}},
