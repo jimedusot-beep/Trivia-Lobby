@@ -84,10 +84,11 @@ async function scenario(count:number,index:number){
     // Each fixture socket is allowed to fail without an unhandled-error crash.
     ws.on("error",()=>{});
     const inbox=new Inbox(ws);
-    await Promise.race([
-      once(ws,"open"),
-      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Connection timed out")),10000)),
-    ]);
+    await new Promise<void>((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error("Connection timed out")),10000);
+      ws.once("open",()=>{clearTimeout(timer);resolve();});
+      ws.once("error",(err)=>{clearTimeout(timer);reject(err);});
+    });
     return inbox;
   };
   try{
