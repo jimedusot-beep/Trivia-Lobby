@@ -1,11 +1,42 @@
 import type { Card } from "@shared/schema";
+import { universalQuestionSchema, type UniversalQuestion } from "@shared/universal-questions";
 import { listUniversalQuestions } from "./universal-question-store";
 
-/** Live rooms accept single-choice questions with two to four choices from either schema. */
-export async function universalGameCards(deckId:number):Promise<Card[]>{
- const rows=await listUniversalQuestions(deckId);
- return rows.flatMap(({id,question:q})=>{
-  const a=q.answer;if(a.kind!=="multiple_choice"||a.options.length>4)return [];
-  return [{id:-id,position:0,deckId,type:"multiple_choice",front:q.prompt,back:q.explanation??"",options:a.options.map(o=>o.label),correctOption:String.fromCharCode(65+a.options.findIndex(o=>o.id===a.correctOptionIds[0])),createdAt:null}];
- });
+/** Server-owned metadata is NEVER sent to players. */
+export type LiveCard = Card & { universal?: UniversalQuestion; timeLimitMs?: number; pointsFactor?: number };
+export type LiveKind = "multiple_choice" | "true_false" | "multiple_select" | "ordering";
+const supported = new Set<LiveKind>(["multiple_choice","true_false","multiple_select","ordering"]);
+
+/**
+ * Convert a verified universal definition to a private in-room card. Unsupported
+ * question kinds are left in the study bank and cannot silently enter live play.
+ */
+export function liveCardFromUniversal(deckId: number, id: number, raw: UniversalQuestion): LiveCard | null {
+  const q = universalQuestionSchema.parse(raw);
+  const a = q.answer;
+  if (!supported.has(a.kind as LiveKind)) return null;
+  if ((a.kind === "multiple_choice" && a.options.length > 4) ||
+      (a.kind === "multiple_select" && a.options.length > 8) ||
+      (a.kind === "ordering" && a.items.length > 8)) return null;
+  const options = a.kind === "true_false" ? ["True", "False"] :
+    a.kind === "ordering" ? a.items.map(item => item.label) : a.options.map(item => item.label);
+  const correctOption = a.kind === "multiple_choice"
+    ? String.fromCharCode(65 + a.options.findIndex(option => option.id === a.correctOptionIds[0]))
+    : a.kind === "true_false" ? (a.correct ? "A" : "B") : null;
+  return {
+    id: -id, deckId, position: 0, type: "multiple_choice",
+    front: q.prompt, back: q.explanation ?? "", options, correctOption, createdAt: null,
+    universal: q,
+    ...(q.gameplay?.timeLimitSeconds ? { timeLimitMs: q.gameplay.timeLimitSeconds * 1000 } : {}),
+    ...(q.gameplay?.points === "double" ? { pointsFactor: 2 } : {}),
+  };
+}
+
+/** Private definitions are loaded only for a deck already authorized for hosting. */
+export async function universalGameCards(deckId: number): Promise<LiveCard[]> {
+  const rows = await listUniversalQuestions(deckId);
+  return rows.flatMap(({id, question}) => {
+    const card = liveCardFromUniversal(deckId, id, question);
+    return card ? [card] : [];
+  });
 }
