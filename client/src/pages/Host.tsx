@@ -169,7 +169,7 @@ export default function Host() {
                   animate={{ scale: 1, opacity: 1 }}
                   className="bg-white/10 backdrop-blur-xs p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
-                  {p.name}
+                  <span className="block font-bold">{p.name}</span>
                   <span className={"block text-sm " + (p.connected?"text-green-300":"text-amber-200")}>{p.connected?"Connected":"Disconnected"}</span>
                   {gameState.mode==="teams"&&<span className="block text-sm">Team {p.teamId}</span>}
                 </motion.div>
