@@ -50,6 +50,7 @@ export default function Home() {
             </Link></Button>
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/learning">Learning & memory</Link></Button>
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/library">Private source library</Link></Button>
+          <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/assignments">Self-paced assignments</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/reports"><ChartBar className="mr-2 h-5 w-5"/> Game reports</Link></Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
               <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
