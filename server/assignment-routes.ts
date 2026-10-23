@@ -182,7 +182,7 @@ export function registerAssignmentRoutes(app:Express):void{
         try{const q=legacyCardToQuestion(card);return supported.has(q.answer.kind)?[q]:[];}
         catch{return [];}
       });
-      const questions=[...legacy,...universal].slice(0,100);
+      const questions=[...legacy,...universal].slice(0,100).map(withOpaqueOptionIds);
       if(!questions.length){res.status(400).json({message:"The deck has no supported assignment questions"});return;}
       const opens=data.opensAt?new Date(data.opensAt):null,closes=data.closesAt?new Date(data.closesAt):null;
       if(opens&&closes&&closes<=opens){res.status(400).json({message:"Closing time must follow opening time"});return;}
