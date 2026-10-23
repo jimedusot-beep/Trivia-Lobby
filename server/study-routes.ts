@@ -201,7 +201,7 @@ export function registerStudyRoutes(app: Express) {
       count + (i === 0 || time - chronological[i - 1] > 30 * 60_000 ? 1 : 0), 0);
     const subjectReviews = new Map<string, boolean[]>();
     for (const e of events) {
-      const item = byId.get(e.cardId);
+      const item = e.cardId === null ? undefined : byId.get(e.cardId);
       if (!item) continue;
       const name = item.category ?? "General";
       const record = subjectReviews.get(name) ?? [];
