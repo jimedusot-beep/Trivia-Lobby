@@ -20,7 +20,7 @@ test("Neon CLI storage endpoint and bucket auto-detection works without explicit
     delete process.env.S3_ENDPOINT;
     process.env.AWS_ENDPOINT_URL_S3 = "https://br-abc.storage.c-2.us-east-2.aws.neon.tech";
     assert.equal(isNeonStorageEndpoint(), true);
-    assert.equal(privateBucketName(), "trivia-originals");
+    assert.equal(privateBucketName(), "uploads");
     process.env.S3_BUCKET = "existing-private-bucket";
     assert.equal(privateBucketName(), "existing-private-bucket");
     process.env.AWS_ENDPOINT_URL_S3 = "https://br-abc.storage.c-2.us-east-2.aws.neon.tech.evil.example";
