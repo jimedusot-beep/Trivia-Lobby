@@ -17,7 +17,7 @@ let client: S3Client | undefined;
 function s3() {
   const endpoint = process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3;
   if (endpoint && new URL(endpoint).protocol !== "https:") throw new Error("S3_ENDPOINT requires HTTPS");
-  return client ??= new S3Client({ region: process.env.AWS_REGION ?? "us-east-1", endpoint, forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true" });
+  return client ??= new S3Client({ region: process.env.AWS_REGION ?? "us-east-1", endpoint, forcePathStyle: isNeonStorageEndpoint(endpoint) || process.env.S3_FORCE_PATH_STYLE === "true" });
 }
 /**
  * Neon CLI provides AWS_ENDPOINT_URL_S3 but no bucket-name environment value.
