@@ -162,7 +162,13 @@ export const studySchedule = pgTable("study_schedule", {
 export const studyEvents = pgTable("study_events", {
   id: uuid("id").primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  cardId: integer("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  // The live reference becomes null if material is deleted; immutable snapshots survive.
+  cardId: integer("card_id").references(() => cards.id, { onDelete: "set null" }),
+  originalCardId: integer("original_card_id"),
+  originalDeckId: integer("original_deck_id"),
+  frontSnapshot: text("front_snapshot"),
+  deckTitleSnapshot: text("deck_title_snapshot"),
+  subjectSnapshot: text("subject_snapshot"),
   requestId: uuid("request_id").notNull(),
   rating: integer("rating").notNull(),
   correct: boolean("correct").notNull(),
