@@ -5,7 +5,7 @@ import { db } from "./db";
 import { decks } from "@shared/schema";
 import { requireUser } from "./auth";
 
-const input=z.object({revision:z.number().int().nonnegative(),body:z.record(z.unknown())}).strict();
+const input=z.object({revision:z.number().int().nonnegative(),body:z.record(z.string(), z.unknown())}).strict();
 export function registerAuthorDraftRoutes(app: Express){
   app.use("/api/decks/:id/draft",requireUser,async(req,res,next)=>{
     try{
