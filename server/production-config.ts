@@ -15,7 +15,7 @@ export function validateProductionConfig() {
     throw new Error("Configure S3_BUCKET or an absolute PRIVATE_STORAGE_DIR on a durable private volume");
   }
   if (privateBucketName() && isNeonStorageEndpoint()) {
-    if (process.env.S3_FORCE_PATH_STYLE !== "true") throw new Error("Neon Object Storage requires S3_FORCE_PATH_STYLE=true");
+    if (process.env.S3_FORCE_PATH_STYLE === "false") throw new Error("Neon Object Storage requires path-style S3 transport");
     if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
       throw new Error("Neon Object Storage credentials and region are required");
     }
