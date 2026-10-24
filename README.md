@@ -20,6 +20,12 @@ Back up existing databases before migration. Pre-account decks require verified 
 
 **Public hosting without Replit:** the recommended path is [Render one-site deployment](docs/RENDER_DEPLOYMENT.md), using its `render.yaml` Blueprint to provision one Node web service, managed Postgres, and a private persistent storage disk. It is a **paid configuration** and does not auto-deploy on GitHub pushes. Protect any existing data before authorizing resources. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents the hosting-neutral requirements and smoke checks.
 
+Once the security/migration release PR and this deployment PR are merged into `main`, you can start the Render setup from GitHub (review costs first):
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby)
+
+**The button does not create a free service:** it opens a paid-resource authorization flow in your own Render account. The Blueprint keeps future automatic deployments disabled until you enable them deliberately.
+
 ## Features
 
 - One account for private decks, documents, drafts and learning history; guests can join live rooms.
