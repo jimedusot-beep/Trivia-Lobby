@@ -1,0 +1,32 @@
+name: Generate dependency lockfile for security migration
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  generate:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix/release-dependency-migrations-20261024'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Resolve audited dependency graph
+        run: npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+      - name: Emit reproducible lockfile for controlled commit
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const value=fs.readFileSync('package-lock.json','utf8');
+          for(let i=0;i<value.length;i+=3500){
+            console.log('LOCK_CHUNK_'+String(i/3500).padStart(4,'0')+'='+JSON.stringify(value.slice(i,i+3500)));
+          }
+          console.log('LOCK_DONE_'+value.length);
+          NODE
+      - name: Check patched dependency graph
+        run: npm audit --audit-level=moderate
