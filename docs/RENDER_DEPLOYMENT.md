@@ -14,7 +14,7 @@
 | Custom domain | Optional | Use the free `*.onrender.com` address first |
 | AI generation | Disabled/unconfigured | A commercial AI API is **not** necessary for core quizzes |
 
-Neon Free currently includes 100 CU-hours of compute/project/month, 1 GB database storage, and 5 GB object storage, subject to Neon limits and future changes. Render Free has a 750-hour workspace allowance per month and usage/bandwidth limits. **Don't provision Render Free Postgres:** it expires after 30 days and cannot retain data indefinitely.
+Neon Free currently includes 100 CU-hours of compute/project/month, 1 GB database storage, and 5 GB object storage, subject to Neon limits and future changes. Render Free has a 750-hour workspace allowance per month and usage/bandwidth limits. **To stay at $0, watch the dashboard's free limits and avoid enabling pay-as-you-go overage billing; an account with an active payment method can be billed for bandwidth overages.** If you can't enforce a $0 spend limit, avoid attaching a payment method and check Render's current billing settings before creating the service. **Don't provision Render Free Postgres:** it expires after 30 days and cannot retain data indefinitely.
 
 Sources:
 - https://render.com/docs/free
