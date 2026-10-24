@@ -11,7 +11,7 @@ import { defineConfig } from "@neon/config/v1";
  */
 export default defineConfig({
   buckets: {
-    "trivia-originals": { access: "private" },
+    "uploads": { access: "private" },
   },
   ...(process.env.ENABLE_PAID_NEON_AI_GATEWAY === "true"
     ? { aiGateway: true as const }
