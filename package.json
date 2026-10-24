@@ -11,7 +11,7 @@
     "check": "tsc",
     "test": "node --import tsx --test client/src/lib/*.test.ts server/library-parse.test.ts server/study-scheduler.test.ts server/study-security.test.ts server/bounded-response.test.ts server/backup-crypto.test.ts tests/phase1-multiplayer.test.ts tests/room-projections.test.ts tests/universal-questions.test.ts tests/platform-unit.test.ts tests/research-manifest.test.mjs",
     "db:push": "drizzle-kit push",
-    "test:integration": "node --import tsx --test --test-force-exit tests/private-library.integration.test.ts tests/universal-questions-db.test.ts tests/phase1-postgres.test.ts server/study-api.test.ts tests/platform.integration.test.ts",
+    "test:integration": "node --import tsx --test --test-force-exit tests/private-library.integration.test.ts tests/universal-questions-db.test.ts tests/phase1-postgres.test.ts server/study-api.test.ts tests/platform.integration.test.ts tests/game-reports.integration.test.ts tests/assignments.integration.test.ts",
     "db:migrate:phase3": "node --import tsx script/migrate-phase3.ts",
     "db:migrate": "node --import tsx script/migrate.ts",
     "test:e2e": "playwright test",

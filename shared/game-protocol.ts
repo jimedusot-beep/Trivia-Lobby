@@ -7,6 +7,9 @@ export const gameModeSchema=z.enum(["classic","teams","buzzer","wager","workshop
 const playerStatusSchema=z.object({coins:z.number().int().nonnegative(),focus:z.number().int().nonnegative(),guard:z.number().int().nonnegative()}).strict();
 export const roomCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
 const action = z.object({ roomCode: roomCodeSchema.optional() }).strict();
+const letter = z.enum(["A", "B", "C", "D"]);
+export const liveKindSchema = z.enum(["multiple_choice","true_false","multiple_select","ordering"]);
+const responseSchema = z.union([letter, z.object({ value: z.boolean() }).strict(), z.object({ selectedIds: z.array(z.string().min(1).max(80)).min(1).max(8) }).strict(), z.object({ orderIds: z.array(z.string().min(1).max(80)).min(2).max(8) }).strict()]);
 const envelope = <K extends string, T extends z.ZodTypeAny>(type: K, payload: T) =>
   z.object({ v: z.literal(PROTOCOL_VERSION), type: z.literal(type), payload }).strict();
 
@@ -28,7 +31,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   envelope(WS_EVENTS.BUY_UPGRADE,z.object({roomCode:roomCodeSchema,upgrade:z.enum(["focus","guard"])}).strict()),
   envelope(WS_EVENTS.SUBMIT_ANSWER, z.object({
     roomCode: roomCodeSchema.optional(), questionIndex: z.number().int().nonnegative(),
-    answer: z.enum(["A", "B", "C", "D"]),
+    answer: responseSchema,
     wager:z.number().int().min(0).max(100).default(0),
   }).strict()),
 ]);
@@ -43,13 +46,15 @@ export const publicPlayerSchema = z.object({
 }).strict();
 export type PublicPlayer = z.infer<typeof publicPlayerSchema>;
 export const questionSchema = z.object({
-  questionIndex: z.number().int(), prompt: z.string(), choices: z.array(z.string()).min(2).max(4),
-  timeLimitMs: z.number().int().positive(), serverStartTs: z.number(),
+  questionIndex: z.number().int(), prompt: z.string(), choices: z.array(z.string()).min(2).max(8),
+  kind: liveKindSchema.optional(), optionIds: z.array(z.string().min(1).max(80)).min(2).max(8).optional(),
+  timeLimitMs: z.number().int().positive(), totalQuestions: z.number().int().min(1).max(500).optional(), serverStartTs: z.number(),
   deadlineTs: z.number(),
 }).strict();
 export type PublicQuestion = z.infer<typeof questionSchema>;
 export const answerResultSchema = z.object({
-  questionIndex: z.number().int(), correctLetter: z.enum(["A", "B", "C", "D"]),
+  questionIndex: z.number().int(), correctLetter: letter.optional(),
+  correctAnswers: z.array(z.string().max(500)).max(8).optional(),
   isCorrect: z.boolean().nullable(), awarded: z.number().int().min(-100),
   explanation:z.string().optional(),
 }).strict();

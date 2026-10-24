@@ -9,10 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Join() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
+
   
   const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(() => {
+    const invite = new URLSearchParams(window.location.search).get("code") ?? "";
+    const normalized = invite.trim().toUpperCase();
+    return /^[A-HJ-NP-Z2-9]{6}$/.test(normalized) ? normalized : "";
+  });
   const [isJoining, setIsJoining] = useState(false);
 
   // If we receive a ROOM_JOINED type event or successfully transition to play, we redirect.
@@ -20,14 +24,14 @@ export default function Join() {
   // But we need to emit JOIN_ROOM first.
 
   const handleJoin = () => {
-    if (!name || !code) return;
+    if (!name.trim() || !/^[A-HJ-NP-Z2-9]{6}$/.test(code)) return;
     
 
     setIsJoining(true);
     
     // Store pending join. Server assigns identity and an unpredictable token.
     localStorage.setItem('trivia_player', JSON.stringify({
-      name,
+      name: name.trim(),
       roomCode: code.toUpperCase()
     }));
 

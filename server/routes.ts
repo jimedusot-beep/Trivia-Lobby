@@ -12,6 +12,8 @@ import { registerBackupRoutes } from "./backup-routes";
 import { registerAuthorDraftRoutes } from "./author-drafts";
 import { registerCardEditorRoutes } from "./card-editor";
 import { universalGameCards } from "./live-question-adapter";
+import { gameReportSink, registerGameReportRoutes } from "./game-reports";
+import { registerAssignmentRoutes } from "./assignment-routes";
 import { apiAbuseLimit } from "./rate-limit";
 
 export async function registerRoutes(
@@ -66,8 +68,10 @@ export async function registerRoutes(
   app.use("/api/study", requireUser);
   registerStudyRoutes(app);
   registerUniversalQuestionRoutes(app);
+  registerGameReportRoutes(app);
+  registerAssignmentRoutes(app);
 
-  attachGameSocket(httpServer, storage, { extraQuestions:universalGameCards, authorizeHost: async (request) => {
+  attachGameSocket(httpServer, storage, { extraQuestions:universalGameCards, reportSink:gameReportSink, authorizeHost: async (request) => {
     const user = await resolveUser(request.headers.cookie);
     return user?.id ?? null;
   } });

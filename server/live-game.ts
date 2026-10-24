@@ -10,6 +10,9 @@ import type { IStorage } from "./storage";
 import { scoreRound, UPGRADE_COST, type GameMode } from "./game-modes";
 import { consumeRate } from "./rate-limit";
 import { canSubmitAnswer, publicPlayerView } from "./room-projections";
+import { gradeUniversalAnswer } from "@shared/universal-questions";
+import type { LiveCard, LiveKind } from "./live-question-adapter";
+import type { GameReportSink } from "./game-report-types";
 
 const MAX_PLAYERS = 100;
 const QUESTION_MS = 30_000;
@@ -21,10 +24,11 @@ type Player = {
 };
 type Room = {
   mode:GameMode; buzzedPlayerId:string|null; buzzTimer?:ReturnType<typeof setTimeout>;
-  code: string; hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
-  players: Map<string, Player>; questions: Card[]; state: RoomState;
+  code: string; reportId: string; reportSink?: GameReportSink; reportChain: Promise<void>; reportFailed: boolean;
+  hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
+  players: Map<string, Player>; questions: LiveCard[]; state: RoomState;
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
-  answers: Map<string, { answer: string; correct: boolean; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
+  answers: Map<string, { answer: unknown; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
 };
 
@@ -63,11 +67,20 @@ function lobbyUpdate(room: Room) {
 }
 function resultFor(room: Room, playerId?: string): AnswerResult {
   const record = playerId ? room.answers.get(playerId) : undefined;
+  const card = room.questions[room.questionIndex];
+  const answer = card.universal?.answer;
+  let correctAnswers: string[] | undefined;
+  if (answer?.kind === "multiple_select") {
+    correctAnswers = answer.correctOptionIds.map(id => answer.options.find(option => option.id === id)!.label);
+  } else if (answer?.kind === "ordering") {
+    correctAnswers = answer.correctOrderIds.map(id => answer.items.find(item => item.id === id)!.label);
+  } else if (answer?.kind === "true_false") correctAnswers = [answer.correct ? "True" : "False"];
   return {
     questionIndex: room.questionIndex,
-    correctLetter: room.questions[room.questionIndex].correctOption as "A" | "B" | "C" | "D",
+    ...(card.correctOption ? { correctLetter: card.correctOption as "A" | "B" | "C" | "D" } : {}),
+    ...(correctAnswers ? { correctAnswers } : {}),
     isCorrect: record ? record.correct : playerId ? false : null,
-    awarded: record?.awarded ?? 0, explanation:room.questions[room.questionIndex].back,
+    awarded: record?.awarded ?? 0, explanation:card.back,
   };
 }
 function snapshot(room: Room, ws: WebSocket, player?: Player) {
@@ -91,6 +104,25 @@ function reveal(room: Room) {
     const missed = scoreRound({mode:room.mode,correct:false,streak:player.streak,score:player.score,wager:0,focus:player.focus,guard:player.guard,round:room.questionIndex});
     player.streak=missed.streak;player.focus=missed.focus;player.guard=missed.guard;
   }
+  if (room.reportSink && room.question) {
+    const details = resultFor(room);
+    const round = {
+      id: room.reportId, questionIndex: room.questionIndex,
+      prompt: room.question.prompt, kind: room.question.kind ?? "multiple_choice",
+      options: room.question.choices, durationMs: room.question.timeLimitMs,
+      correctAnswers: details.correctAnswers ??
+        (details.correctLetter ? [room.question.choices[["A","B","C","D"].indexOf(details.correctLetter)]] : []),
+      playerAnswers: [...room.players.values()].map(player => {
+        const record = room.answers.get(player.id);
+        return { playerId:player.id,name:player.name,response:record?.answer ?? null,
+          correct:record?.correct ?? false,awarded:record?.awarded ?? 0,responseMs:record?.responseMs ?? null };
+      }),
+    };
+    room.reportChain = room.reportChain.then(() => room.reportSink!.round(round)).catch(() => {
+      room.reportFailed = true;
+      send(room.hostWs, WS_EVENTS.ERROR, { message: "This round could not be saved to the game report." });
+    });
+  }
   lobbyUpdate(room);
   send(room.hostWs, WS_EVENTS.ANSWER_RESULT, resultFor(room));
   for (const p of room.players.values()) if (p.connected) {
@@ -103,24 +135,50 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.answers.clear();room.buzzedPlayerId=null;clearTimeout(room.buzzTimer);
   broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
   const card = room.questions[room.questionIndex];
+  const answer = card.universal?.answer;
+  const kind: LiveKind = answer && ["multiple_choice","true_false","multiple_select","ordering"].includes(answer.kind)
+    ? answer.kind as LiveKind : "multiple_choice";
+  const questionDuration = card.timeLimitMs ?? durationMs;
   const now = Date.now();
-  room.deadlineTs = now + durationMs;
+  room.deadlineTs = now + questionDuration;
+  let choices = card.options as string[];
+  let optionIds: string[] | undefined;
+  if (answer?.kind === "multiple_select") optionIds = answer.options.map(option => option.id);
+  if (answer?.kind === "ordering") {
+    const shuffled = [...answer.items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = randomInt(i + 1); [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    choices = shuffled.map(item => item.label);
+    optionIds = shuffled.map(item => item.id);
+  }
   room.question = {
-    questionIndex: room.questionIndex, prompt: card.front,
-    choices: card.options as string[], timeLimitMs: durationMs,
-    serverStartTs: now, deadlineTs: room.deadlineTs,
+    questionIndex: room.questionIndex, prompt: card.front, kind,
+    choices, ...(optionIds ? { optionIds } : {}),
+    timeLimitMs: questionDuration, totalQuestions: room.questions.length, serverStartTs: now, deadlineTs: room.deadlineTs,
   };
   broadcast(room, WS_EVENTS.QUESTION_START, room.question);
-  room.timer = setTimeout(() => reveal(room), durationMs);
+  room.timer = setTimeout(() => reveal(room), questionDuration);
   room.timer.unref?.();
 }
-function next(room: Room, durationMs: number) {
+async function next(room: Room, durationMs: number) {
   if (room.state === "reveal") {
     room.state = "leaderboard";
     broadcast(room, WS_EVENTS.LEADERBOARD, { leaderboard: publicPlayers(room) });
   } else if (room.state === "leaderboard") {
     if (room.questionIndex === room.questions.length - 1) {
       room.state = "finished";
+      if (room.reportSink) {
+        await room.reportChain;
+        if (!room.reportFailed) {
+          try {
+            await room.reportSink.finished({ id:room.reportId,mode:room.mode,leaderboard:publicPlayers(room) });
+          } catch {
+            room.reportFailed = true;
+            send(room.hostWs, WS_EVENTS.ERROR, { message: "Game finished, but its report could not be finalized." });
+          }
+        }
+      }
       broadcast(room, WS_EVENTS.GAME_OVER, { leaderboard: publicPlayers(room) });
     } else {
       room.questionIndex++;
@@ -132,14 +190,17 @@ function allActiveAnswered(room: Room) {
   const online = [...room.players.values()].filter(p => p.connected);
   return online.length > 0 && online.every(p => room.answers.has(p.id));
 }
-function eligible(card: Card) {
+function eligible(card: LiveCard) {
+  if (card.universal && ["true_false","multiple_select","ordering"].includes(card.universal.answer.kind)) {
+    return Array.isArray(card.options) && card.options.length >= 2 && card.options.length <= 8;
+  }
   return card.type === "multiple_choice" && Array.isArray(card.options)
     && card.options.length >= 2 && card.options.length <= 4 && card.options.every(x => typeof x === "string")
     && ["A", "B", "C", "D"].slice(0,card.options.length).includes(card.correctOption ?? "");
 }
 
 /** In-memory match authority: per-room state, deadline, single answer, credentials. */
-export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<Card[]> } = {}) {
+export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<LiveCard[]>; reportSink?:GameReportSink } = {}) {
   const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
   const createLimits = new Map<string, { count: number; resetAt: number }>();
@@ -204,15 +265,20 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           const deck = await storage.getDeck(msg.payload.deckId, ownerId);
           const extra=deck?await options.extraQuestions?.(msg.payload.deckId)??[]:[];
           const questions = [...(deck?.cards??[]),...extra].filter(eligible);
-          if (!questions.length) { error("Deck requires a multiple-choice question with two to four choices"); return; }
+          if (!questions.length) { error("Deck requires at least one supported live question (choice, true/false, multi-select or ordering)"); return; }
           // Check again after asynchronous database access, before taking socket ownership.
           if (role || !isOpen(ws)) return;
           if (rooms.size >= 500) { error("Room capacity reached"); return; }
           if(!consumeRate(`host:${ownerId}`,5,60_000)){error("Room creation rate limit");return;}
           const code = makeRoomCode(rooms);
+          const reportId = randomUUID();
+          if (options.reportSink) await options.reportSink.created({
+            id:reportId, ownerId, deckId:msg.payload.deckId, deckTitle:deck?.title ?? "Untitled quiz",
+          });
           const hostToken = mintToken();
           room = {
-            mode:"classic",buzzedPlayerId:null,code, hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
+            mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
+            reportChain:Promise.resolve(),reportFailed:false,hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
           };
@@ -307,7 +373,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if (role !== "host" || room.hostWs !== ws || !["reveal", "leaderboard"].includes(room.state)) {
             error("Host can advance only after reveal"); return;
           }
-          next(room, durationMs);
+          await next(room, durationMs);
         } else if (msg.type === WS_EVENTS.SUBMIT_ANSWER) {
           if (role !== "player" || !playerId || room.players.get(playerId)?.ws !== ws) {
             error("Players only"); return;
@@ -329,11 +395,31 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             alreadyAnswered: room.answers.has(playerId),
             questionExists: !!current,
           })) { error("Cannot answer in the current state"); return; }
-          if(["A","B","C","D"].indexOf(msg.payload.answer)>=(current.options as string[]).length){error("Invalid answer choice");return;}
           if(room.mode==="buzzer"&&room.buzzedPlayerId!==playerId){error("Buzz in before answering");return;}
-          const correct = msg.payload.answer === current.correctOption;
-          const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex});
-          room.answers.set(playerId, { answer:msg.payload.answer,correct,...scored });
+          const received = msg.payload.answer;
+          const universal = current.universal;
+          let correct: boolean;
+          if (universal?.answer.kind === "true_false") {
+            if (typeof received !== "object" || !("value" in received)) { error("Invalid true/false answer"); return; }
+            correct = gradeUniversalAnswer(universal, received);
+          } else if (universal?.answer.kind === "multiple_select" || universal?.answer.kind === "ordering") {
+            const ids = room.question?.optionIds;
+            const field = universal.answer.kind === "multiple_select" ? "selectedIds" : "orderIds";
+            if (typeof received !== "object" || !(field in received) || !ids) { error("Invalid answer format"); return; }
+            const submitted = field === "selectedIds" ? ("selectedIds" in received ? received.selectedIds : []) :
+              ("orderIds" in received ? received.orderIds : []);
+            if (!Array.isArray(submitted) || new Set(submitted).size !== submitted.length ||
+                submitted.some(id => !ids.includes(id)) ||
+                (field === "orderIds" && submitted.length !== ids.length)) { error("Invalid answer option"); return; }
+            correct = gradeUniversalAnswer(universal, received);
+          } else {
+            if (typeof received !== "string" || !["A","B","C","D"].slice(0,(current.options as string[]).length).includes(received)) {
+              error("Invalid answer choice"); return;
+            }
+            correct = received === current.correctOption;
+          }
+          const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor});
+          room.answers.set(playerId, { answer:msg.payload.answer,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
           send(ws,WS_EVENTS.ANSWER_ACCEPTED,{questionIndex:room.questionIndex});
           if(room.mode==="buzzer"){
             clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;

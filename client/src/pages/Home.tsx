@@ -3,7 +3,7 @@ import { useDecks } from "@/hooks/use-decks";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search } from "lucide-react";
+import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search, ChartBar } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useDeleteDeck } from "@/hooks/use-decks";
@@ -50,6 +50,8 @@ export default function Home() {
             </Link></Button>
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/learning">Learning & memory</Link></Button>
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/library">Private source library</Link></Button>
+          <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/assignments">Self-paced assignments</Link></Button>
+          <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/reports"><ChartBar className="mr-2 h-5 w-5"/> Game reports</Link></Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
               <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
             </Link></Button>

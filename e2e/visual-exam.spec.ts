@@ -48,7 +48,7 @@ test("author, reopen and study MCQ, matching and image hotspot on desktop/mobile
     await expect(page.getByText("3. Find the central point")).toBeVisible();
 
     await page.reload();
-    await expect(page.getByText("Saved questions (3)")).toBeVisible();
+    await expect(page.getByText("Question bank (3)")).toBeVisible();
     await page.setViewportSize({width:375,height:812});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
     await page.getByRole("link",{name:"Practice visual questions"}).click();

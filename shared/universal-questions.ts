@@ -82,6 +82,8 @@ export const universalQuestionSchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
   explanation: z.string().max(4000).optional(),
   difficulty: z.enum(["easy","medium","hard"]).default("medium"),
+  /** Optional live presentation rules, with defaults handled by the game engine. */
+  gameplay: z.object({ timeLimitSeconds: z.number().int().min(5).max(120).optional(), points: z.enum(["standard","double"]).optional() }).strict().optional(),
   tags: z.array(short).max(20).default([]),
   source: z.object({
     documentId: identifier.optional(),
