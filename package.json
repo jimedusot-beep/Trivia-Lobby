@@ -23,7 +23,11 @@
     "restore:db": "bash script/restore-db.sh",
     "audit:licenses": "node --import tsx script/license-audit.ts",
     "backup:encrypted": "node --import tsx script/backup.ts",
-    "backup:drill": "node --import tsx --test --test-force-exit tests/recovery/backup-restore.ts"
+    "backup:drill": "node --import tsx --test --test-force-exit tests/recovery/backup-restore.ts",
+    "dev:neon": "node --env-file=.env.local --import tsx server/index.ts",
+    "verify:neon": "node --env-file=.env.local --import tsx script/verify-neon-services.ts",
+    "start:neon": "node --env-file=.env.local dist/start.mjs",
+    "test:neon": "node --import tsx --test server/neon-services.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1155.0",
@@ -116,7 +120,8 @@
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.20.5",
     "typescript": "5.6.3",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "@neon/config": "1.8.6"
   },
   "overrides": {
     "drizzle-kit": {
