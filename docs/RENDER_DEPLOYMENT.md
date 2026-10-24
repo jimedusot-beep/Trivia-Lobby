@@ -23,7 +23,7 @@ A single internet-accessible website (HTTPS `https://<service>.onrender.com`) co
 3. The Blueprint wires `DATABASE_URL` automatically via Render's private network; **do not** paste database credentials into GitHub, code, frontend `VITE_*` variables or public URLs.
 4. Confirm `PRIVATE_STORAGE_DIR=/var/data/trivia-originals` on a disk mounted at `/var/data`. Never replace that with a folder inside the GitHub checkout or Render's ephemeral filesystem. Nothing beyond the disk mount is persistent.
 5. Create the Blueprint after reviewing the paid plan. This initial action may start a first deployment even though *subsequent* Git auto-deploys are disabled.
-6. Read the build/runtime logs. `npm ci && npm run build` creates production artifacts; `npm start` verifies storage, applies repeatable migrations, then binds the HTTP/WebSocket server to `PORT=10000`. `/health/ready` must return HTTP 200.
+6. Read the build/runtime logs. `npm ci --include=dev && npm run build` installs build tools and creates production artifacts; `npm start` verifies storage, applies repeatable migrations, then binds the HTTP/WebSocket server to `PORT=10000`. `/health/ready` must return HTTP 200.
 7. Render assigns a HTTPS address such as `https://<actual-service>.onrender.com`. **Do not invent or hardcode this address before Render provides it.**
 
 ## Step 3 — protect data *before* using with real students
