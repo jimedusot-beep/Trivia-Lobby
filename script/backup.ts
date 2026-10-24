@@ -21,7 +21,8 @@ function safeKey(key:string){if(!/^[a-f0-9-]{36}\/[a-f0-9-]{36}\.blob$/.test(key
 try {
   if(action==="create") {
     if(!process.env.DATABASE_URL)throw new Error("DATABASE_URL required");
-    const client=new pg.Client({connectionString:process.env.DATABASE_URL});await client.connect();
+    const backupDatabaseUrl = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
+    const client=new pg.Client({connectionString:backupDatabaseUrl});await client.connect();
     try {
       await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const snapshot=(await client.query("SELECT pg_export_snapshot() AS id")).rows[0].id;
