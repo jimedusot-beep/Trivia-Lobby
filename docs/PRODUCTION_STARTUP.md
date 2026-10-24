@@ -1,6 +1,6 @@
 # Production startup (Render recommended)
 
-**Preferred public hosting:** [Render, without Replit](RENDER_DEPLOYMENT.md). It provisions one Node web service, paid PostgreSQL and an attached private persistent disk through `render.yaml`. The Replit section below is retained only for operators who still have existing development data there; publishing Replit is not required for Trivia Lobby.
+**Preferred preview hosting:** [Render Free + Neon Free, without Replit](RENDER_DEPLOYMENT.md). The Blueprint creates one **free** Node web service, while a separate Neon Free project supplies persistent PostgreSQL and private S3-compatible uploaded-file storage. The free web service has no persistent disk and sleeps when idle. The legacy Replit section below is only for inspecting old development data, not required for publishing.
 
 Use a maintained Node.js 22 or newer release, PostgreSQL, HTTPS and **one** continuously running app process. Live rooms and socket limits reside in memory; changing the deployment or restarting the process ends active matches. Do not enable multiple replicas until room authority and throttles have shared storage.
 
@@ -27,7 +27,7 @@ Required production secrets/settings:
 | `DATABASE_URL` | Persistent production PostgreSQL URL supplied by the database provider. Keep provider-required TLS enabled. |
 | `PORT` | Hosting-assigned listening port, default `5000`. |
 | Private originals | Set `S3_BUCKET` with AWS region and server-side workload credentials, or absolute `PRIVATE_STORAGE_DIR` on a provisioned durable private volume outside the app tree. Never use deployment scratch storage for originals. |
-| Optional S3 endpoint | `S3_ENDPOINT` must use HTTPS without credentials in its URL. The existing adapter requires compatible encryption/checksum/conditional-write behavior. |
+| Optional S3 endpoint | `S3_ENDPOINT` must use HTTPS without credentials in its URL. AWS S3 requests preserve checksum/encryption/conditional-write behavior. The documented Neon Storage integration uses portable core S3 requests with SHA-256 readback verification because not all AWS-specific headers are guaranteed compatible. |
 
 Use the hosting secret manager, never frontend `VITE_` settings, for database, object-storage, AI and backup credentials. The startup storage probe checks access and exact bytes; it does not establish durability, retention or bucket privacy policy. Those must be provisioned independently. If both storage settings exist, S3 takes precedence.
 
