@@ -18,13 +18,13 @@ npm run dev
 
 Back up existing databases before migration. Pre-account decks require verified ownership assignment. Previously deployed experimental Phase 4 identities need explicit migration. Use checked-in migrations in production, not `db:push`.
 
-**Public hosting without Replit:** the recommended path is [Render one-site deployment](docs/RENDER_DEPLOYMENT.md), using its `render.yaml` Blueprint to provision one Node web service, managed Postgres, and a private persistent storage disk. It is a **paid configuration** and does not auto-deploy on GitHub pushes. Protect any existing data before authorizing resources. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents the hosting-neutral requirements and smoke checks.
+**Public hosting without Replit:** use [Render Free + Neon Free](docs/RENDER_DEPLOYMENT.md) to launch one HTTPS Node/WebSocket site backed by persistent free PostgreSQL and private object storage. The `render.yaml` Blueprint provisions **only a free Render web service**; create a separate Neon Free project and private bucket first. Free hosting sleeps when idle and is for previews, not dependable classroom production. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents general requirements.
 
-Once the security/migration release PR and this deployment PR are merged into `main`, you can start the Render setup from GitHub (review costs first):
+After the security/migration and free-hosting PRs are merged into `main` and your free Neon project/bucket exists, you can start the free web deployment:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby)
 
-**The button does not create a free service:** it opens a paid-resource authorization flow in your own Render account. The Blueprint keeps future automatic deployments disabled until you enable them deliberately.
+**Check the Render plan is Free before confirmation.** This action should provision no paid database or disk. You will supply Neon Free database/storage values as private environment variables, and future automatic deployments remain disabled. No account, deployment or charges are created by clicking GitHub links alone.
 
 ## Features
 
