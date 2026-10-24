@@ -35,7 +35,13 @@ Review and merge [#36 — security and migrations](https://github.com/jimedusot-
 
 If any current project (including unpublished Replit workspaces) contains saved decks or original documents, **do not delete it**. Export/backup and verify it before deciding to start an empty database.
 
-## Step 2 — create a free Neon backend (one account)
+## Step 2 — connect the existing Neon backend (one account)
+
+**For your existing organization/project/production branch, prefer the [Neon CLI setup guide](NEON_CLI_SETUP.md)** instead of creating another project. It covers the exact project IDs, private storage provisioning, env sync, build and real-service verification, and the Free plan's AI Gateway restriction.
+
+The manual steps below are an alternative only when you do **not** already have a Neon project.
+
+## Step 2 — manual Neon Console setup (alternative)
 
 1. Open [Neon Console](https://console.neon.tech) and create a **Free** project, for example `trivia-lobby`, using a region supporting Neon Object Storage (e.g. AWS US East N. Virginia or Ohio). Select the free plan—not a trial with a paid upgrade.
 2. From the **Connect** view, obtain your project's **direct (not transaction-pooled)** PostgreSQL connection URI including TLS (`sslmode=require`). The app's migration runner uses a PostgreSQL advisory lock and should not use transaction-pooled PgBouncer. Save the URI privately for `DATABASE_URL`.
@@ -60,14 +66,14 @@ Render prompts for **six values** during initial setup:
 
 | Render environment variable | Copy from Neon |
 | --- | --- |
-| `DATABASE_URL` | Direct Postgres URI, with TLS enabled |
-| `S3_BUCKET` | Private bucket name, e.g. `trivia-originals` |
-| `S3_ENDPOINT` | Neon `AWS_ENDPOINT_URL_S3` full HTTPS endpoint |
-| `AWS_REGION` | Neon Storage region, e.g. `us-east-1` |
-| `AWS_ACCESS_KEY_ID` | Neon Storage S3 credential ID |
-| `AWS_SECRET_ACCESS_KEY` | Neon Storage S3 credential secret |
+| `DATABASE_URL` | Pooled Postgres URI from Neon CLI (`sslmode=require`) |
+| `DATABASE_URL_UNPOOLED` | Direct Postgres URI from Neon CLI; used for advisory locks/migrations/backups |
+| `AWS_ENDPOINT_URL_S3` | Neon S3-compatible endpoint (same variable name CLI supplies) |
+| `AWS_REGION` | Neon Storage region |
+| `AWS_ACCESS_KEY_ID` | Branch-scoped Neon Storage S3 credential ID |
+| `AWS_SECRET_ACCESS_KEY` | Branch-scoped Neon Storage S3 credential secret |
 
-The Blueprint already sets `S3_FORCE_PATH_STYLE=true`, `NODE_ENV=production`, `PORT=10000` and `NODE_VERSION=22.22.0`; no disk path needs entering. Keep `autoDeployTrigger=off` initially.
+The private `trivia-originals` bucket is declared in `neon.ts`; the app automatically detects Neon path-style S3. The Blueprint also sets `S3_FORCE_PATH_STYLE=true`, `NODE_ENV=production`, `PORT=10000` and `NODE_VERSION=22.22.0`; no disk path needs entering. Keep `autoDeployTrigger=off` initially.
 
 **Do not approve** if the dashboard shows a paid Render service, a storage disk, or a Postgres database. You do not need a card-based Cloudflare R2 subscription for this path.
 
@@ -75,7 +81,7 @@ The Blueprint already sets `S3_FORCE_PATH_STYLE=true`, `NODE_ENV=production`, `P
 
 Render will assign your site an actual `https://….onrender.com` address. That exact URL is unknown until you deploy. The application launches only when it can:
 
-1. Write, read back, SHA-256-verify and delete a random test object from private Neon storage.
+1. Write, read back, SHA-256-verify and delete a random test object from the `neon.ts` private Neon bucket.
 2. Apply the versioned PostgreSQL migrations.
 3. Start Express + WebSockets and serve the frontend.
 
