@@ -1,0 +1,46 @@
+# Trivia Lobby — FREE preview deployment, no Replit, no paid Render resources.
+# Combine one free Render web service with Neon's free PostgreSQL and
+# S3-compatible private object storage. Create the Neon project and bucket first.
+#
+# LIMITS: Render Free sleeps after 15 minutes, can restart active WebSocket
+# games, provides no persistent disk, and has usage limits. Do not rely on this
+# for production classrooms or unique/irreplaceable learner records.
+#
+# GitHub push DOES NOT publish or enable paid resources: after setup, deploys
+# remain manual until deliberately changed by the owner.
+services:
+  - type: web
+    name: trivia-lobby
+    runtime: node
+    region: virginia
+    branch: main
+    plan: free
+    numInstances: 1
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      # Neon PostgreSQL direct, TLS-encrypted connection string.
+      # Do not use Render's 30-day-expiring free PostgreSQL service.
+      - key: DATABASE_URL
+        sync: false
+      # Private Neon Object Storage bucket. These credentials stay server-side.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        value: 'true'
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
