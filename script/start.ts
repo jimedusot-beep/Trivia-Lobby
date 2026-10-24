@@ -11,7 +11,7 @@ try {
   await verifyPrivateStorage();
   console.log("Private storage verified");
   stage = "database migration";
-  await applyMigrations(process.env.DATABASE_URL!, new URL("./migrations/", import.meta.url));
+  await applyMigrations(process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL!, new URL("./migrations/", import.meta.url));
   stage = "application";
   await import(new URL("./index.cjs", import.meta.url).href);
 } catch (error) {
