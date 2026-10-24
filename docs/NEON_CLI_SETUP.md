@@ -4,8 +4,8 @@ This repository already uses **Express, a persistent Node.js server, node-postgr
 
 ## Project selected by owner
 
-- Organization: `org-blue-cell-66119617`
-- Neon project: `broad-haze-37835050`
+- Organization: the existing Neon organization selected by the owner (keep the ID private)
+- Neon project: the existing project selected by the owner (keep the ID private)
 - Neon branch: `production`
 - Database: PostgreSQL (already included in Neon projects)
 - Storage: private bucket `trivia-originals`, declared in `neon.ts`.
@@ -30,7 +30,7 @@ neon login
 **Free-plan-compatible setup**, preserving the tracked `neon.ts` (do not replace with a CLI-generated paid-gateway config):
 
 ```bash
-neon init -y --org-id org-blue-cell-66119617 --project-id broad-haze-37835050 --branch production --services postgres,object-storage
+neon init -y --org-id <your-org-id> --project-id <your-project-id> --branch production --services postgres,object-storage
 neon config plan
 neon deploy
 neon env pull --service postgres --service object-storage --file .env.local
@@ -81,7 +81,7 @@ If `neon init` writes a pre-existing `.env` instead, continue with the explicit 
 The exact all-services command requested is:
 
 ```bash
-neon init -y --org-id org-blue-cell-66119617 --project-id broad-haze-37835050 --branch production --services postgres,ai-gateway,object-storage
+neon init -y --org-id <your-org-id> --project-id <your-project-id> --branch production --services postgres,ai-gateway,object-storage
 ```
 
 Neon does **not** let you provision AI Gateway on Free. Do **not** run this all-services provisioning command or enable model billing merely to make the Free version deploy. If you later choose a paid plan with prepaid AI credits, first confirm your account's allowed models and costs. Only after explicit approval:
