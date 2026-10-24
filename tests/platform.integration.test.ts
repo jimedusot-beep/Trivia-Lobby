@@ -105,5 +105,28 @@ test("combined platform: ownership, universal restore, draft revisions, evidence
   const secondLogin=await request("/api/auth/login","POST",{email:`a-${suffix}@example.test`,password});assert.equal(secondLogin.status,200);
   assert.equal((await request(path+"/draft","GET",undefined,secondLogin.cookie)).data.body.prompt,"Recover me");
   assert.equal((await request("/api/study/queue?deckId="+deck.data.id,"GET",undefined,b.cookie)).data.cards.length,0);
+  // Erasing a deck must not erase the account's review/attempt history.
+  // Review-time wording is immutable even if the question was later edited.
+  const originalHistorical=await request("/api/study/history","GET",undefined,a.cookie);
+  assert(originalHistorical.data.events.some((e:any)=>e.originalCardId===originalCard.id && e.front==="Corrected imported card"));
+  assert(originalHistorical.data.visualHistory.some((e:any)=>e.originalQuestionId===saved[0].id && e.front==="Select Alpha"));
+  assert.equal((await request(path,"DELETE",undefined,a.cookie)).status,204);
+  const archived=await request("/api/study/history","GET",undefined,a.cookie);
+  const savedCard=archived.data.events.find((e:any)=>e.originalCardId===originalCard.id);
+  assert(savedCard && savedCard.cardId===null && savedCard.archived===true);
+  assert.equal(savedCard.front,"Corrected imported card");
+  assert.equal(savedCard.deckTitle,deck.data.title);
+  const savedVisual=archived.data.visualHistory.find((e:any)=>e.originalQuestionId===saved[0].id);
+  assert(savedVisual && savedVisual.questionId===null && savedVisual.archived===true);
+  assert.equal(savedVisual.front,"Select Alpha");
+  assert.equal(savedVisual.deckTitle,deck.data.title);
+  assert.equal(archived.data.wrongAnswers.length,0,"deleted content is not in the live retry queue");
+  assert.equal(archived.data.visualWrongAnswers.length,0);
+  const historicalExport=await request("/api/study/export","GET",undefined,a.cookie);
+  assert(historicalExport.data.events.some((e:any)=>e.originalCardId===originalCard.id && e.cardId===null));
+  assert(historicalExport.data.questionAttempts.some((e:any)=>e.original_question_id===saved[0].id && e.question_id===null));
+  const otherHistory=await request("/api/study/history","GET",undefined,b.cookie);
+  assert.equal(otherHistory.data.events.length,0);
+  assert.equal(otherHistory.data.visualHistory.length,0);
  }finally{await new Promise<void>(r=>server.close(()=>r()));await pool.end();}
 });

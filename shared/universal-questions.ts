@@ -101,7 +101,7 @@ export const universalQuestionSetSchema = z.object({
 export type UniversalQuestionSet = z.infer<typeof universalQuestionSetSchema>;
 
 const selectedIds = z.object({ selectedIds: z.array(identifier).max(40) });
-const matchedIds = z.object({ matchIds: z.record(identifier) });
+const matchedIds = z.object({ matchIds: z.record(identifier, identifier) });
 const typed = z.object({ text: z.string().max(500) });
 const orderedIds = z.object({ orderIds: z.array(identifier).max(30) });
 const boolResponse = z.object({ value: z.boolean() });

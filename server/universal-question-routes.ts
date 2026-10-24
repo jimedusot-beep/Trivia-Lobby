@@ -108,7 +108,7 @@ export function registerUniversalQuestionRoutes(app: Express) {
       const existing = await getUniversalQuestion(deckId, questionId);
       if (!existing) return res.status(404).json({ message: "Question not found" });
       // Authoritative scoring for solo practice only; not a competitive, anti-cheat endpoint.
-      const {response,requestId,skipped} = z.object({ response: z.unknown(), requestId:z.string().uuid().default(randomUUID),skipped:z.boolean().default(false) }).parse(req.body);
+      const {response,requestId,skipped} = z.object({ response: z.unknown().optional(), requestId:z.string().uuid().default(randomUUID),skipped:z.boolean().default(false) }).parse(req.body);
       const correct = skipped?false:gradeUniversalAnswer(existing.question, response);
       const saved=await rememberQuestion(req.studyUser!.id,questionId,requestId,{response,skipped},correct,existing.question);
       if(saved==="conflict"){res.status(409).json({message:"This answer request was already used for a different response"});return;}
