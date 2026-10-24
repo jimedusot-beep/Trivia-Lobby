@@ -41,11 +41,14 @@ test("Neon production configuration requires private scoped S3 credentials and p
       AWS_SECRET_ACCESS_KEY: "test-only-placeholder",
     });
     assert.doesNotThrow(() => validateProductionConfig());
+    delete process.env.S3_FORCE_PATH_STYLE;
+    assert.doesNotThrow(() => validateProductionConfig(), "Neon CLI vars should work without a manual path-style flag");
+    process.env.S3_FORCE_PATH_STYLE = "true";
     delete process.env.AWS_SECRET_ACCESS_KEY;
     assert.throws(() => validateProductionConfig(), /Neon Object Storage credentials/);
     process.env.AWS_SECRET_ACCESS_KEY = "test-only-placeholder";
     process.env.S3_FORCE_PATH_STYLE = "false";
-    assert.throws(() => validateProductionConfig(), /S3_FORCE_PATH_STYLE=true/);
+    assert.throws(() => validateProductionConfig(), /requires path-style S3 transport/);
     process.env.S3_FORCE_PATH_STYLE = "true";
     process.env.S3_KMS_KEY_ID = "test-only-misconfigured-kms";
     assert.throws(() => validateProductionConfig(), /does not support AWS KMS/);
