@@ -1,4 +1,5 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
@@ -20,16 +21,42 @@ function s3() {
 }
 const bucket = () => process.env.S3_BUCKET;
 
+/** Neon Storage is S3-compatible but documents only standard PUT/GET/DELETE. */
+export function isNeonStorageEndpoint(endpoint = process.env.S3_ENDPOINT): boolean {
+  if (!endpoint) return false;
+  try { return new URL(endpoint).hostname.endsWith(".aws.neon.tech"); }
+  catch { return false; }
+}
+
 /** Never returns object URLs or grants a public ACL. Downloads pass through owner authorization. */
 export async function putPrivateObject(key: string, bytes: Buffer, sha256: string, signal?: AbortSignal) {
   checkKey(key);
   if (bucket()) {
-    await s3().send(new PutObjectCommand({ Bucket: bucket(), Key: key, Body: bytes,
-      ContentType: "application/octet-stream", ChecksumSHA256: Buffer.from(sha256, "hex").toString("base64"),
-      ServerSideEncryption: process.env.S3_KMS_KEY_ID ? "aws:kms" : "AES256",
-      ...(process.env.S3_KMS_KEY_ID ? { SSEKMSKeyId: process.env.S3_KMS_KEY_ID } : {}),
-      IfNoneMatch: "*", Metadata: { sha256 },
-    }), { abortSignal: signal });
+    const neon = isNeonStorageEndpoint();
+    const params: import("@aws-sdk/client-s3").PutObjectCommandInput = {
+      Bucket: bucket(), Key: key, Body: bytes,
+      ContentType: "application/octet-stream", Metadata: { sha256 },
+    };
+    if (!neon) {
+      params.ChecksumSHA256 = Buffer.from(sha256, "hex").toString("base64");
+      params.ServerSideEncryption = process.env.S3_KMS_KEY_ID ? "aws:kms" : "AES256";
+      if (process.env.S3_KMS_KEY_ID) params.SSEKMSKeyId = process.env.S3_KMS_KEY_ID;
+      params.IfNoneMatch = "*";
+    }
+    await s3().send(new PutObjectCommand(params), { abortSignal: signal });
+    if (neon) {
+      // Use a full SHA-256 readback because optional AWS-specific headers may
+      // not be implemented by Neon's S3-compatible object service.
+      let verified = false;
+      try {
+        const result = await getPrivateObject(key, signal);
+        verified = createHash("sha256").update(result).digest("hex") === sha256;
+      } catch {/* Missing or unreadable uploaded objects fail validation. */}
+      if (!verified) {
+        await deletePrivateObject(key, signal).catch(() => {});
+        throw new Error("Private object storage could not verify uploaded bytes");
+      }
+    }
   } else {
     await mkdir(join(localRoot(), key.split("/")[0]), { recursive: true, mode: 0o700 });
     await writeFile(join(localRoot(), key), bytes, { flag: "wx", mode: 0o600 });

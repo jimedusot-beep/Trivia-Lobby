@@ -1,4 +1,6 @@
-# Production startup and Replit release
+# Production startup (Render recommended)
+
+**Preferred preview hosting:** [Render Free + Neon Free, without Replit](RENDER_DEPLOYMENT.md). The Blueprint creates one **free** Node web service, while a separate Neon Free project supplies persistent PostgreSQL and private S3-compatible uploaded-file storage. The free web service has no persistent disk and sleeps when idle. The legacy Replit section below is only for inspecting old development data, not required for publishing.
 
 Use a maintained Node.js 22 or newer release, PostgreSQL, HTTPS and **one** continuously running app process. Live rooms and socket limits reside in memory; changing the deployment or restarting the process ends active matches. Do not enable multiple replicas until room authority and throttles have shared storage.
 
@@ -14,7 +16,7 @@ npm prune --omit=dev
 npm start
 ```
 
-The deployable artifact is `dist/` plus `package.json`, the lockfile and installed production npm dependencies. Source TypeScript, `tsx`, Vite and the source SQL directory are not required at runtime. `npm start` runs `dist/start.mjs`, which validates configuration, verifies an actual private write/read/delete, applies the five packaged additive SQL migrations under a database advisory lock, validates foreign keys, then starts the HTTP/WebSocket server. Nothing listens until these checks finish. Repeated startup preserves existing content and repeats migrations safely.
+The deployable artifact is `dist/` plus `package.json`, the lockfile and installed production npm dependencies. Source TypeScript, `tsx`, Vite and the source SQL directory are not required at runtime. `npm start` runs `dist/start.mjs`, which validates configuration, verifies an actual private write/read/delete, applies the versioned packaged SQL migrations under a database advisory lock, validates foreign keys, then starts the HTTP/WebSocket server. Nothing listens until these checks finish. Repeated startup preserves existing content and repeats migrations safely.
 
 Back up any existing database and originals before upgrading, and rehearse with a staging copy first. Automatic startup does not resolve orphaned legacy records or guess account ownership. Pre-account decks need verified ownership assignment; the separate experimental Phase 4 identities require explicit reconciliation. Migrations stop on these issues.
 
@@ -25,13 +27,13 @@ Required production secrets/settings:
 | `DATABASE_URL` | Persistent production PostgreSQL URL supplied by the database provider. Keep provider-required TLS enabled. |
 | `PORT` | Hosting-assigned listening port, default `5000`. |
 | Private originals | Set `S3_BUCKET` with AWS region and server-side workload credentials, or absolute `PRIVATE_STORAGE_DIR` on a provisioned durable private volume outside the app tree. Never use deployment scratch storage for originals. |
-| Optional S3 endpoint | `S3_ENDPOINT` must use HTTPS without credentials in its URL. The existing adapter requires compatible encryption/checksum/conditional-write behavior. |
+| Optional S3 endpoint | `S3_ENDPOINT` must use HTTPS without credentials in its URL. AWS S3 requests preserve checksum/encryption/conditional-write behavior. The documented Neon Storage integration uses portable core S3 requests with SHA-256 readback verification because not all AWS-specific headers are guaranteed compatible. |
 
 Use the hosting secret manager, never frontend `VITE_` settings, for database, object-storage, AI and backup credentials. The startup storage probe checks access and exact bytes; it does not establish durability, retention or bucket privacy policy. Those must be provisioned independently. If both storage settings exist, S3 takes precedence.
 
 Startup errors identify the failing stage and, when safe, a provider error code without logging connection strings or raw provider exceptions. Check environment names, private storage permissions, database connectivity and the migration requirements above. Database connection acquisition is bounded to 10 seconds; application queries to 15 seconds. Migration lock acquisition waits at most 30 seconds and individual migration statements at most 120 seconds.
 
-## Existing Replit project
+## Legacy Replit project (not required for current deployment)
 
 The repository points to [Trivia-Lobby on Replit](https://replit.com/@jimedusot/Trivia-Lobby). Replit access is required to inspect and publish that existing project; a GitHub merge does not prove a production deployment occurred.
 

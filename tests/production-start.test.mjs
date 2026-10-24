@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool } from "pg";
 import WebSocket from "ws";
@@ -126,6 +127,9 @@ test("built production runtime migrates a fresh database and retains private con
   await start();
   assert.match(output, /Private storage verified/);
   assert.match(output, /Applied 0005_integrated_platform.sql/);
+  assert.match(output, /Applied 0006_persistent_learning_history.sql/);
+  assert.match(output, /Applied 0007_live_game_reports.sql/);
+  assert.match(output, /Applied 0008_self_paced_assignments.sql/);
   const home = await request("/");
   assert.equal(home.status, 200);
   const html = await home.text();
@@ -138,6 +142,17 @@ test("built production runtime migrates a fresh database and retains private con
   }
   for (const path of ["/api/not-a-route", "/assets/missing.js"]) assert.equal((await request(path)).status, 404);
   assert.equal((await request("/api/decks")).status, 401);
+  // GHSA-27r3-jxmh-p828: compression must be rejected before decompression,
+  // even on unauthenticated endpoints, without bringing down the process.
+  const compressedJson = gzipSync(Buffer.from(JSON.stringify({ email: "nobody@example.test", password: "fake" })));
+  const rejectedJson = await request("/api/auth/register", { method: "POST", body: compressedJson,
+    headers: { "Content-Type": "application/json", "Content-Encoding": "gzip" } });
+  assert.equal(rejectedJson.status, 415, "Encoded JSON request bodies must be rejected");
+  const compressedForm = gzipSync(Buffer.from("username=example"));
+  const rejectedForm = await request("/api/auth/login", { method: "POST", body: compressedForm,
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Encoding": "gzip" } });
+  assert.equal(rejectedForm.status, 415, "Encoded forms must be rejected");
+  assert.equal((await request("/health/live")).status, 200, "Parser rejection must not crash the process");
   const email = `production-${randomUUID()}@example.test`, password = "Production-restart-passphrase-2026";
   const register = await request("/api/auth/register", { method: "POST", body: { email, password } });
   assert.equal(register.status, 201);
@@ -153,6 +168,26 @@ test("built production runtime migrates a fresh database and retains private con
     { type: "multiple_choice", front: "Two plus two?", back: "Four is correct", options: ["Three", "Four"], correctOption: "B" },
   ] });
   assert.equal(cards.status, 201);
+  // The published assignment stores its own immutable questions and secret
+  // before the server restart; guests must be able to resume independently.
+  const published = await request("/api/assignments", {
+    method: "POST", cookie, body: { deckId: deck.id, title: "Persists across restarts", maxAttempts: 1 },
+  });
+  assert.equal(published.status, 201);
+  const assignmentId = (await published.json()).id;
+  const publicAssignment = await request("/api/assignments/public/" + assignmentId);
+  assert.equal(publicAssignment.status, 200);
+  const assessment = await publicAssignment.json();
+  assert.equal(assessment.questions.length, 1);
+  assert.doesNotMatch(JSON.stringify(assessment), /correctOptionIds|correctOrderIds|correctTargetIds/);
+  const selected = assessment.questions[0].answer.options.find(option => option.label === "Four");
+  assert(selected && selected.id !== "B", "Guest option IDs must be opaque");
+  const guestStart = await request("/api/assignments/public/" + assignmentId + "/start", {
+    method: "POST", body: { name: "Production guest" },
+  });
+  assert.equal(guestStart.status, 201);
+  const guestToken = await guestStart.json();
+
   const original = Buffer.from("Retained production source :: Exact original answer");
   const upload = await request("/api/library/files", { method: "POST", cookie, body: original, headers: { "Content-Type": "application/octet-stream", "X-Filename": "production.txt" } });
   assert.equal(upload.status, 201);
@@ -175,6 +210,24 @@ test("built production runtime migrates a fresh database and retains private con
   assert.deepEqual(Buffer.from(await retained.arrayBuffer()), original);
   assert.equal((await request(`/api/library/files/${file.id}/original`)).status, 401);
   assert.equal((await (await request(`/api/decks/${deck.id}`, { cookie: freshCookie })).json()).cards.length, 1);
+  const resume = await request("/api/assignments/public/" + assignmentId + "/resume", {
+    method: "POST", body: { attemptId: guestToken.attemptId, secret: guestToken.secret },
+  });
+  assert.equal(resume.status, 200, "Self-paced guests must resume after production restart");
+  const savedAttempt = await request("/api/assignments/public/" + assignmentId + "/attempt", {
+    method: "PUT", body: { attemptId: guestToken.attemptId, secret: guestToken.secret,
+      answers: [{ questionId: assessment.questions[0].id, response: { selectedIds: [selected.id] } }] },
+  });
+  assert.equal(savedAttempt.status, 200);
+  const submitted = await request("/api/assignments/public/" + assignmentId + "/submit", {
+    method: "POST", body: { attemptId: guestToken.attemptId, secret: guestToken.secret },
+  });
+  assert.equal(submitted.status, 200);
+  assert.equal((await submitted.json()).correctCount, 1);
+  const hostResults = await request("/api/assignments/" + assignmentId, { cookie: freshCookie });
+  assert.equal(hostResults.status, 200);
+  assert.equal((await hostResults.json()).attempts[0].score, 100);
+  assert.equal((await request("/api/assignments/" + assignmentId)).status, 401, "Guest results remain owner-private");
 
   const host = await open(freshCookie), player = await open();
   host.send("create_room", { deckId: deck.id });
@@ -194,4 +247,16 @@ test("built production runtime migrates a fresh database and retains private con
   await host.take("leaderboard");
   host.send("next_question", { roomCode });
   assert.equal((await player.take("game_over")).leaderboard[0].score, 100);
+  const reports = await request("/api/reports", { cookie: freshCookie });
+  assert.equal(reports.status, 200, "Finished live match is recorded in persistent reports");
+  const reportList = await reports.json();
+  const matched = reportList.find(item => item.deckTitle === "Survives production restart");
+  assert(matched && matched.finishedAt);
+  const report = await request("/api/reports/" + matched.id, { cookie: freshCookie });
+  assert.equal(report.status, 200);
+  const data = await report.json();
+  assert.equal(data.rounds.length, 1);
+  assert.equal(data.rounds[0].playerAnswers[0].correct, true);
+  assert.equal((await request("/api/reports/" + matched.id)).status, 401);
+
 });

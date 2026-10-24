@@ -18,7 +18,13 @@ npm run dev
 
 Back up existing databases before migration. Pre-account decks require verified ownership assignment. Previously deployed experimental Phase 4 identities need explicit migration. Use checked-in migrations in production, not `db:push`.
 
-For production, run `npm run build` then `npm start` with deployment secrets set. The built launcher verifies private storage and applies packaged migrations before accepting traffic, and runs without development dependencies. See the [production/Replit release guide](docs/PRODUCTION_STARTUP.md) for the single-instance hosting setup and smoke checks.
+**Public hosting without Replit:** use [Render Free + Neon Free](docs/RENDER_DEPLOYMENT.md) to launch one HTTPS Node/WebSocket site backed by persistent free PostgreSQL and private object storage. The `render.yaml` Blueprint provisions **only a free Render web service**; create a separate Neon Free project and private bucket first. Free hosting sleeps when idle and is for previews, not dependable classroom production. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents general requirements.
+
+After the security/migration and free-hosting PRs are merged into `main` and your free Neon project/bucket exists, you can start the free web deployment:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby)
+
+**Check the Render plan is Free before confirmation.** This action should provision no paid database or disk. You will supply Neon Free database/storage values as private environment variables, and future automatic deployments remain disabled. No account, deployment or charges are created by clicking GitHub links alone.
 
 ## Features
 
@@ -30,7 +36,7 @@ For production, run `npm run build` then `npm start` with deployment secrets set
 - Server-authoritative live quiz state, rotating reconnect credentials and deadlines. Classic, teams, buzzer, virtual-point wagers, original workshop upgrades and party rounds.
 - V2 JSON backups preserve legacy cards and visual definitions/order/citations. Anki text and supported QTI item export; supported QTI and basic legacy APKG text import.
 
-Live games currently support 2–4-choice MCQs from either question schema. QTI conversion covers QTI 2.1 single-choice and exact, case-sensitive short-answer items, individually or in ZIP item packages. Anki conversion covers two-column text and basic two-field legacy APKG text notes. Custom/cloze/media/new compressed APKG formats remain retained originals and need a supported export. JSON is the lossless complex-question format; original media bytes and histories have separate backup paths. Scanned PDFs need OCR/transcription. AI stays disabled until a provider is configured, and requires explicit review/approval/publication.
+Live games support multiple choice (2–4 answers), true/false, multiple select and ordering, using validated private answer keys and server-authoritative scoring. Hosting has optional sounds, QR joining, persistent finished-game reports and owner-only exports; self-paced assignments use durable, resumable guest attempts. QTI conversion covers QTI 2.1 single-choice and exact, case-sensitive short-answer items, individually or in ZIP item packages. Anki conversion covers two-column text and basic two-field legacy APKG text notes. Custom/cloze/media/new compressed APKG formats remain retained originals and need a supported export. JSON is the lossless complex-question format; original media bytes and histories have separate backup paths. Scanned PDFs need OCR/transcription. AI stays disabled until a provider is configured, and requires explicit review/approval/publication.
 
 ## Verification
 
@@ -52,6 +58,6 @@ All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE
 
 ## Operations and research
 
-Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. Provision persistent storage and database backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
+Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. See [Render deployment](docs/RENDER_DEPLOYMENT.md) for the web URL and initial hosting; provision persistent storage and **independent** database/file backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
 
 Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.
