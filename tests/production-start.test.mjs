@@ -72,7 +72,7 @@ test("built production runtime migrates a fresh database and retains private con
   const port = reservation.address().port;
   await new Promise(resolve => reservation.close(resolve));
   const base = `http://127.0.0.1:${port}`;
-  const env = { ...process.env, DATABASE_URL: databaseUrl, PRIVATE_STORAGE_DIR: join(dir, "originals"), PORT: String(port) };
+  const env = { ...process.env, DATABASE_URL: databaseUrl, DATABASE_URL_UNPOOLED: databaseUrl, PRIVATE_STORAGE_DIR: join(dir, "originals"), PORT: String(port) };
   // Test the private volume path independently of an operator's optional S3 settings.
   for (const name of Object.keys(env)) if (name.startsWith("S3_")) delete env[name];
   const sockets = new Set();

@@ -15,3 +15,6 @@ playwright-report/
 test-results/
 *.dump
 *.dump.partial
+
+# Neon account/branch local context is machine-specific, not source code
+.neon

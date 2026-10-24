@@ -40,7 +40,7 @@ jobs:
           raise "Use database-backed readiness checks" unless web["healthCheckPath"]=="/health/ready"
           raise "Use the tested build/start commands" unless web["buildCommand"]=="npm ci --include=dev && npm run build" && web["startCommand"]=="npm start"
           vars=web.fetch("envVars").to_h{|env| [env.fetch("key"),env]}
-          secrets=%w[DATABASE_URL S3_BUCKET S3_ENDPOINT AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY]
+          secrets=%w[DATABASE_URL DATABASE_URL_UNPOOLED AWS_ENDPOINT_URL_S3 AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY]
           raise "All Neon credentials/bucket values must be supplied privately" unless secrets.all?{|key| vars[key]=={"key"=>key,"sync"=>false}}
           raise "Do not rely on ephemeral disk" if vars.key?("PRIVATE_STORAGE_DIR")
           raise "Use HTTPS S3 path addressing" unless vars.dig("S3_FORCE_PATH_STYLE","value")=="true"

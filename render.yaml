@@ -31,10 +31,11 @@ services:
       # Do not use Render's 30-day-expiring free PostgreSQL service.
       - key: DATABASE_URL
         sync: false
-      # Private Neon Object Storage bucket. These credentials stay server-side.
-      - key: S3_BUCKET
+      # Direct Neon connection; production migration lock cannot use PgBouncer.
+      - key: DATABASE_URL_UNPOOLED
         sync: false
-      - key: S3_ENDPOINT
+      # Neon's CLI-managed S3 endpoint and credentials; bucket declared in neon.ts.
+      - key: AWS_ENDPOINT_URL_S3
         sync: false
       - key: S3_FORCE_PATH_STYLE
         value: 'true'

@@ -15,14 +15,22 @@ function localRoot() {
 }
 let client: S3Client | undefined;
 function s3() {
-  const endpoint = process.env.S3_ENDPOINT;
+  const endpoint = process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3;
   if (endpoint && new URL(endpoint).protocol !== "https:") throw new Error("S3_ENDPOINT requires HTTPS");
-  return client ??= new S3Client({ region: process.env.AWS_REGION ?? "us-east-1", endpoint, forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true" });
+  return client ??= new S3Client({ region: process.env.AWS_REGION ?? "us-east-1", endpoint, forcePathStyle: isNeonStorageEndpoint(endpoint) || process.env.S3_FORCE_PATH_STYLE === "true" });
 }
-const bucket = () => process.env.S3_BUCKET;
+/**
+ * Neon CLI provides AWS_ENDPOINT_URL_S3 but no bucket-name environment value.
+ * Use the private bucket declared by neon.ts only for a verified Neon host.
+ * Older explicit S3_BUCKET installs retain their previous configuration.
+ */
+export function privateBucketName(): string | undefined {
+  return process.env.S3_BUCKET || (isNeonStorageEndpoint() ? "uploads" : undefined);
+}
+const bucket = privateBucketName;
 
 /** Neon Storage is S3-compatible but documents only standard PUT/GET/DELETE. */
-export function isNeonStorageEndpoint(endpoint = process.env.S3_ENDPOINT): boolean {
+export function isNeonStorageEndpoint(endpoint = process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3): boolean {
   if (!endpoint) return false;
   try { return new URL(endpoint).hostname.endsWith(".aws.neon.tech"); }
   catch { return false; }
