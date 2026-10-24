@@ -11,6 +11,18 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Build with Render production environment
+        env:
+          NODE_ENV: production
+        run: |
+          npm ci --include=dev
+          npm run build
+          test -f dist/start.mjs
+          test -f dist/index.cjs
       - name: Parse and validate paid single-instance Blueprint
         run: |
           ruby <<'RUBY'
