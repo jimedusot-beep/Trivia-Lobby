@@ -27,7 +27,7 @@ jobs:
           raise "Process-local multiplayer cannot scale out" unless web["numInstances"]==1
           raise "No ephemeral file storage" unless web.dig("disk","mountPath")=="/var/data" && web.dig("disk","sizeGB")>=1
           raise "Health check must include live DB" unless web["healthCheckPath"]=="/health/ready"
-          raise "Unsafe startup commands" unless web["buildCommand"]=="npm ci && npm run build" && web["startCommand"]=="npm start"
+          raise "Unsafe startup commands" unless web["buildCommand"]=="npm ci --include=dev && npm run build" && web["startCommand"]=="npm start"
           raise "Database must be paid and private" unless db["plan"] != "free" && db["ipAllowList"] == []
           raise "Pinned PostgreSQL version" unless db["postgresMajorVersion"]=="16"
           raise "Database and app region mismatch" unless db["region"]==web["region"]
