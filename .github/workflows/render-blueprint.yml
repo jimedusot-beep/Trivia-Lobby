@@ -1,0 +1,42 @@
+name: Render deployment configuration
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  blueprint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse and validate paid single-instance Blueprint
+        run: |
+          ruby <<'RUBY'
+          require "yaml"
+          document=YAML.safe_load(File.read("render.yaml"), aliases: false)
+          services=document.fetch("services")
+          databases=document.fetch("databases")
+          raise "Exactly one web service required" unless services.length==1
+          raise "Exactly one PostgreSQL database required" unless databases.length==1
+          web=services.fetch(0)
+          db=databases.fetch(0)
+          raise "Must use an actual Node server" unless web["type"]=="web" && web["runtime"]=="node"
+          raise "Disable auto-deploy until backup/release gates" unless web["autoDeployTrigger"]=="off"
+          raise "Process-local multiplayer cannot scale out" unless web["numInstances"]==1
+          raise "No ephemeral file storage" unless web.dig("disk","mountPath")=="/var/data" && web.dig("disk","sizeGB")>=1
+          raise "Health check must include live DB" unless web["healthCheckPath"]=="/health/ready"
+          raise "Unsafe startup commands" unless web["buildCommand"]=="npm ci && npm run build" && web["startCommand"]=="npm start"
+          raise "Database must be paid and private" unless db["plan"] != "free" && db["ipAllowList"] == []
+          raise "Pinned PostgreSQL version" unless db["postgresMajorVersion"]=="16"
+          raise "Database and app region mismatch" unless db["region"]==web["region"]
+          vars=web.fetch("envVars").to_h{|item| [item.fetch("key"),item]}
+          raise "Private database reference required" unless vars.dig("DATABASE_URL","fromDatabase","name")==db["name"] &&
+            vars.dig("DATABASE_URL","fromDatabase","property")=="connectionString"
+          raise "Private storage root must reside on persistent disk" unless vars.dig("PRIVATE_STORAGE_DIR","value")=="/var/data/trivia-originals"
+          raise "HTTP server must bind to Render port" unless vars.dig("PORT","value")=="10000"
+          raise "Versioned runtime configuration required" unless vars.key?("NODE_VERSION")
+          raise "Don't hardcode credentials" if File.read("render.yaml").match?(/(password|api_key|secret)\s*:/i)
+          puts "Validated: one paid web instance, private paid Postgres, persistent disk, explicit health, no auto-deployment or hardcoded secrets"
+          RUBY
