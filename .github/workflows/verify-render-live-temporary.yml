@@ -1,0 +1,22 @@
+name: Verify live Render Free website (one-time)
+on:
+  push:
+    branches:
+      - ops/verify-render-live-20261024
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify live HTTP readiness and WSS handshake
+        run: npm run smoke
