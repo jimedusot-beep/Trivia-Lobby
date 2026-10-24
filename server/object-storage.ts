@@ -17,7 +17,14 @@ let client: S3Client | undefined;
 function s3() {
   const endpoint = process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3;
   if (endpoint && new URL(endpoint).protocol !== "https:") throw new Error("S3_ENDPOINT requires HTTPS");
-  return client ??= new S3Client({ region: process.env.AWS_REGION ?? "us-east-1", endpoint, forcePathStyle: isNeonStorageEndpoint(endpoint) || process.env.S3_FORCE_PATH_STYLE === "true" });
+  return client ??= new S3Client({
+    region: process.env.AWS_REGION ?? "us-east-1",
+    endpoint,
+    forcePathStyle: isNeonStorageEndpoint(endpoint) || process.env.S3_FORCE_PATH_STYLE === "true",
+    // Neon recommends disabling optional AWS SDK checksum headers for S3 clients.
+    // Full SHA-256 readback already validates Neon uploads below.
+    requestChecksumCalculation: neonChecksumMode(endpoint),
+  });
 }
 /**
  * Neon CLI provides AWS_ENDPOINT_URL_S3 but no bucket-name environment value.
@@ -34,6 +41,11 @@ export function isNeonStorageEndpoint(endpoint = process.env.S3_ENDPOINT ?? proc
   if (!endpoint) return false;
   try { return new URL(endpoint).hostname.endsWith(".aws.neon.tech"); }
   catch { return false; }
+}
+
+/** Only Neon endpoints use the Neon-documented S3 checksum mode. */
+export function neonChecksumMode(endpoint = process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3): "WHEN_REQUIRED" | undefined {
+  return isNeonStorageEndpoint(endpoint) ? "WHEN_REQUIRED" : undefined;
 }
 
 /** Never returns object URLs or grants a public ACL. Downloads pass through owner authorization. */
