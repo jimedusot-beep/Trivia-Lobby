@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isNeonStorageEndpoint } from "./object-storage";
+import { isNeonStorageEndpoint, neonChecksumMode } from "./object-storage";
 
 test("Neon S3 branch endpoints are identified without trusting lookalike domains",()=>{
   assert.equal(isNeonStorageEndpoint("https://br-example.storage.c-2.us-east-2.aws.neon.tech"),true);
@@ -53,4 +53,10 @@ test("Neon production configuration requires private scoped S3 credentials and p
     process.env.S3_KMS_KEY_ID = "test-only-misconfigured-kms";
     assert.throws(() => validateProductionConfig(), /does not support AWS KMS/);
   } finally { restore(); }
+});
+
+test("S3 checksum negotiation follows Neon guidance without changing other providers", () => {
+  assert.equal(neonChecksumMode("https://br-example.storage.c-2.us-east-2.aws.neon.tech"), "WHEN_REQUIRED");
+  assert.equal(neonChecksumMode("https://s3.us-east-1.amazonaws.com"), undefined);
+  assert.equal(neonChecksumMode("https://br-example.storage.c-2.us-east-2.aws.neon.tech.evil.example"), undefined);
 });
