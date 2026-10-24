@@ -1,0 +1,48 @@
+# Trivia Lobby — one-site Render deployment, no Replit.
+# Creating this Blueprint provisions PAID resources. Review prices and backups
+# before authorizing it in your Render dashboard.
+#
+# ONE web process is deliberate: multiplayer rooms remain process-local.
+# Automatic deployments are OFF until production backups and review are set up.
+services:
+  - type: web
+    name: trivia-lobby
+    runtime: node
+    region: virginia
+    branch: main
+    plan: 0.5c-512mb
+    numInstances: 1
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health/ready
+    disk:
+      name: trivia-private-originals
+      mountPath: /var/data
+      sizeGB: 2
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      - key: PRIVATE_STORAGE_DIR
+        value: /var/data/trivia-originals
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trivia-lobby-db
+          property: connectionString
+
+databases:
+  - name: trivia-lobby-db
+    region: virginia
+    plan: 0.1c-256mb
+    postgresMajorVersion: '16'
+    databaseName: trivia_lobby
+    user: trivia_lobby
+    diskSizeGB: 1
+    storageAutoscalingEnabled: false
+    # Externally inaccessible by default. Credentials are wired over Render's
+    # private network; enable only tightly scoped external access if required.
+    ipAllowList: []
