@@ -15,13 +15,16 @@ declare module "http" {
 app.use(
   express.json({
     limit: "4mb",
+    // Reject compressed bodies before decompression (GHSA-27r3-jxmh-p828).
+    // Trivia Lobby clients send plain JSON; encoded bodies are not required.
+    inflate: false,
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
-app.use(express.urlencoded({ extended: false, limit: "32kb" }));
+app.use(express.urlencoded({ extended: false, limit: "32kb", inflate: false }));
 app.disable("x-powered-by");
 app.get("/health/live", (_req, res) => res.json({ status: "ok" }));
 app.get("/health/ready", async (_req, res) => {
