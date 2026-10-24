@@ -1,0 +1,28 @@
+name: Public deployment smoke
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: "Actual HTTPS domain of your live Trivia Lobby website"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SMOKE_URL: ${{ inputs.deployment_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Require HTTPS and real public host
+        run: |
+          node -e 'const u=new URL(process.env.SMOKE_URL); if(u.protocol!=="https:" || !u.hostname.includes(".") || /(^localhost$|\.localhost$|^127\.|^10\.|^192\.168\.|^172\.)/.test(u.hostname)) throw Error("Use an actual public HTTPS website URL");'
+      - run: npm ci
+      - name: Check public HTTP, DB readiness and WebSockets
+        run: npm run smoke
