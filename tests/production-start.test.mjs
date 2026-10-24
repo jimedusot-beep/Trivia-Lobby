@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
 import { randomUUID } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool } from "pg";
 import WebSocket from "ws";
@@ -138,6 +139,17 @@ test("built production runtime migrates a fresh database and retains private con
   }
   for (const path of ["/api/not-a-route", "/assets/missing.js"]) assert.equal((await request(path)).status, 404);
   assert.equal((await request("/api/decks")).status, 401);
+  // GHSA-27r3-jxmh-p828: compression must be rejected before decompression,
+  // even on unauthenticated endpoints, without bringing down the process.
+  const compressedJson = gzipSync(Buffer.from(JSON.stringify({ email: "nobody@example.test", password: "fake" })));
+  const rejectedJson = await request("/api/auth/register", { method: "POST", body: compressedJson,
+    headers: { "Content-Type": "application/json", "Content-Encoding": "gzip" } });
+  assert.equal(rejectedJson.status, 415, "Encoded JSON request bodies must be rejected");
+  const compressedForm = gzipSync(Buffer.from("username=example"));
+  const rejectedForm = await request("/api/auth/login", { method: "POST", body: compressedForm,
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Encoding": "gzip" } });
+  assert.equal(rejectedForm.status, 415, "Encoded forms must be rejected");
+  assert.equal((await request("/health/live")).status, 200, "Parser rejection must not crash the process");
   const email = `production-${randomUUID()}@example.test`, password = "Production-restart-passphrase-2026";
   const register = await request("/api/auth/register", { method: "POST", body: { email, password } });
   assert.equal(register.status, 201);
