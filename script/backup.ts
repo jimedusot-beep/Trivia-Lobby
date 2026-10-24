@@ -27,7 +27,7 @@ try {
       await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const snapshot=(await client.query("SELECT pg_export_snapshot() AS id")).rows[0].id;
       const files:FileRow[]=(await client.query("SELECT object_key,size_bytes,sha256 FROM library_files ORDER BY object_key")).rows;
-      await command("pg_dump",["--format=custom","--no-owner","--no-privileges","--snapshot="+snapshot,"--file="+join(dir,"db.dump")],pgEnv(process.env.DATABASE_URL));
+      await command("pg_dump",["--format=custom","--no-owner","--no-privileges","--snapshot="+snapshot,"--file="+join(dir,"db.dump")],pgEnv(backupDatabaseUrl));
       for(const file of files){const key=safeKey(file.object_key),bytes=await getPrivateObject(key);
         if(bytes.length!==file.size_bytes||createHash("sha256").update(bytes).digest("hex")!==file.sha256)throw new Error("Source integrity failure; backup aborted");
         const dest=join(dir,"objects",key);await mkdir(join(dest,".."),{recursive:true,mode:0o700});await writeFile(dest,bytes,{mode:0o600});}
