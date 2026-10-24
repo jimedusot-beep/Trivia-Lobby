@@ -1,4 +1,4 @@
-name: Render deployment configuration
+name: Free Render and Neon deployment configuration
 on:
   pull_request:
     branches: [main]
@@ -8,14 +8,14 @@ permissions:
 jobs:
   blueprint:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-      - name: Build with Render production environment
+      - name: Build in Render production environment
         env:
           NODE_ENV: production
         run: |
@@ -23,32 +23,29 @@ jobs:
           npm run build
           test -f dist/start.mjs
           test -f dist/index.cjs
-      - name: Parse and validate paid single-instance Blueprint
+      - name: Verify free single-instance Render/Neon Blueprint
         run: |
           ruby <<'RUBY'
           require "yaml"
-          document=YAML.safe_load(File.read("render.yaml"), aliases: false)
-          services=document.fetch("services")
-          databases=document.fetch("databases")
-          raise "Exactly one web service required" unless services.length==1
-          raise "Exactly one PostgreSQL database required" unless databases.length==1
-          web=services.fetch(0)
-          db=databases.fetch(0)
-          raise "Must use an actual Node server" unless web["type"]=="web" && web["runtime"]=="node"
-          raise "Disable auto-deploy until backup/release gates" unless web["autoDeployTrigger"]=="off"
-          raise "Process-local multiplayer cannot scale out" unless web["numInstances"]==1
-          raise "No ephemeral file storage" unless web.dig("disk","mountPath")=="/var/data" && web.dig("disk","sizeGB")>=1
-          raise "Health check must include live DB" unless web["healthCheckPath"]=="/health/ready"
-          raise "Unsafe startup commands" unless web["buildCommand"]=="npm ci --include=dev && npm run build" && web["startCommand"]=="npm start"
-          raise "Database must be paid and private" unless db["plan"] != "free" && db["ipAllowList"] == []
-          raise "Pinned PostgreSQL version" unless db["postgresMajorVersion"]=="16"
-          raise "Database and app region mismatch" unless db["region"]==web["region"]
-          vars=web.fetch("envVars").to_h{|item| [item.fetch("key"),item]}
-          raise "Private database reference required" unless vars.dig("DATABASE_URL","fromDatabase","name")==db["name"] &&
-            vars.dig("DATABASE_URL","fromDatabase","property")=="connectionString"
-          raise "Private storage root must reside on persistent disk" unless vars.dig("PRIVATE_STORAGE_DIR","value")=="/var/data/trivia-originals"
-          raise "HTTP server must bind to Render port" unless vars.dig("PORT","value")=="10000"
-          raise "Versioned runtime configuration required" unless vars.key?("NODE_VERSION")
-          raise "Don't hardcode credentials" if File.read("render.yaml").match?(/(password|api_key|secret)\s*:/i)
-          puts "Validated: one paid web instance, private paid Postgres, persistent disk, explicit health, no auto-deployment or hardcoded secrets"
+          source=File.read("render.yaml")
+          config=YAML.safe_load(source, aliases: false)
+          services=config.fetch("services")
+          raise "Only one free web service should exist" unless services.size==1
+          raise "No billable PostgreSQL resources allowed" if config.key?("databases") && !config["databases"].empty?
+          raise "No standalone workers/cron/paid services allowed" unless services.all?{|s| s["type"]=="web" && s["runtime"]=="node" && s["plan"]=="free"}
+          web=services.first
+          raise "Disable auto-deploy to avoid surprise migrations" unless web["autoDeployTrigger"]=="off"
+          raise "Live game authority requires one instance" unless web["numInstances"]==1
+          raise "Free web service cannot mount a persistent disk" if web.key?("disk")
+          raise "Use database-backed readiness checks" unless web["healthCheckPath"]=="/health/ready"
+          raise "Use the tested build/start commands" unless web["buildCommand"]=="npm ci --include=dev && npm run build" && web["startCommand"]=="npm start"
+          vars=web.fetch("envVars").to_h{|env| [env.fetch("key"),env]}
+          secrets=%w[DATABASE_URL S3_BUCKET S3_ENDPOINT AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY]
+          raise "All Neon credentials/bucket values must be supplied privately" unless secrets.all?{|key| vars[key]=={"key"=>key,"sync"=>false}}
+          raise "Do not rely on ephemeral disk" if vars.key?("PRIVATE_STORAGE_DIR")
+          raise "Use HTTPS S3 path addressing" unless vars.dig("S3_FORCE_PATH_STYLE","value")=="true"
+          raise "Expose only the Render HTTP port" unless vars.dig("PORT","value")=="10000"
+          raise "Require production Node >=22" unless vars.dig("NODE_ENV","value")=="production" && vars.key?("NODE_VERSION")
+          raise "No embedded credentials" if source.match?(/(?:password|access_key_id|secret_access_key|api_token)\s*:\s*[^\n\s]/i)
+          puts "Free-tier blueprint verified: one Render Free web service, no paid resources, no ephemeral uploads, six Neon variables prompted privately"
           RUBY
