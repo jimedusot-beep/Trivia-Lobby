@@ -25,7 +25,7 @@ function s3() {
  * Older explicit S3_BUCKET installs retain their previous configuration.
  */
 export function privateBucketName(): string | undefined {
-  return process.env.S3_BUCKET || (isNeonStorageEndpoint() ? "trivia-originals" : undefined);
+  return process.env.S3_BUCKET || (isNeonStorageEndpoint() ? "uploads" : undefined);
 }
 const bucket = privateBucketName;
 
