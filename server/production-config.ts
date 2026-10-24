@@ -23,7 +23,7 @@ export function validateProductionConfig() {
   }
   if (privateBucketName() && (process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT_URL_S3)) {
     let endpoint: URL;
-    try { endpoint = new URL(process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3); }
+    try { endpoint = new URL((process.env.S3_ENDPOINT ?? process.env.AWS_ENDPOINT_URL_S3)!); }
     catch { throw new Error("S3_ENDPOINT must be an HTTPS URL"); }
     if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password) throw new Error("S3_ENDPOINT must be an HTTPS URL without credentials");
   }
