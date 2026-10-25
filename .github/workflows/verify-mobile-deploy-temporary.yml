@@ -20,6 +20,12 @@ jobs:
       - run: npm ci
       - name: Verify public health and socket safeguards
         run: npm run smoke
+      - name: Check old and new asset availability
+        run: |
+          for name in index-BU5xsjui.js index-DNJnLLAa.js; do
+            code=$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$SMOKE_URL/assets/$name")
+            echo "Asset $name HTTP $code"
+          done
       - name: Inspect live frontend asset and public cache headers
         run: |
           set -euo pipefail
