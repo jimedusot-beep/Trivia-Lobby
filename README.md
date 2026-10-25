@@ -1,5 +1,10 @@
 # Trivia Lobby
 
+**Live $0 preview:** [Open Trivia Lobby](https://trivia-lobby.onrender.com) · [Render Free service](https://dashboard.render.com/web/srv-dbecn2nb9u1s7398u8j0) · [Neon dashboard](https://console.neon.tech).
+
+The existing website has already launched and its public HTTP/database-readiness/WebSocket smoke test passed on October 24, 2026. The database is initially empty; sign up to create your first private deck. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
+
+
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
 
 This branch integrates current main with secure multiplayer, private source storage and the FSRS study engine. The [review and verification record](docs/INTEGRATION_REVIEW.md), [item-by-item checklist](docs/IMPLEMENTATION_CHECKLIST.md) and [operating runbook](docs/INTEGRATED_PLATFORM.md) distinguish implemented features from remaining validation and deployment configuration. Historical phase reports describe their original branches.
@@ -20,9 +25,9 @@ Back up existing databases before migration. Pre-account decks require verified 
 
 **Connecting the existing Neon production project:** follow the [Neon CLI setup, migration and service verification guide](docs/NEON_CLI_SETUP.md). The project already uses node-postgres/Drizzle; private Object Storage now consumes Neon CLI environment variables directly. AI Gateway remains explicitly disabled on Neon Free.
 
-**Public hosting without Replit:** use [Render Free + Neon Free](docs/RENDER_DEPLOYMENT.md) to launch one HTTPS Node/WebSocket site backed by persistent free PostgreSQL and private object storage. The `render.yaml` Blueprint provisions **only a free Render web service**; create a separate Neon Free project and private bucket first. Free hosting sleeps when idle and is for previews, not dependable classroom production. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents general requirements.
+**Current hosting without Replit:** [Render Free + the existing Neon Free project](docs/RENDER_DEPLOYMENT.md) are already connected. The `render.yaml` Blueprint provisions only one free Node/WebSocket service; **do not create another Neon project or repeat the Render Blueprint setup for the existing site**. Auto-deploy is deliberately off; after future reviewed changes are merged, use the existing Render service's deployment controls. The [production startup guide](docs/PRODUCTION_STARTUP.md) documents operational requirements.
 
-After the security/migration and free-hosting PRs are merged into `main` and your free Neon project/bucket exists, you can start the free web deployment:
+**Only if creating a new, separate installation:** use the Blueprint below. For the existing site, open the Live link above instead.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby)
 
