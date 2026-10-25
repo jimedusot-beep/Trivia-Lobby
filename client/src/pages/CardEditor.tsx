@@ -14,7 +14,7 @@ export default function CardEditor(){
  };
  const perform=async(action:()=>Promise<void>)=>{setBusy(true);setNotice("");try{await action();await refetch();setNotice("Saved");}catch(e){setNotice((e as Error).message);}finally{setBusy(false);}};
  const move=(index:number,change:number)=>void perform(async()=>{const ids=deck!.cards.map(c=>c.id),other=index+change;if(other<0||other>=ids.length)return;[ids[index],ids[other]]=[ids[other],ids[index]];await request("/reorder","PATCH",{ids});});
- return <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-5"><Button asChild variant="outline"><Link href="/">Back to decks</Link></Button>
+ return <main className="max-w-4xl mx-auto p-4 md:p-8 space-y-5"><Button asChild variant="outline"><Link href="/decks">Back to decks</Link></Button>
   <h1 className="text-3xl font-bold">Edit saved cards — {deck?.title}</h1><p>Correct imported cards and change their order. Existing review histories stay linked to edited cards.</p>
   {notice&&<p role="status">{notice}</p>}
   <ol className="space-y-3">{deck?.cards.map((card,index)=><li className="border rounded p-3 flex flex-wrap gap-2 items-center" key={card.id}>

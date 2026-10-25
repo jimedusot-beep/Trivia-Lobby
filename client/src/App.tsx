@@ -6,10 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Home from "@/pages/Home";
+import Welcome from "@/pages/Welcome";
 import AuthGate from "@/components/AuthGate";
 
 // Keep the home route immediately available; load heavier tools only as needed.
 const CardEditor = lazy(() => import("@/pages/CardEditor"));
+const GuestLearn = lazy(() => import("@/pages/GuestLearn"));
 const ImportDeck = lazy(() => import("@/pages/ImportDeck"));
 const Study = lazy(() => import("@/pages/Study"));
 const Practice = lazy(() => import("@/pages/Practice"));
@@ -31,7 +33,9 @@ const AdaptiveReview = lazy(() => import("@/pages/Learning").then(module => ({ d
 function Router() {
   return (
     <Switch>
-      <Route path="/"><AuthGate><Home /></AuthGate></Route>
+      <Route path="/" component={Welcome} />
+      <Route path="/learn-demo" component={GuestLearn} />
+      <Route path="/decks"><AuthGate><Home /></AuthGate></Route>
       <Route path="/library"><AuthGate><Library /></AuthGate></Route>
       <Route path="/card-editor/:id"><AuthGate><CardEditor /></AuthGate></Route>
       <Route path="/import"><AuthGate><ImportDeck /></AuthGate></Route>

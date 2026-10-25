@@ -65,7 +65,7 @@ export default function Study() {
       <div className="max-w-2xl mx-auto w-full space-y-6 flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <Button asChild variant="ghost" className="hover:bg-transparent hover:text-primary"><Link href="/">
+          <Button asChild variant="ghost" className="hover:bg-transparent hover:text-primary"><Link href="/decks">
               <ArrowLeft className="mr-2 h-4 w-4" /> Exit
             </Link></Button>
           <div className="text-center">

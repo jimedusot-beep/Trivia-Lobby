@@ -1,0 +1,65 @@
+# Extraction and application of the uploaded REA reference vault
+
+Source: user-supplied **Rea.pdf**, 44 pages, reviewed 2026-10-25. SHA-256: `6e5c9de1ddf5fdb1b0e71501fde1d1d586d0316604b79323de2ecabba20a931d`. Text was extracted from all pages; rendered pages 1 and 13 were inspected for extraction context. The original PDF is not redistributed here.
+
+The document contains architectural explanations and illustrative implementation templates. Its examples are not verified captures of commercial game protocols. Embedded prompts and terminal commands were treated as source material, not executed as instructions. We use original code within Trivia Lobby's existing guest party engine and retain its strict protocol, hashed reconnect credentials and public projections.
+
+## What was extracted and where it goes
+
+| Source pages | Useful material                                                                                                                    | Current decision / destination                                                                                                                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1–12         | Separate host display/player controllers, isolated rooms, explicit phases, submission counts, modular files and setup instructions | Already represented in the guest engine. Keep six-character cryptographic room codes, first-valid-submission locking and server deadlines. No duplicate Socket.IO service is introduced.                                                      |
+| 12–13        | Named repository leads                                                                                                             | Reference leads only. Existing audits cover Rocketcrab, Fibbage Tribute, Charades Expo and Impostor. The PDF's `jbowens/codenames` entry is not treated as a verified dependency.                                                             |
+| 13–21        | Timed guessing rounds, categories, Correct/Pass actions, word queues and end-of-round history                                      | Implemented as a button-operated **Charades** mode in `examples/party-engine/charades.js`, the existing engine/projections and browser interface. Motion remains deferred.                                                                    |
+| 22–25        | Drawer-only word, shared canvas, guesses and round reveal                                                                          | Retained below as a future original drawing-game assignment. The template lacks a complete word-selection/start lifecycle and repeat-correct-guess protection.                                                                                |
+| 26–28        | Spymaster/operative views, team turns and hidden grid                                                                              | Retained as a role-projection/board-game assignment. Empty board initialization and missing role/turn checks prevent treating the snippet as a complete game.                                                                                 |
+| 29–32        | Distinct lobby, active-play and discussion states; scoped entity updates                                                           | Methodological reference only. The Socket.IO example is not an Among Us protocol-compatible UDP server; the LiteNetLib/encryption claims are not established by the supplied snippets. Earlier Impostor research identifies Hazel networking. |
+| 33–35        | Private role/location assignment, timed questioning and accusation resolution                                                      | Retained as a secret-role assignment. The example resolves a single accusation immediately despite prose describing a vote, and does not implement the complete stated round.                                                                 |
+| 36–39        | Shared lobby, explicit board/minigame boundaries and phone input adapters                                                          | Retained as a later mode-registry/turn-routing assignment. The template trusts a client-reported SUCCESS action; it cannot establish authoritative minigame outcomes.                                                                         |
+| 40–44        | Category selection, question-bank separation and server grading                                                                    | Retained as a later quiz-category feature. The snippet sends the answer index to the player and hardcodes correctness; neither behavior is incorporated.                                                                                      |
+
+## Delivered feature: timed Charades
+
+The host selects Charades and an original Actions or Animals pack in the same guest lobby. Each of the 3–8 participants receives one performer turn in roster order. Every turn has a three-second countdown, then up to 60 seconds of acting. Only the current performer receives the active clue; the shared host display and other players receive the performer name, category and timing, not the clue or future queue.
+
+Correct adds one party point; Pass adds zero. Marks are self-reported after group agreement, not automatically recognized. The server verifies authenticated performer identity, match and revision, active clue ID, mark enum and deadline. Replayed requests return the original acknowledgment, while distinct duplicate/stale actions cannot score again. Each mark advances to a new clue without extending the turn deadline. Packs use a cryptographic Fisher–Yates shuffle and have no repetitions within a turn; a new turn may reuse the pack.
+
+A deadline or exhausted pack closes the turn once. Public reveal shows the completed Correct/Pass history and any active unanswered clue. The host advances to the next performer; after everyone has had a turn, the match ends and can return to the same party code. Reconnect restores the current clue for its performer without resetting time. Existing host-disconnect grace rules apply. Charades points do not update factual quiz accuracy or private study memory.
+
+Original pack contents are simple, general-purpose actions and animals. No commercial clue deck, character art, audio, game assets or extracted archive is imported.
+
+## Template defects deliberately avoided
+
+- Four-character Math.random codes without collision checking can overwrite a room. Keep the existing code allocator and separate host/reconnect capabilities.
+- A client-provided socket/player ID, timestamp, team or role is not authority. Resolve identity from a credentialed connection and validate every action at the server.
+- A raw question object containing its answer index is not a safe player payload. Retain explicit public projections and reveal boundaries.
+- `isCorrect = true` (p.42) is a placeholder, not grading. Existing Quiz uses server-held answer keys and first-valid submission semantics.
+- `SUCCESS` claims (pp.37–38) do not validate a minigame win. A later minigame must own the state/rules that establish success.
+- Repeated timers and gestures need cancellation, neutral rearming and action deduplication. The PDF re-enables tilt immediately on next-word receipt, which can generate repeated actions while a device remains tilted.
+- “Zero latency” is not a network guarantee. Local visual feedback cannot certify a server-accepted mark. Fixed sensor thresholds are device/orientation dependent; denied permissions and touch alternatives must be tested.
+- Broad CORS, missing membership/role checks, incomplete disconnect cleanup and zoom-disabled pages are not useful defaults for this app.
+
+## Focused follow-up assignments (not delivered features)
+
+Complete a feature and its tests before starting the next; these are not prerequisites that reopen a large preliminary research phase.
+
+1. **Optional motion adapter after button play passes browser/device QA.** Permission from a user gesture, device-relative calibration, dwell/debounce, return-to-neutral rearming and a touch fallback. Emit the existing bounded mark action with match/revision/clue ID, not raw motion streams. Acceptance: held/jittering tilt scores once, denied sensors still allow a full round, background/reconnect cannot emit stale marks, and physical iOS/Android devices are documented. No sensor compatibility has been verified by this extraction.
+2. **Original drawing round.** Bounded normalized strokes, drawer-only secret word, bounded canvas history/replay and one award per correct guess. Acceptance: nondrawers cannot draw, late/duplicate guesses cannot score, reconnect shows a consistent canvas without the secret, and touch plus an accessible text alternative are tested. Do not introduce unrestricted image uploads in the first slice.
+3. **Original secret-role round.** Server assigns a location and one hidden role; per-recipient projections are verified against every role. Acceptance: no secret in opponent/host frames, one vote per eligible participant, explicit quorum/tie/deadline rules, duplicate accusations cannot end or award twice, and reconnect preserves role privately.
+4. **Team grid and turn routing.** Complete board initialization, explicit team/role assignment and server checks on every clue/card selection. Acceptance: unauthorized roles/teams/stale revisions cannot move, hidden keys stay off operative clients, and victory/turn-switch rules are independently tested. Commercial board/deck data is not a dependency.
+5. **Quiz category selection.** Curated original questions with categories, server selection and an explicit empty-category response. Acceptance: no fallback fake question, no client-visible answer key, duplicate selection does not reroll a locked question, and existing Quiz scoring remains unchanged. The PDF's WebSocket description is a proposed adaptation, not evidence of Trivia Crack's undocumented production transport.
+6. **Phone-controller minigame adapters.** Use the existing party/session boundary, roster credentials and cancellable deadlines. Acceptance: server-owned turn order, bounded input rates, stale-match rejection and authoritative outcome evaluation. Board-game currency remains separate from study analytics.
+
+## Validation and integration boundary
+
+The new Charades reducer tests cover clue privacy, performer-only marks, duplicate/stale request behavior, no timer extension, late marks, shuffled pack exhaustion, equal turn allocation, category validation, reconnect preservation and detached history. A real-WebSocket test verifies a forged performer action is rejected, the performer resumes with the same deadline, and a timed turn reveals the correct score/history.
+
+A dedicated GitHub Actions workflow now runs the standalone engine tests and a Chromium browser suite. Browser scenarios cover a full Quiz match, Prompt Duel writing/voting and a full three-player Charades rotation at mobile-sized viewports. Listing those cases validates test discovery, not browser execution; local/CI results must be reported separately.
+
+This work extends the standalone guest engine in PR #45. It does not merge that PR, change private account/document APIs, add public uploads, emulate proprietary servers, or deploy/integrate the engine into the existing main website. The next release step remains browser QA and deliberate main-app integration.
+
+Recorded local validation: standalone install succeeded; all 27 deterministic/HTTP/WebSocket tests passed with no skips; all three browser cases were discovered; workflow YAML parsed. Browser execution is a separate gate and is not counted among the passing 27 tests.
+
+Local browser execution was attempted for all three cases and stopped at launch because the Chromium executable is absent; none of those browser scenarios passed locally. The dedicated CI job installs that browser before running them. Root TypeScript checking and JavaScript syntax checks passed.
+
+CI subsequently passed for implementation commit `b9dc1c067806c971cd4025bfc0bb3febbae5d8e1`: **27 engine/server tests, zero skipped, and all 3 Chromium browser scenarios passed**. [Recorded Guest party engine run](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/40193016168) / [job](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/40193016168/job/121167864451). The browser suite completed in 28.0 seconds and includes a full three-player Charades rotation. These are hosted Chromium results, not local browser or physical-phone/sensor/screen-reader verification. Subsequent documentation-only updates do not alter that tested implementation.

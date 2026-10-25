@@ -93,14 +93,14 @@ export default function Learning() {
   }, []);
   useEffect(() => { if (user) void load(); }, [user, load]);
   if (loading) return <main className="p-8" role="status">Loading account...</main>;
-  if (!user) return <main className="p-4"><Link href="/">← Library</Link><AccountGate onReady={setUser} /></main>;
+  if (!user) return <main className="p-4"><Link href="/decks">← Library</Link><AccountGate onReady={setUser} /></main>;
   const subjects = Array.from(new Set(wrong.map(x => x.subject || "General"))).sort();
   const filtered = wrong.filter(x => subjectFilter === "all" || (x.subject || "General") === subjectFilter);
   const unique = filtered.filter((x, i, all) => all.findIndex(y => y.id === x.id) === i);
   return <main className="min-h-screen bg-muted/20 p-4 md:p-8 [overflow-wrap:anywhere]">
     <div className="max-w-5xl mx-auto space-y-7">
       <header className="flex flex-wrap justify-between items-center gap-3">
-        <div className="min-w-0 max-w-full"><Link href="/" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
+        <div className="min-w-0 max-w-full"><Link href="/decks" className="underline">← Library</Link><h1 className="text-3xl font-bold mt-2">My learning</h1><p className="text-muted-foreground">{user.email}</p></div>
         <div className="flex gap-2 flex-wrap"><Button asChild variant="outline"><Link href="/learning/sources">Source drafts</Link></Button>
           <Button variant="outline" onClick={() => { window.location.href = "/api/study/export"; }}>Export progress</Button>
           <Button variant="outline" onClick={async () => { await api("/api/auth/logout", "POST"); setUser(null); setDashboard(null); }}>Sign out</Button></div>

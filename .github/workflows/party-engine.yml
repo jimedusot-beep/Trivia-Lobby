@@ -1,0 +1,35 @@
+name: Guest party engine
+on:
+  pull_request:
+    branches: [main]
+    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
+  push:
+    branches: [main, feature/guest-party-engine]
+    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
+concurrency:
+  group: party-engine-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  engine-and-browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: examples/party-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: examples/party-engine/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: party-engine-browser-failure
+          path: examples/party-engine/test-results/
+          retention-days: 7

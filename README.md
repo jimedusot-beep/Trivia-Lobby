@@ -2,9 +2,9 @@
 
 **Live $0 preview:** [Open Trivia Lobby](https://trivia-lobby.onrender.com) · [Render Free service](https://dashboard.render.com/web/srv-dbecn2nb9u1s7398u8j0) · [Neon dashboard](https://console.neon.tech).
 
-The existing website has already launched and its public HTTP/database-readiness/WebSocket smoke test passed on October 24, 2026. The database is initially empty; sign up to create your first private deck. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
+The public preview was originally launched October 24, 2026. This guest-first branch adds an account-free homepage, **Start a Party** (Quiz, Prompt Duel and Charades for 3–8 players), and **Try a Lesson** (three browser-local sample lessons). A separate **Private library** option still requires an account for saved server-backed decks and documents. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
 
-**[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** register, save a few questions, host, share a room code, and join from another device.
+**[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** choose the new guest party, share a room code and join by nickname. Private custom-deck hosting still requires signing in.
 
 
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.

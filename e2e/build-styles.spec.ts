@@ -76,7 +76,7 @@ test("built home styles keep the title gradient and actions visible across scree
 
   for (const width of [375, 768, 1280]) {
     await page.setViewportSize({ width, height: 812 });
-    await page.goto("/");
+    await page.goto("/decks");
     const title = page.getByRole("heading", { level: 1, name: "Trivia Lobby", exact: true });
     await expect(title).toBeVisible();
     await builtStyles(page);

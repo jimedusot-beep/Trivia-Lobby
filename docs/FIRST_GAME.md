@@ -4,7 +4,23 @@
 
 Trivia Lobby is already hosted on **Render Free** and connected to your existing **Neon Free** project. You do **not** need to visit Render, Neon, GitHub or Replit to start playing, and you should not create another database or web service.
 
-## Make a tiny test quiz
+## Start playing without signing in
+
+The guest-first version opens a public welcome page instead of an email/password prompt.
+
+1. Open the website and choose **Start a Party**.
+2. Tap **Create host screen**. Share the six-character party code with friends and family.
+3. Each guest opens the same Party page on a phone, enters the code and a nickname, then joins.
+4. When 3–8 players have joined, the host can choose **Quiz**, **Prompt Duel**, or **Charades**.
+5. Finish the round and choose another game without making an account.
+
+Want to learn instead? Choose **Try a Lesson** from the welcome page. Three sample lessons and basic practice XP save to your current browser only—clearing browser data loses that progress.
+
+**Private study-library access remains optional** and still requires account authentication. Only use that path when you want server-backed personal decks and documents. The guest party uses original sample content, not another user's private library.
+
+## Optional: create a private custom deck
+
+### Make a tiny test quiz
 
 1. Open the website in Safari and tap **New Exam Deck**.
 2. On the sign-in screen, tap **Need an account? Register**. Enter your email and a password **at least 12 characters** long. Do not share it.

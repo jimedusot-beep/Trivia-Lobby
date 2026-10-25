@@ -27,7 +27,7 @@ export default function NewExamDeck() {
   }
   return <main className="min-h-screen bg-muted/30 p-4 md:p-8">
     <section className="max-w-xl mx-auto space-y-6">
-      <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
+      <Button asChild variant="ghost"><Link href="/decks">Back to library</Link></Button>
       <h1 className="text-3xl font-bold">New Visual Exam Deck</h1>
       <p className="text-sm text-amber-800 bg-amber-50 rounded p-3" role="note">
         Your saved decks and questions are private to your signed-in account.

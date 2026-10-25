@@ -87,7 +87,7 @@ export default function ImportDeck() {
         setRestoringBackup(true);
         const response=await fetch("/api/decks/restore",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...backup,deck:deckInfo})});
         if(!response.ok)throw new Error((await response.json()).message??"Backup restore failed");
-        toast({title:"Backup restored",description:"Cards and visual questions saved."});setLocation("/");return;
+        toast({title:"Backup restored",description:"Cards and visual questions saved."});setLocation("/decks");return;
       }
       await importDeck.mutateAsync({
         deck: {
@@ -99,7 +99,7 @@ export default function ImportDeck() {
       });
 
       toast({ title: "Success!", description: "Deck imported successfully." });
-      setLocation("/");
+      setLocation("/decks");
     } catch (err) {
       toast({ title: "Import failed", description: err instanceof Error ? err.message : "Something went wrong.", variant: "destructive" });
     } finally { setRestoringBackup(false); }
@@ -110,7 +110,7 @@ export default function ImportDeck() {
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all"><Link href="/">
+        <Button asChild variant="ghost" className="pl-0 hover:pl-2 transition-all"><Link href="/decks">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
           </Link></Button>
 

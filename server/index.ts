@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { attachGuestParty } from "./guest-party";
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,6 +61,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  attachGuestParty(httpServer, app);
   await registerRoutes(httpServer, app);
 
   // Unknown API paths must return JSON 404 in both dev (Vite) and production.
