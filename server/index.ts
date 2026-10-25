@@ -62,6 +62,10 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
+  // Unknown API paths must return JSON 404 in both dev (Vite) and production.
+  // Register this before the SPA fallback so missing endpoints never return HTML.
+  app.use("/api", (_req, res) => res.status(404).json({ message: "Not found" }));
+
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = status >= 500 ? "Internal Server Error" : (err.message || "Request failed");
