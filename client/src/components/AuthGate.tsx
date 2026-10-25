@@ -67,7 +67,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   return <>
     <nav className="flex flex-wrap gap-3 items-center justify-end px-4 py-2 border-b bg-background text-sm">
       <Button asChild size="sm" variant="ghost"><a href="/party/">Party games</a></Button>
-      <Button asChild size="sm" variant="ghost"><Link href="/">Decks</Link></Button>
+      <Button asChild size="sm" variant="ghost"><Link href="/decks">My decks</Link></Button>
       <Button asChild size="sm" variant="ghost"><Link href="/library">Source library</Link></Button>
       <span className="text-muted-foreground break-all min-w-0">{user.email}</span>
       <Button size="sm" variant="outline" onClick={logout}>Sign out</Button>
