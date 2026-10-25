@@ -1,5 +1,7 @@
 # Learning-platform source research and integration catalog
 
+> **Historical research inventory (October 21, 2026).** The app-state descriptions, security findings, roadmap and “not completed” statements below describe the original research branches; they are not a current audit. Check current code, tests and the [integration review](INTEGRATION_REVIEW.md) for present status. Follow the [feature-by-feature REA workflow](../CONTRIBUTING.md): select one feature, investigate only what is needed, specify it, implement an original version and test it before moving on. These links are optional leads, not a research prerequisite or a commitment to integrate every project.
+
 Research inventory assembled 2026-10-21. **Reference list, not a dependency manifest.** The repository links below are leads for code-level review, not declarations that source has been audited, copied, tested, or licensed for redistribution. Check current licensing on the specific commit before reuse. "Clone" often means independently recreated UI/functionality, **not** leaked or decompiled proprietary software.
 
 ## Existing research: 28 repositories across nine platforms
