@@ -1,5 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { quiz, prompts } from "./content.js";
+import { validateAction } from "./protocol.js";
+import { projectParty } from "./projections.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -134,25 +136,7 @@ export class Party {
   }
   // Credentials bind actor outside this reducer. Request IDs are bounded per actor.
   handle(actor, msg) {
-    if (
-      !msg ||
-      msg.v !== 1 ||
-      typeof msg.type !== "string" ||
-      typeof msg.requestId !== "string" ||
-      !/^[\w-]{8,80}$/.test(msg.requestId)
-    )
-      fail("Invalid message envelope.");
-    const allowed = [
-      "v",
-      "type",
-      "requestId",
-      "matchId",
-      "revision",
-      "value",
-      "promptIndex",
-    ];
-    if (Object.keys(msg).some((k) => !allowed.includes(k)))
-      fail("Unknown message field.");
+    validateAction(msg);
     const key = `${actor}:${msg.requestId}`,
       fingerprint = JSON.stringify(msg);
     const previous = this.requests.get(key);
@@ -168,11 +152,15 @@ export class Party {
       if (actor !== "host" || this.phase !== "lobby")
         fail("Only the host can start from the lobby.");
       if (!["quiz", "duel"].includes(msg.value)) fail("Unknown game mode.");
-      // Disconnected party members can resume before start; freeze only active players.
+      // Validate before pruning: a rejected start must not revoke a disconnected
+      // participant's reconnect access while the party is still in the lobby.
+      const activePlayers = [...this.players.values()].filter(
+        (p) => p.connected,
+      );
+      if (activePlayers.length < 3 || activePlayers.length > 8)
+        fail("Start with 3–8 connected players.");
       for (const [id, p] of this.players)
         if (!p.connected) this.players.delete(id);
-      if (this.players.size < 3 || this.players.size > 8)
-        fail("Start with 3–8 connected players.");
       this.mode = msg.value;
       this.matchId = randomUUID();
       this.index = 0;
@@ -252,72 +240,7 @@ export class Party {
     return result;
   }
   view(actor) {
-    const reveal = this.phase === "reveal";
-    const v = {
-      code: this.code,
-      phase: this.phase,
-      mode: this.mode,
-      revision: this.revision,
-      matchId: this.matchId,
-      deadline: this.deadline,
-      serverNow: this.clock(),
-      hostConnected: this.hostConnected,
-      hostWaitAt: this.hostWaitAt,
-      interrupted: this.interrupted,
-      index: this.index,
-      role: actor === "host" ? "host" : "player",
-      players: [...this.players.values()]
-        .map((p) => ({ ...p }))
-        .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)),
-    };
-    if (this.mode === "quiz" && ["question", "reveal"].includes(this.phase)) {
-      const q = quiz[this.index];
-      v.question = { prompt: q.prompt, choices: q.choices };
-      v.locked = this.answers.has(actor);
-      v.received = this.answers.size;
-      v.total = quiz.length;
-      if (reveal) {
-        v.question.correct = q.correct;
-        v.question.explanation = q.explanation;
-      }
-    }
-    if (this.mode === "duel" && this.phase === "writing") {
-      v.assignments = this.pairs.flatMap((p, i) =>
-        p.authors.includes(actor)
-          ? [
-              {
-                prompt: p.prompt,
-                promptIndex: i,
-                locked: this.responses.has(`${i}:${actor}`),
-              },
-            ]
-          : [],
-      );
-      v.received = this.responses.size;
-      v.expected = this.roster.length * 2;
-    }
-    if (this.mode === "duel" && ["voting", "reveal"].includes(this.phase)) {
-      v.prompt = this.pairs[this.index].prompt;
-      v.skipped = this.skipped;
-      v.total = this.pairs.length;
-      v.canVote =
-        actor !== "host" &&
-        !this.pairs[this.index].authors.includes(actor) &&
-        !this.votes.has(actor);
-      v.options = this.options.map((o) => ({
-        id: o.id,
-        text: o.text ?? "(No response)",
-        ...(reveal
-          ? {
-              author: this.players.get(o.author).name,
-              votes: [...this.votes.values()].filter((id) => id === o.id)
-                .length,
-            }
-          : {}),
-      }));
-      v.received = this.votes.size;
-    }
-    return v;
+    return projectParty(this, actor);
   }
 }
 export function roomCode(occupied) {

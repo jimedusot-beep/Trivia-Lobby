@@ -7,11 +7,16 @@ Approved match flow implemented as a separate runnable example. It does not modi
 | File                                | Responsibility                                                                                 |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `server.js`                         | HTTP/static hosting, WebSockets, credentials, origin checks, limits, heartbeat and room expiry |
+| `protocol.js`                       | Strict connection/action schemas; rejects invented identity and stale-envelope fields          |
+| `sessions.js`                       | Hashed reconnect credentials and current-socket ownership                                      |
+| `scheduler.js`                      | Per-party cancellable deadlines, replacement and shutdown lifecycle                            |
+| `projections.js`                    | Explicit public host/player views and hidden-answer/author boundaries                          |
 | `engine.js`                         | Authoritative phases, deadlines, submissions, voting, scoring and player-specific views        |
 | `content.js`                        | Five original quiz questions and eight original creative prompts                               |
 | `public/index.html`                 | Accessible host/player page structure                                                          |
 | `public/app.js`                     | Browser connection, acknowledgment/reconnect handling and interface                            |
 | `public/style.css`                  | Responsive mobile styling                                                                      |
+| `test/contracts.test.js`            | Timer races, message validation, session ownership and projection isolation                    |
 | `test/engine.test.js`               | Deterministic clock, scoring, privacy and transition tests                                     |
 | `test/server.test.js`               | Real HTTP and WebSocket multi-client integration                                               |
 | `package.json`, `package-lock.json` | Standalone dependencies and startup scripts                                                    |
@@ -63,6 +68,16 @@ The demo caps rooms, message sizes and action/connection rates and checks browse
 
 ## Verification recorded for this delivery
 
-Standalone `npm ci --ignore-scripts --no-audit --no-fund` succeeded; `npm test` passed all 11 tests with no skips. The real-server integration uses three WebSocket players and checks HTTP serving, hidden answer keys, scoring, a forged host credential and valid reconnection. Root TypeScript checking and browser-script/server syntax checks passed. Tests use short injected timings; default match durations remain 3/30/90/20 seconds.
+Standalone `npm ci --ignore-scripts --no-audit --no-fund` succeeded; `npm test` passed all 20 tests with no skips. The real-server integration uses three WebSocket players and checks HTTP serving, hidden answer keys, scoring, a forged host credential and valid reconnection. Root TypeScript checking and browser-script/server syntax checks passed. Tests use short injected timings; default match durations remain 3/30/90/20 seconds.
 
 Chromium was unavailable, and Playwright's browser download returned an invalid/truncated archive. No rendered browser, physical-phone, manual screen-reader or load verification was completed. This implementation is provided for local review and further integration, not described as a tested live deployment.
+
+## Applying the Open-Kahoot architecture lessons
+
+The design was informed by a focused source review of [Open-Kahoot at 929c810](https://github.com/soleilvermeil/open-kahoot/tree/929c810b2c12e2dcbca666137a0e13ad02ca5116/src/lib/game). This implementation uses original modules with separate protocol validation, credentials, scheduling and public projections. The existing WebSocket transport, match rules and scoring are retained.
+
+The scheduler owns one pending phase/grace deadline per party. Replacing a deadline invalidates its previous callback; cancellation and shutdown also invalidate callbacks already queued by the event loop. Deadline checks still happen when an action arrives, so delayed wake-ups cannot accept late answers. Expired rooms cannot re-arm timers through closing sockets. Idle-room cleanup runs separately every five seconds.
+
+Reconnect authenticates before attaching a replacement socket and evaluates elapsed deadlines before resuming the participant. A delayed close event from the old socket cannot disconnect its replacement. Real-socket tests cover writing, voting, reveal, stale matchup votes, a late answer arriving before its timer callback, and host grace expiry. Contract tests cover timer replacement/cancellation/self-rescheduling and accidental future private fields in player records. A failed start with fewer than three connected players now retains offline participants and their reconnect access.
+
+Validation for this follow-up: 20 tests passed, no failures/skips. No new browser or physical-device verification was performed; the Chromium download limitation above remains. The changes are confined to this standalone example and do not integrate it into the existing deployed application.

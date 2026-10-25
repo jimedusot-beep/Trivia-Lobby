@@ -178,3 +178,25 @@ test("isolated parties and reconnect views never reveal another player assignmen
     true,
   );
 });
+
+test("rejected start preserves disconnected participants until a valid match begins", () => {
+  const p = new Party("ABC234");
+  const ids = ["One", "Two", "Three"].map((name) => p.join(name));
+  p.connected(ids[0], false);
+  const start = {
+    v: 1,
+    type: "start",
+    requestId: "start-attempt",
+    matchId: null,
+    revision: 0,
+    value: "quiz",
+  };
+  assert.throws(() => p.handle("host", start), /3–8/);
+  assert.equal(p.phase, "lobby");
+  assert.equal(p.revision, 0);
+  assert.equal(p.players.has(ids[0]), true);
+  p.connected(ids[0], true);
+  p.handle("host", { ...start, requestId: "start-retry" });
+  assert.equal(p.phase, "countdown");
+  assert.equal(p.players.size, 3);
+});

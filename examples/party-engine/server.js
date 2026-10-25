@@ -1,11 +1,19 @@
 import express from "express";
 import { createServer } from "node:http";
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
 import { Party, roomCode } from "./engine.js";
-const hash = (s) => createHash("sha256").update(s).digest();
-export function createPartyServer({ partyOptions = {} } = {}) {
+import { ParticipantSessions } from "./sessions.js";
+import { DeadlineScheduler } from "./scheduler.js";
+import { validateHello } from "./protocol.js";
+export function createPartyServer({
+  partyOptions = {},
+  schedulerOptions = {},
+} = {}) {
+  const scheduler = new DeadlineScheduler({
+    clock: partyOptions.clock,
+    ...schedulerOptions,
+  });
   const app = express(),
     server = createServer(app),
     rooms = new Map(),
@@ -30,14 +38,25 @@ export function createPartyServer({ partyOptions = {} } = {}) {
     }
   };
   function publish(record) {
-    for (const [id, p] of record.sessions) {
-      if (id !== "host" && !record.party.players.has(id)) {
-        p.ws?.close();
-        record.sessions.delete(id);
-        continue;
-      }
-      if (p.ws) send(p.ws, { type: "state", state: record.party.view(id) });
+    if (rooms.get(record.party.code) !== record) return;
+    record.sessions.prune(record.party.players);
+    for (const [id, ws] of record.sessions.connections()) {
+      send(ws, { type: "state", state: record.party.view(id) });
     }
+    const party = record.party;
+    const deadline =
+      party.deadline ??
+      (party.hostWaitAt === null ? null : party.hostWaitAt + 60000);
+    scheduler.schedule(
+      party.code,
+      `${party.matchId}:${party.revision}:${party.hostWaitAt}`,
+      deadline,
+      () => {
+        if (rooms.get(party.code) !== record) return;
+        party.tick();
+        publish(record);
+      },
+    );
   }
   server.on("upgrade", (req, socket, head) => {
     if (
@@ -93,51 +112,40 @@ export function createPartyServer({ partyOptions = {} } = {}) {
         if (!m || typeof m !== "object" || Array.isArray(m))
           throw new Error("Invalid message.");
         if (!record) {
-          if (
-            Object.keys(m).some(
-              (k) => !["type", "code", "name", "actor", "token"].includes(k),
-            )
-          )
-            throw new Error("Invalid connection fields.");
+          validateHello(m);
+          let candidate, id;
           if (m.type === "create") {
             if (rooms.size >= 200) throw new Error("Server is full.");
             const code = roomCode(rooms);
-            record = {
+            candidate = {
               party: new Party(code, partyOptions),
-              sessions: new Map(),
+              sessions: new ParticipantSessions(),
             };
-            rooms.set(code, record);
-            actor = "host";
+            rooms.set(code, candidate);
+            id = "host";
           } else {
-            if (
-              typeof m.code !== "string" ||
-              !/^[A-HJ-NP-Z2-9]{6}$/i.test(m.code)
-            )
-              throw new Error("Enter a valid six-character code.");
-            record = rooms.get(m.code.toUpperCase());
-            if (!record) throw new Error("Room expired or not found.");
-            if (m.type === "join") actor = record.party.join(m.name);
-            else if (m.type === "resume") {
-              const s = record.sessions.get(m.actor);
-              if (
-                typeof m.token !== "string" ||
-                m.token.length > 128 ||
-                !s ||
-                !timingSafeEqual(hash(m.token), s.tokenHash)
-              )
-                throw new Error("Invalid reconnect credential.");
+            candidate = rooms.get(m.code.toUpperCase());
+            if (!candidate) throw new Error("Room expired or not found.");
+            if (m.type === "join") {
+              candidate.party.tick();
+              publish(candidate);
+              id = candidate.party.join(m.name);
+            } else {
+              candidate.sessions.resume(m.actor, m.token, ws);
+              record = candidate;
               actor = m.actor;
-              const old = s.ws;
-              s.ws = ws;
-              old?.close(1000, "Reconnected elsewhere");
+              // Apply any deadline that elapsed before reconnect. A resumed phone
+              // cannot rewind a round or suppress an expired host grace period.
+              record.party.tick();
               record.party.connected(actor, true);
               send(ws, { type: "ready", actor });
               publish(record);
               return;
-            } else throw new Error("Create or join a room first.");
+            }
           }
-          const token = randomBytes(32).toString("base64url");
-          record.sessions.set(actor, { tokenHash: hash(token), ws });
+          record = candidate;
+          actor = id;
+          const token = record.sessions.issue(actor, ws);
           send(ws, {
             type: "credential",
             code: record.party.code,
@@ -146,28 +154,25 @@ export function createPartyServer({ partyOptions = {} } = {}) {
           });
           publish(record);
         } else {
-          if (record.sessions.get(actor)?.ws !== ws)
-            throw new Error("Connection replaced.");
+          if (
+            rooms.get(record.party.code) !== record ||
+            !record.sessions.owns(actor, ws)
+          )
+            throw new Error("Connection replaced or room expired.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
           publish(record);
         }
       } catch (e) {
-        // Failed join/resume must not bind this socket to someone else's room.
-        if (record && !record.sessions.has(actor)) {
-          record = undefined;
-          actor = undefined;
-        }
         send(ws, {
           type: "error",
           message: e instanceof SyntaxError ? "Invalid JSON." : e.message,
         });
-        if (record && record.sessions.get(actor)?.ws === ws) publish(record);
+        if (record && record.sessions.owns(actor, ws)) publish(record);
       }
     });
     ws.on("close", () => {
-      if (record && record.sessions.get(actor)?.ws === ws) {
-        record.sessions.get(actor).ws = null;
+      if (record && record.sessions.disconnect(actor, ws)) {
         record.party.connected(actor, false);
         publish(record);
       }
@@ -176,16 +181,14 @@ export function createPartyServer({ partyOptions = {} } = {}) {
   const timer = setInterval(() => {
     const now = Date.now();
     for (const [code, r] of rooms) {
-      const revision = r.party.revision;
-      r.party.tick();
-      if (revision !== r.party.revision) publish(r);
-      if (now - r.party.touched > 600000) {
-        for (const s of r.sessions.values()) s.ws?.close(1000, "Room expired");
+      if (r.party.clock() - r.party.touched > 600000) {
+        scheduler.cancel(code);
         rooms.delete(code);
+        r.sessions.closeAll();
       }
     }
     for (const [ip, l] of limits) if (now >= l.reset) limits.delete(ip);
-  }, 100);
+  }, 5000);
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
       if (!ws.alive) {
@@ -197,6 +200,7 @@ export function createPartyServer({ partyOptions = {} } = {}) {
     }
   }, 15000);
   server.on("close", () => {
+    scheduler.close();
     clearInterval(timer);
     clearInterval(heartbeat);
   });
@@ -204,7 +208,11 @@ export function createPartyServer({ partyOptions = {} } = {}) {
     server,
     rooms,
     wss,
+    scheduler,
     async close() {
+      scheduler.close();
+      clearInterval(timer);
+      clearInterval(heartbeat);
       for (const ws of wss.clients) ws.terminate();
       await new Promise((resolve) => wss.close(resolve));
       await new Promise((resolve) => server.close(resolve));
