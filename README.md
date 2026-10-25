@@ -67,6 +67,8 @@ All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE
 
 ## Operations and research
 
+**Release-readiness (October 25, 2026):** See the [repository cleanup report](docs/REPOSITORY_CLEANUP_2026_10_25.md). Automated encrypted *production* offsite backups and independent restore verification are [not yet completed](https://github.com/jimedusot-beep/Trivia-Lobby/issues/48), `main` [needs branch protection](https://github.com/jimedusot-beep/Trivia-Lobby/issues/49), and guest Party Engine / Sprint Trivia / Odd One Out are [pending combined integration](https://github.com/jimedusot-beep/Trivia-Lobby/issues/51). Green tests on individual PRs do not mean these features have been deployed.
+
 Follow the [feature-by-feature REA development workflow](CONTRIBUTING.md): investigate one feature, specify it, implement an original version, test it, then move to the next. Research is bounded by the current implementation decision; the catalog is a historical reference, not a preliminary phase or completion checklist.
 
 Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. See [Render deployment](docs/RENDER_DEPLOYMENT.md) for the web URL and initial hosting; provision persistent storage and **independent** database/file backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
