@@ -1,28 +1,32 @@
 import { Switch, Route } from "wouter";
+import { lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import Home from "@/pages/Home";
-import CardEditor from "@/pages/CardEditor";
-import ImportDeck from "@/pages/ImportDeck";
-import Study from "@/pages/Study";
-import Practice from "@/pages/Practice";
-import Host from "@/pages/Host";
-import Join from "@/pages/Join";
-import Play from "@/pages/Play";
-import NotFound from "@/pages/not-found";
-import ExamBuilder from "@/pages/ExamBuilder";
-import NewExamDeck from "@/pages/NewExamDeck";
-import VisualPractice from "@/pages/VisualPractice";
-import Learning, { AdaptiveReview } from "@/pages/Learning";
-import LearningSources from "@/pages/LearningSources";
 import AuthGate from "@/components/AuthGate";
-import Library from "@/pages/Library";
-import Reports from "@/pages/Reports";
-import Assignments from "@/pages/Assignments";
-import AssignmentPlay from "@/pages/AssignmentPlay";
+
+// Keep the home route immediately available; load heavier tools only as needed.
+const CardEditor = lazy(() => import("@/pages/CardEditor"));
+const ImportDeck = lazy(() => import("@/pages/ImportDeck"));
+const Study = lazy(() => import("@/pages/Study"));
+const Practice = lazy(() => import("@/pages/Practice"));
+const Host = lazy(() => import("@/pages/Host"));
+const Join = lazy(() => import("@/pages/Join"));
+const Play = lazy(() => import("@/pages/Play"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+const ExamBuilder = lazy(() => import("@/pages/ExamBuilder"));
+const NewExamDeck = lazy(() => import("@/pages/NewExamDeck"));
+const VisualPractice = lazy(() => import("@/pages/VisualPractice"));
+const Learning = lazy(() => import("@/pages/Learning"));
+const LearningSources = lazy(() => import("@/pages/LearningSources"));
+const Library = lazy(() => import("@/pages/Library"));
+const Reports = lazy(() => import("@/pages/Reports"));
+const Assignments = lazy(() => import("@/pages/Assignments"));
+const AssignmentPlay = lazy(() => import("@/pages/AssignmentPlay"));
+const AdaptiveReview = lazy(() => import("@/pages/Learning").then(module => ({ default: module.AdaptiveReview })));
 
 function Router() {
   return (
@@ -58,7 +62,13 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <Suspense fallback={
+          <div role="status" aria-live="polite" className="min-h-screen flex items-center justify-center bg-background text-foreground">
+            <span>Loading Trivia Lobby…</span>
+          </div>
+        }>
+          <Router />
+        </Suspense>
       </TooltipProvider>
     </QueryClientProvider>
   );
