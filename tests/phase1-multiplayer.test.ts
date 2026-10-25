@@ -268,7 +268,8 @@ test("five players complete four question kinds with reveal-only keys, validated
 });
 
 test("REA vault: host-only submission progress counts accepted answers and survives reconnect",async t=>{
-  const server=createServer(),wss=attachGameSocket(server,fakeStorage,{questionMs:5000,authorizeHost:async()=>"owner"});
+  const testOwner="rea-progress-"+randomUUID();
+  const server=createServer(),wss=attachGameSocket(server,fakeStorage,{questionMs:5000,authorizeHost:async()=>testOwner});
   server.listen(0,"127.0.0.1");await once(server,"listening");
   const address=server.address();assert(address&&typeof address!=="string");
   const url="ws://127.0.0.1:"+address.port+"/ws",sockets:WebSocket[]=[],leaks:string[]=[];

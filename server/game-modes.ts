@@ -19,7 +19,7 @@ export function scoreRound(input: {
   const awarded = correct
     ? mode === "sprint" ? Math.round(sprintPoints * (input.pointsFactor ?? 1))
       : (100 + streak * 10 + bonus) * multiplier * (input.pointsFactor ?? 1) + wager
-    : -wager;
+    : (wager > 0 ? -wager : 0);
   return {
     awarded,
     streak: correct ? streak + 1 : mode === "workshop" && guard > 0 ? streak : 0,
