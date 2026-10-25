@@ -1,0 +1,22 @@
+name: One-time post-launch site verification
+on:
+  push:
+    branches:
+      - feature/postlaunch-free-smoke-20261025
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Validate public HTTP, private routes, and WebSocket permissions
+        run: npm run smoke
