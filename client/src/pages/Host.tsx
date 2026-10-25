@@ -113,7 +113,7 @@ export default function Host() {
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
       {/* Top Bar */}
       <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
-         <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/">
+         <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/decks">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
            </Link></Button>
          <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +129,7 @@ export default function Host() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-6xl mx-auto w-full">
-        {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/" className="underline">Return to decks</Link></p>}
+        {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/decks" className="underline">Return to decks</Link></p>}
         
         {/* LOBBY STATE */}
         {gameState.gameStatus === 'lobby' && (
@@ -317,7 +317,7 @@ export default function Host() {
                 )}
              </div>
 
-             <Button asChild size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black"><Link href="/">
+             <Button asChild size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black"><Link href="/decks">
                  Back to Home
                </Link></Button>
            </div>
