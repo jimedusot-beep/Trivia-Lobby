@@ -21,6 +21,7 @@ export default function Play() {
   const [, setLocation] = useLocation();
   const { connected, gameState, emit, lastError } = useGameSocket("player");
   const [wager,setWager]=useState(0);
+  const [oddExplanation,setOddExplanation]=useState("");
   const [soundEnabled, setSoundEnabled] = useState(false);
   const toggleSound = async () => {
     if (soundEnabled) { setSoundEnabled(false); return; }
@@ -39,6 +40,7 @@ export default function Play() {
   useEffect(() => {
     setSelectedAnswer(null);
     setSelectedIds([]);
+    setOddExplanation("");
     setOrderedIds(question?.optionIds ?? []);
   }, [question?.questionIndex, question?.serverStartTs]);
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function Play() {
     setSelectedAnswer(typeof answer === "string" ? answer : JSON.stringify(answer));
     emit(WS_EVENTS.SUBMIT_ANSWER, {
       roomCode: gameState.roomCode, questionIndex: question.questionIndex, answer, wager:gameState.mode==="wager"?Math.min(wager,score,100):0,
+      ...(gameState.mode==="odd_one_out"?{explanation:oddExplanation.trim()}:{}),
     });
   };
 
@@ -106,6 +109,9 @@ export default function Play() {
             {gameState.mode==="buzzer"&&<Button disabled={!!gameState.buzzedPlayerId||!!selectedAnswer||!!gameState.answered||seconds===0} onClick={()=>emit(WS_EVENTS.BUZZ,{roomCode:gameState.roomCode,questionIndex:question.questionIndex})}>Buzz in</Button>}
             {gameState.mode==="buzzer"&&gameState.buzzedPlayerId&&<p role="status">{gameState.buzzedPlayerId===gameState.playerId?"Your buzzer: answer within five seconds":"Another player has the buzzer"}</p>}
             {gameState.mode==="wager"&&<label>Wager earned points (0–{Math.min(score,100)})<input className="border p-3 w-full rounded" type="number" min={0} max={Math.min(score,100)} value={wager} disabled={!canAnswer} onChange={e=>setWager(Math.max(0,Math.min(100,score,Math.trunc(Number(e.target.value)))))} /></label>}
+            {gameState.mode==="odd_one_out"&&<label className="block font-medium">Why does it not belong? (optional · +1 bonus)
+              <textarea className="block w-full mt-2 rounded-xl border bg-white p-3 text-slate-900" rows={2} maxLength={200} value={oddExplanation} disabled={!canAnswer} onChange={e=>setOddExplanation(e.target.value)} placeholder="Explain the hidden connection before choosing…"/>
+            </label>}
             {question.kind === "multiple_select" && question.optionIds ? (
               <fieldset className="space-y-3" disabled={!canAnswer}>
                 <legend className="font-semibold">Select all correct answers, then submit</legend>
@@ -162,6 +168,7 @@ export default function Play() {
                 <CheckCircle2 className="w-24 h-24 text-green-500 mx-auto" aria-hidden="true" />
                 <h2 className="text-3xl font-black text-green-600">Correct!</h2>
                 <p className="text-lg font-bold">+{result.awarded} pts</p>
+                {gameState.mode==="odd_one_out"&&<p className="text-sm">Explanation bonus: +{result.bonusAwarded??0}</p>}
               </>
             ) : (
               <>
