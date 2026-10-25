@@ -1,5 +1,7 @@
 # Neon backend setup — Trivia Lobby
 
+**Current status:** The existing production Neon branch, PostgreSQL and private `uploads` bucket are **already connected** to [the live free Render website](https://trivia-lobby.onrender.com). This is a reconstruction/developer guide; do **not** rerun `neon init` or `neon deploy` simply to use the app, since doing so may change existing resources. Paid AI Gateway inference remains disabled.
+
 This repository already uses **Express, a persistent Node.js server, node-postgres Pool and Drizzle**, an app-owned account system, plus private S3-compatible file uploads. Keep those; Neon supplies a branch-scoped Postgres database, private Object Storage, and an optional AI Gateway. The web frontend and game WebSocket server are still hosted separately on Render Free; Neon is the **backend**, not the website host.
 
 ## Project selected by owner
@@ -8,7 +10,7 @@ This repository already uses **Express, a persistent Node.js server, node-postgr
 - Neon project: the existing project selected by the owner (keep the ID private)
 - Neon branch: `production`
 - Database: PostgreSQL (already included in Neon projects)
-- Storage: private bucket `trivia-originals`, declared in `neon.ts`.
+- Storage: private bucket `uploads`, declared in `neon.ts`.
 - AI Gateway: **requires a paid Neon plan with credits**. This app's earlier requirement is **$0**, so the gateway is opt-in only. Running an unmodified init/deploy including `ai-gateway` on Free will fail provisioning. The app's other services work without it.
 
 Never commit `.neon`, `.env`, `.env.local`, API keys or connection strings to GitHub. Do not post them in issues, logs or chat. Check whether the named Neon production branch already contains important data before any schema changes.
@@ -36,7 +38,7 @@ neon deploy
 neon env pull --service postgres --service object-storage --file .env.local
 ```
 
-`neon init` links this directory and installs Neon agent tooling. If the branch does not exist, inspect the Neon dashboard or use the CLI branch creation command deliberately; do not create a new project or move valuable existing data. `neon config plan` is the dry-run; **review it** before applying. `neon deploy` provisions the private `trivia-originals` bucket on your selected branch, then pulls Neon-managed environment variables into `.env.local` (or `.env` if one already exists). You can force a fresh `.env.local` using the `neon env pull --file` command shown above. Don't commit either file.
+`neon init` links this directory and installs Neon agent tooling. If the branch does not exist, inspect the Neon dashboard or use the CLI branch creation command deliberately; do not create a new project or move valuable existing data. `neon config plan` is the dry-run; **review it** before applying. `neon deploy` provisions the private `uploads` bucket on your selected branch, then pulls Neon-managed environment variables into `.env.local` (or `.env` if one already exists). You can force a fresh `.env.local` using the `neon env pull --file` command shown above. Don't commit either file.
 
 Neon provides:
 
@@ -106,7 +108,7 @@ The public website doesn't materialize from `neon deploy`; it still needs its se
 - **`npm i -g neon@latest` or `npx neon@latest` fails on DNS:** use an internet-connected machine/terminal and retry. No CLI command can authenticate while npm packages cannot be downloaded.
 - **CLI opens a browser:** finish Neon sign-in there. If the browser flow expires: `neon login`, then repeat `neon init` or `neon deploy`.
 - **AI Gateway deploy says upgrade needed:** leave `ENABLE_PAID_NEON_AI_GATEWAY` unset and deploy only Postgres + Object Storage.
-- **No bucket or credentials:** confirm `neon config status`, private `trivia-originals` bucket, `neon env pull --service object-storage --file .env.local`. Do not paste real AWS credentials into the terminal history or support messages.
+- **No bucket or credentials:** confirm `neon config status`, private `uploads` bucket, `neon env pull --service object-storage --file .env.local`. Do not paste real AWS credentials into the terminal history or support messages.
 - **SQL migration hangs/fails:** verify `DATABASE_URL_UNPOOLED` points to the same intended Neon branch but does **not** include `-pooler`. Back up existing records before retrying migrations.
 - **`npm run verify:neon` reports failure:** run locally and inspect provider logs, without sharing connection secrets. Do not declare a successful setup until it passes.
 - **Render web service fails:** ensure both connection strings and AWS env fields are present, S3 bucket is private, and run the public HTTP/WebSocket smoke after its HTTPS address is assigned.

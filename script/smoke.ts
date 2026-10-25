@@ -57,4 +57,38 @@ await new Promise<void>((resolve, reject) => {
     reject(error);
   });
 });
-console.log("HTTP, database readiness and WebSocket smoke checks passed");
+// Anonymous clients cannot create a host-owned game room on the public server.
+await new Promise<void>((resolve, reject) => {
+  const ws = new WebSocket(socketUrl, { origin: origin.origin });
+  const timer = setTimeout(() => { ws.terminate(); reject(new Error("Anonymous host check timed out")); }, 15_000);
+  ws.once("open", () => ws.send(JSON.stringify({ v: 1, type: "create_room", payload: { deckId: 1 } })));
+  ws.once("message", raw => {
+    try {
+      const result = JSON.parse(raw.toString());
+      if (result.type !== "error" || !/sign in required/i.test(result.payload?.message ?? "")) throw new Error("Anonymous host creation was not rejected");
+      clearTimeout(timer); ws.close(); resolve();
+    } catch (err) { clearTimeout(timer); ws.terminate(); reject(err); }
+  });
+  ws.once("error", err => { clearTimeout(timer); reject(err); });
+});
+// Production-safe checks: these requests do not create accounts, quizzes or rooms.
+const publicPage = await fetch(new URL("/", origin), { signal: AbortSignal.timeout(15_000) });
+if (publicPage.status !== 200 || !(publicPage.headers.get("content-type") ?? "").includes("text/html")) throw new Error("Public frontend is not serving HTML");
+const pageHtml = await publicPage.text();
+if (!pageHtml.includes('id="root"') || !pageHtml.includes("Trivia Lobby")) throw new Error("Public frontend is not the Trivia Lobby application");
+for (const path of ["/api/auth/me", "/api/decks", "/api/assignments"]) {
+  const res = await fetch(new URL(path, origin), { signal: AbortSignal.timeout(15_000) });
+  if (res.status !== 401 || !(res.headers.get("content-type") ?? "").includes("application/json")) throw new Error(path + " must reject anonymous users with JSON 401");
+  if (res.headers.get("x-content-type-options") !== "nosniff" || !(res.headers.get("cache-control") ?? "").includes("no-store")) throw new Error(path + " must disable private response caching and content sniffing");
+}
+// Vite owns development asset fallbacks; production must also reject missing compiled assets.
+for (const path of ["/api/__smoke_missing__", ...(origin.protocol === "https:" ? ["/assets/__smoke_missing__.js"] : [])]) {
+  const res = await fetch(new URL(path, origin), { signal: AbortSignal.timeout(15_000) });
+  if (res.status !== 404 || !(res.headers.get("content-type") ?? "").includes("application/json")) throw new Error(path + " must not fall back to private or SPA content");
+}
+const crossSite = await fetch(new URL("/api/decks", origin), {
+  method: "POST", headers: { "content-type": "application/json", origin: "https://external-test.invalid", "sec-fetch-site": "cross-site" },
+  body: "{}", signal: AbortSignal.timeout(15_000),
+});
+if (crossSite.status !== 403) throw new Error("Cross-site API mutation was not blocked");
+console.log("Public UI, HTTP/DB readiness, private API safeguards and WebSocket smoke passed");

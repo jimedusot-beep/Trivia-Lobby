@@ -53,7 +53,7 @@ export default function Home() {
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/assignments">Self-paced assignments</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/reports"><ChartBar className="mr-2 h-5 w-5"/> Game reports</Link></Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
-              <PlusCircle className="mr-3 h-6 w-6" /> Create Deck
+              <PlusCircle className="mr-3 h-6 w-6" /> Import Deck
             </Link></Button>
         </div>
       </div>
@@ -80,8 +80,11 @@ export default function Home() {
               <Upload className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-bold mb-2">{search ? "No matching decks" : "No decks yet"}</h3>
-            <p className="text-muted-foreground mb-6">{search ? "Try a different search term." : "Import your first deck to get started!"}</p>
-            <Button asChild><Link href="/import">Create Deck</Link></Button>
+            <p className="text-muted-foreground mb-6">{search ? "Try a different search term." : "Create a few questions to start playing, or import an existing deck."}</p>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button asChild><Link href="/new-exam">Make your first quiz</Link></Button>
+              <Button asChild variant="outline"><Link href="/import">Import existing questions</Link></Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

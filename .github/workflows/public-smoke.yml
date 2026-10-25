@@ -5,6 +5,7 @@ on:
       deployment_url:
         description: "Actual HTTPS domain of your live Trivia Lobby website"
         required: true
+        default: "https://trivia-lobby.onrender.com"
         type: string
 permissions:
   contents: read
