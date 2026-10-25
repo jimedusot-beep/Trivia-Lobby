@@ -4,6 +4,7 @@ import { ArrowLeft, BookOpen, CheckCircle2, RotateCcw, Star, Trophy } from "luci
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { LobbyBrand, LobbyCelebration } from "@/components/LobbyIdentity";
 
 type Question = { prompt: string; choices: [string, string, string]; correct: number; explanation: string };
 type Lesson = { id: string; title: string; subject: string; questions: Question[] };
@@ -77,20 +78,22 @@ export default function GuestLearn() {
   }
 
   return (
-    <main className="min-h-screen bg-background p-4 sm:p-8">
+    <main className="sample-learning min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
+          <LobbyBrand />
           <Button asChild variant="ghost"><Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Link></Button>
           <div className="flex items-center gap-2 font-bold"><Star className="h-5 w-5 text-amber-500" aria-hidden="true" /> {xp} practice XP</div>
         </header>
-        <div className="space-y-2">
+        <div className="sample-heading"><div className="space-y-2">
+          <span className="lobby-kicker">Small lessons. Big little wins.</span>
           <h1 className="text-3xl font-display font-bold">Learn something today</h1>
           <p className="text-muted-foreground">Three bite-sized sample lessons. No email or password required.</p>
           <p className="text-sm text-muted-foreground">Completed lessons are saved on this browser only. Clearing site data removes this progress; it does not synchronize between devices.</p>
           <Button asChild variant="outline"><a href="/party/learn.html">Learn from my quizzes: courses, levels and daily lessons</a></Button>
-        </div>
+        </div><img className="lobby-hello" src="/party/lobby-spark.svg" alt="" /></div>
 
-        <section aria-label="Learning path" className="grid sm:grid-cols-3 gap-2">
+        <section aria-label="Learning path" className="sample-path grid sm:grid-cols-3 gap-3">
           {lessons.map((item, i) => (
             <Button
               key={item.id} variant={lessonIndex === i ? "default" : "outline"}
@@ -107,6 +110,7 @@ export default function GuestLearn() {
         {sessionFinished ? (
           <Card className="rounded-2xl">
             <CardContent className="p-8 text-center space-y-5">
+              <LobbyCelebration />
               <Trophy className="mx-auto h-12 w-12 text-amber-500" aria-hidden="true" />
               <h2 className="text-3xl font-bold">Lesson complete!</h2>
               <p className="text-lg">You answered {sessionCorrect} of {lesson.questions.length} correctly.</p>
@@ -127,9 +131,10 @@ export default function GuestLearn() {
               <CardTitle className="text-2xl leading-relaxed">{question.prompt}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2">
+              <div className="sample-answers grid gap-3">
                 {question.choices.map((choice, index) => (
                   <Button key={choice} variant={selected !== null && index === question.correct ? "default" : "outline"}
+                    data-correct={selected !== null && index === question.correct}
                     className="justify-start text-left whitespace-normal min-h-14 h-auto py-3 text-base"
                     disabled={selected !== null} onClick={() => choose(index)}>
                     <span className="font-bold mr-3">{String.fromCharCode(65 + index)}.</span>{choice}
@@ -137,7 +142,7 @@ export default function GuestLearn() {
                 ))}
               </div>
               {selected !== null && (
-                <section role="status" aria-live="polite" className="rounded-xl bg-muted p-4 space-y-3">
+                <section role="status" aria-live="polite" className="sample-feedback rounded-xl p-4 space-y-3">
                   <p className="font-bold">{selected === question.correct ? "Correct!" : "Good try! Here's the answer."}</p>
                   <p>{question.explanation}</p>
                   <Button onClick={advance}>{questionIndex + 1 === lesson.questions.length ? "Finish lesson" : "Next question"}</Button>

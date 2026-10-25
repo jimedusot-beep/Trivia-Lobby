@@ -1,4 +1,5 @@
 import { listGuestDecks, restoreGuestDecks } from "./guest-decks.js";
+import { celebrate } from "./party-ui.js";
 import { courseFromDeck, emptyProgress, lessonResult, isUnlocked, dailyLessonIndex, progressStats,
   newSession, sessionStep, answerSession, advanceSession, completeLesson, learningBackup,
   parseLearningBackup, mergeProgress } from "./guest-learning.js";
@@ -79,6 +80,7 @@ function renderPath() {
     const li = element("li", undefined, $("path"));
     const action = button(undefined, li, () => openLesson(lesson.index));
     action.disabled = !unlocked;
+    action.dataset.step = result ? "complete" : unlocked ? "current" : "locked";
     element("span", result ? "✓" : String(lesson.index + 1), action, result ? "step-number completed" : "step-number");
     const info = element("span", lesson.title, action);
     element("small", result ? `Completed · Best first try: ${result.bestCorrect}/${result.total} · Replay`
@@ -174,7 +176,7 @@ $("continue").addEventListener("click", () => run(async () => {
   result ??= completeLesson(progress, course, session);
   progress = result.progress; sessionXP = result.earnedXP; savedSession = session;
   const earned = progressStats(progress).achievements.filter(a => a.earned && !before.includes(a.id)).map(a => a.title);
-  renderSummary(earned); say(persistent ? "Lesson complete. Your progress is saved." : "Lesson complete. Progress is available for this page session only; download a backup.");
+  renderSummary(earned); celebrate(); say(persistent ? "Lesson complete. Your progress is saved." : "Lesson complete. Progress is available for this page session only; download a backup.");
 }));
 $("daily").addEventListener("click", () => run(async () => {
   await refreshProgress(); await openLesson(dailyLessonIndex(progress, course));

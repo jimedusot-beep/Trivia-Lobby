@@ -49,7 +49,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
-      <img src="/lobby-welcome.png" alt="" className="w-full max-h-72 object-cover rounded-3xl" />
+      <div className="private-lobby-banner"><img src="/party/lobby-spark.svg" alt="" /><p>Your ideas. Your questions. Your next big win.</p></div>
       {/* Hero Section */}
       <div className="text-center space-y-6 py-12 md:py-20">
         <h1 className="text-5xl md:text-7xl font-display font-extrabold text-transparent bg-clip-text bg-linear-to-r from-primary via-purple-500 to-secondary animate-in fade-in slide-in-from-bottom-4 duration-1000">
