@@ -83,3 +83,18 @@ test("host a custom local quiz for three guest players and show the true result"
     await Promise.all(contexts.map(c => c.close()));
   }
 });
+
+test("practice a custom quiz solo without account and see explanatory feedback", async ({ page }) => {
+  await page.goto("/create.html");
+  await page.getByLabel("Quiz title (80 characters max)").fill("Solo Stars");
+  await addQuestion(page, "Which answer is right?", 1);
+  await page.getByRole("button", { name: "Save & practice solo" }).click();
+  await expect(page).toHaveURL(/\/practice\.html\?deck=/);
+  await expect(page.getByRole("heading", { name: "Solo Stars" })).toBeVisible();
+  await page.getByRole("button", { name: "B. Right answer" }).click();
+  await expect(page.getByText("Correct!", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Show results" }).click();
+  await expect(page.getByText(/You got 1 of 1 right/)).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("heading", { name: "Which answer is right?" })).toBeVisible();
+});
