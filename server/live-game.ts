@@ -28,7 +28,8 @@ type Room = {
   hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
   players: Map<string, Player>; questions: LiveCard[]; state: RoomState;
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
-  answers: Map<string, { answer: unknown; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
+  answers: Map<string, { answer: unknown; explanation:string; bonusAwarded:boolean; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
+  oddReviewFinalized:boolean;
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
 };
 
@@ -81,7 +82,11 @@ function resultFor(room: Room, playerId?: string): AnswerResult {
     ...(correctAnswers ? { correctAnswers } : {}),
     isCorrect: record ? record.correct : playerId ? false : null,
     awarded: record?.awarded ?? 0, explanation:card.back,
+    ...(room.mode==="odd_one_out"?{bonusAwarded:record?.bonusAwarded?1:0}:{}),
   };
+}
+function oddReview(room:Room) {
+ return {questionIndex:room.questionIndex,finalized:room.oddReviewFinalized,entries:[...room.answers.entries()].map(([id,record])=>({playerId:id,name:room.players.get(id)!.name,correct:record.correct,explanation:record.explanation,bonusAwarded:record.bonusAwarded}))};
 }
 function snapshot(room: Room, ws: WebSocket, player?: Player) {
   send(ws, WS_EVENTS.SYNC_SNAPSHOT, {
@@ -90,7 +95,29 @@ function snapshot(room: Room, ws: WebSocket, player?: Player) {
     ...(room.question && room.state !== "lobby" ? { question: room.question } : {}),
     ...(room.state === "reveal" || room.state === "leaderboard" || room.state === "finished"
       ? { answerResult: resultFor(room, player?.id), leaderboard: publicPlayers(room) } : {}),
+    ...(!player && room.mode==="odd_one_out" && ["reveal","leaderboard","finished"].includes(room.state)?{oddReview:oddReview(room)}:{}),
   });
+}
+function saveRoundReport(room:Room) {
+  if (room.reportSink && room.question) {
+    const details = resultFor(room);
+    const round = {
+      id: room.reportId, questionIndex: room.questionIndex,
+      prompt: room.question.prompt, kind: room.mode==="odd_one_out" ? "odd_one_out" : (room.question.kind ?? "multiple_choice"),
+      options: room.question.choices, durationMs: room.question.timeLimitMs,
+      correctAnswers: details.correctAnswers ??
+        (details.correctLetter ? [room.question.choices[["A","B","C","D"].indexOf(details.correctLetter)]] : []),
+      playerAnswers: [...room.players.values()].map(player => {
+        const record = room.answers.get(player.id);
+        return { playerId:player.id,name:player.name,response:record ? (room.mode==="odd_one_out"?{choice:record.answer,explanation:record.explanation,explanationBonus:record.bonusAwarded?1:0}:record.answer) : null,
+          correct:record?.correct ?? false,awarded:record?.awarded ?? 0,responseMs:record?.responseMs ?? null };
+      }),
+    };
+    room.reportChain = room.reportChain.then(() => room.reportSink!.round(round)).catch(() => {
+      room.reportFailed = true;
+      send(room.hostWs, WS_EVENTS.ERROR, { message: "This round could not be saved to the game report." });
+    });
+  }
 }
 function reveal(room: Room) {
   if (room.state !== "playing") return;
@@ -104,27 +131,10 @@ function reveal(room: Room) {
     const missed = scoreRound({mode:room.mode,correct:false,streak:player.streak,score:player.score,wager:0,focus:player.focus,guard:player.guard,round:room.questionIndex});
     player.streak=missed.streak;player.focus=missed.focus;player.guard=missed.guard;
   }
-  if (room.reportSink && room.question) {
-    const details = resultFor(room);
-    const round = {
-      id: room.reportId, questionIndex: room.questionIndex,
-      prompt: room.question.prompt, kind: room.question.kind ?? "multiple_choice",
-      options: room.question.choices, durationMs: room.question.timeLimitMs,
-      correctAnswers: details.correctAnswers ??
-        (details.correctLetter ? [room.question.choices[["A","B","C","D"].indexOf(details.correctLetter)]] : []),
-      playerAnswers: [...room.players.values()].map(player => {
-        const record = room.answers.get(player.id);
-        return { playerId:player.id,name:player.name,response:record?.answer ?? null,
-          correct:record?.correct ?? false,awarded:record?.awarded ?? 0,responseMs:record?.responseMs ?? null };
-      }),
-    };
-    room.reportChain = room.reportChain.then(() => room.reportSink!.round(round)).catch(() => {
-      room.reportFailed = true;
-      send(room.hostWs, WS_EVENTS.ERROR, { message: "This round could not be saved to the game report." });
-    });
-  }
+  if(room.mode!=="odd_one_out")saveRoundReport(room);
   lobbyUpdate(room);
   send(room.hostWs, WS_EVENTS.ANSWER_RESULT, resultFor(room));
+  if(room.mode==="odd_one_out")send(room.hostWs,WS_EVENTS.ODD_REVIEW_STATE,oddReview(room));
   for (const p of room.players.values()) if (p.connected) {
     send(p.ws, WS_EVENTS.ANSWER_RESULT, resultFor(room, p.id));
     send(p.ws,WS_EVENTS.PLAYER_STATUS,{coins:p.coins,focus:p.focus,guard:p.guard});
@@ -132,7 +142,7 @@ function reveal(room: Room) {
 }
 function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.state = "playing";
-  room.answers.clear();room.buzzedPlayerId=null;clearTimeout(room.buzzTimer);
+  room.answers.clear();room.oddReviewFinalized=false;room.buzzedPlayerId=null;clearTimeout(room.buzzTimer);
   broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
   const card = room.questions[room.questionIndex];
   const answer = card.universal?.answer;
@@ -163,6 +173,7 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
 }
 async function next(room: Room, durationMs: number) {
   if (room.state === "reveal") {
+    if(room.mode==="odd_one_out"&&!room.oddReviewFinalized)return;
     room.state = "leaderboard";
     broadcast(room, WS_EVENTS.LEADERBOARD, { leaderboard: publicPlayers(room) });
   } else if (room.state === "leaderboard") {
@@ -189,6 +200,11 @@ async function next(room: Room, durationMs: number) {
 function allActiveAnswered(room: Room) {
   const online = [...room.players.values()].filter(p => p.connected);
   return online.length > 0 && online.every(p => room.answers.has(p.id));
+}
+function eligibleOddCard(card:LiveCard) {
+ const answer=card.universal?.answer;
+ if(answer && (answer.kind!=="multiple_choice" || answer.options.length!==4))return false;
+ return card.type==="multiple_choice" && Array.isArray(card.options) && card.options.length===4 && card.options.every(x=>typeof x==="string") && ["A","B","C","D"].includes(card.correctOption??"") && typeof card.back==="string" && card.back.trim().length>0;
 }
 function eligible(card: LiveCard) {
   if (card.universal && ["true_false","multiple_select","ordering"].includes(card.universal.answer.kind)) {
@@ -277,7 +293,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           });
           const hostToken = mintToken();
           room = {
-            mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
+            oddReviewFinalized:false,mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
             reportChain:Promise.resolve(),reportFailed:false,hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
@@ -344,7 +360,24 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         }
         if(msg.type===WS_EVENTS.CONFIGURE_GAME){
           if(role!=="host"||room.hostWs!==ws||room.state!=="lobby"){error("Host can select the mode only in the lobby");return;}
+          if(msg.payload.mode==="odd_one_out"&&!room.questions.every(eligibleOddCard)){error("Odd One Out requires four choices and an explanation for every question in this deck");return;}
           room.mode=msg.payload.mode;broadcast(room,WS_EVENTS.GAME_CONFIGURED,{mode:room.mode});lobbyUpdate(room);return;
+        }
+        if(msg.type===WS_EVENTS.AWARD_ODD_BONUS){
+          if(role!=="host"||room.hostWs!==ws||room.mode!=="odd_one_out"||room.state!=="reveal"||room.oddReviewFinalized||room.questionIndex!==msg.payload.questionIndex){error("Bonus review is unavailable");return;}
+          const answer=room.answers.get(msg.payload.playerId);
+          if(!answer||!answer.correct||!answer.explanation.trim()||answer.bonusAwarded){error("Explanation bonus is not eligible");return;}
+          answer.bonusAwarded=true;
+          send(ws,WS_EVENTS.ODD_REVIEW_STATE,oddReview(room));return;
+        }
+        if(msg.type===WS_EVENTS.FINALIZE_ODD_REVIEW){
+          if(role!=="host"||room.hostWs!==ws||room.mode!=="odd_one_out"||room.state!=="reveal"||room.oddReviewFinalized||room.questionIndex!==msg.payload.questionIndex){error("Cannot finalize bonus review");return;}
+          room.oddReviewFinalized=true;
+          for(const [id,answer] of room.answers){if(answer.bonusAwarded){const player=room.players.get(id)!;answer.awarded+=1;player.score+=1;}}
+          saveRoundReport(room);
+          lobbyUpdate(room);
+          for(const player of room.players.values())if(player.connected)send(player.ws,WS_EVENTS.ANSWER_RESULT,resultFor(room,player.id));
+          send(ws,WS_EVENTS.ODD_REVIEW_STATE,oddReview(room));return;
         }
         if(msg.type===WS_EVENTS.BUY_UPGRADE){
           const player=playerId?room.players.get(playerId):undefined;
@@ -397,6 +430,8 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           })) { error("Cannot answer in the current state"); return; }
           if(room.mode==="buzzer"&&room.buzzedPlayerId!==playerId){error("Buzz in before answering");return;}
           const received = msg.payload.answer;
+          if(room.mode==="odd_one_out" && (!eligibleOddCard(current)||typeof received!=="string")){error("Invalid Odd One Out choice");return;}
+          if(room.mode!=="odd_one_out" && msg.payload.explanation){error("Explanations are available only in Odd One Out");return;}
           const universal = current.universal;
           let correct: boolean;
           if (universal?.answer.kind === "true_false") {
@@ -419,7 +454,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             correct = received === current.correctOption;
           }
           const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor});
-          room.answers.set(playerId, { answer:msg.payload.answer,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
+          room.answers.set(playerId, { answer:msg.payload.answer,explanation:room.mode==="odd_one_out"?(msg.payload.explanation??""):"",bonusAwarded:false,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
           send(ws,WS_EVENTS.ANSWER_ACCEPTED,{questionIndex:room.questionIndex});
           if(room.mode==="buzzer"){
             clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
