@@ -42,6 +42,9 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4 pt-4">
+          <Button asChild size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl"><a href="/party/">
+              <Users className="mr-3 h-6 w-6" /> Start a guest party
+            </a></Button>
           <Button asChild size="lg" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/25 hover:shadow-xl hover:-translate-y-1 transition-all"><Link href="/join">
               <Gamepad2 className="mr-3 h-6 w-6" /> Join Game
             </Link></Button>

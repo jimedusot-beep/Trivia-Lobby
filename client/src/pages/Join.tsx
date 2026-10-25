@@ -47,6 +47,7 @@ export default function Join() {
           <CardTitle className="text-4xl font-display font-black text-primary">Join Game</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 pb-8">
+          <p className="text-sm text-muted-foreground">Joining Quiz, Prompt Duel or Charades? <a className="underline" href="/party/">Open guest party games</a>. Use this form for a hosted study-deck quiz.</p>
           <div className="space-y-2">
             <Label htmlFor="room-code" className="text-lg">Room Code</Label>
             <Input 
