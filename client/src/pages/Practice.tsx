@@ -47,7 +47,7 @@ export default function Practice() {
   return (
     <main className="min-h-screen bg-muted/30 p-4 md:p-8">
       <section className="max-w-3xl mx-auto space-y-6">
-        <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
+        <Button asChild variant="ghost"><Link href="/decks">Back to library</Link></Button>
         <h1 className="text-3xl font-bold">{deck.title} — Practice</h1>
         <p className="text-muted-foreground">Results save to your study history and update the next review.</p>
         <Progress value={done ? 100 : questions.length ? 100 * index / questions.length : 0} />
