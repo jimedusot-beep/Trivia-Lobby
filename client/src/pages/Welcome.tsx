@@ -13,6 +13,7 @@ export default function Welcome() {
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="ghost" size="sm"><a href="/party/">Party games</a></Button>
             <Button asChild variant="ghost" size="sm"><Link href="/learn-demo">Try learning</Link></Button>
+            <Button asChild variant="ghost" size="sm"><a href="/party/learn.html">My courses</a></Button>
             <Button asChild variant="ghost" size="sm"><a href="/party/create.html">Make a quiz</a></Button>
             <Button asChild variant="outline" size="sm"><Link href="/decks">Private library</Link></Button>
           </div>
@@ -41,7 +42,8 @@ export default function Welcome() {
           <Card className="rounded-2xl">
             <CardHeader><BookOpen className="h-7 w-7 text-primary" aria-hidden="true" /><CardTitle>Practice in minutes</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-muted-foreground">Answer short lessons, get explanations and collect local practice XP. Restart any time.</p>
+              <p className="text-muted-foreground">Turn your quizzes into short courses with levels, daily lessons and achievements saved on this device.</p>
+              <Button asChild className="w-full"><a href="/party/learn.html">Learn from my quizzes</a></Button>
               <Button asChild variant="outline" className="w-full"><Link href="/learn-demo">Start sample lessons</Link></Button>
             </CardContent>
           </Card>

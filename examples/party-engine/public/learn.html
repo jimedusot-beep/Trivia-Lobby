@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My learning path · Trivia Lobby</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./learn.css" />
+  <script src="./learn.js" type="module"></script>
+</head>
+<body>
+<main>
+  <header>
+    <nav aria-label="Learning navigation"><a href="/">Trivia Lobby</a><a href="./create.html">My quizzes</a><a href="./">Party games</a></nav>
+    <p class="eyebrow">YOUR NEXT SMALL WIN</p>
+    <h1>A little progress,<br />every day.</h1>
+    <p>Turn your own quizzes into short courses. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.</p>
+  </header>
+
+  <section class="stats" aria-label="My learning progress">
+    <div><span id="level">Level 1</span><strong id="xp">0 practice XP</strong><progress id="level-progress" aria-label="XP toward next level" max="100" value="0"></progress><small id="next-level">100 XP to level 2</small></div>
+    <div><span>Daily rhythm</span><strong id="streak">0-day streak</strong><small id="best-streak">Best: 0 days</small></div>
+    <div><span>Lessons finished</span><strong id="lesson-count">0</strong><small id="daily-goal">Today’s goal: one lesson</small></div>
+  </section>
+  <p id="status" role="status" aria-live="polite">Loading your quizzes…</p>
+  <p id="storage-note" class="storage-note">Your quizzes and progress stay in this browser. Export a backup before clearing site data or moving to another device.</p>
+
+  <section aria-labelledby="courses-title">
+    <div class="section-heading"><h2 id="courses-title">Your courses</h2><a href="./create.html">+ Make a quiz</a></div>
+    <p>Each saved quiz becomes a course, with up to five questions per lesson.</p>
+    <div id="course-list" class="course-grid"></div>
+    <div id="empty" class="empty" hidden><h3>Your first course starts with a quiz.</h3><p>Create or import questions, then choose Save &amp; learn.</p><a class="primary-link" href="./create.html">Make my first quiz</a><p><a href="/learn-demo">Or try three sample lessons</a></p></div>
+  </section>
+
+  <section id="course-panel" aria-labelledby="course-title" hidden>
+    <div class="section-heading"><h2 id="course-title"></h2><span id="course-progress"></span></div>
+    <p id="version-note" class="storage-note" hidden></p>
+    <article class="daily-card"><div><span class="eyebrow">ONE LESSON IS ENOUGH</span><h3 id="daily-title">Your daily lesson</h3><p id="daily-detail"></p></div><button id="daily" type="button">Start today’s lesson</button></article>
+    <ol id="path" class="path" aria-label="Course lessons"></ol>
+    <button id="resume" type="button" hidden>Resume saved lesson</button>
+  </section>
+
+  <section id="lesson-panel" class="runner" aria-labelledby="lesson-heading" hidden>
+    <button id="back-path" class="quiet" type="button">Back to course</button>
+    <p id="lesson-position" class="eyebrow"></p>
+    <progress id="lesson-progress" aria-label="Lesson progress" max="100" value="0"></progress>
+    <h2 id="lesson-heading" tabindex="-1"></h2>
+    <p id="question-position"></p>
+    <div id="choices" class="choices"></div>
+    <section id="feedback" class="feedback" aria-live="polite" hidden><h3 id="answer-result"></h3><p id="answer-explanation"></p><button id="continue" type="button">Continue</button></section>
+  </section>
+
+  <section id="summary" class="runner summary" aria-labelledby="summary-heading" hidden>
+    <span class="celebration" aria-hidden="true">✦</span>
+    <h2 id="summary-heading" tabindex="-1">Lesson complete!</h2>
+    <p id="score"></p><p id="retry-score"></p><p id="earned-xp"></p><p id="milestones"></p>
+    <div class="summary-actions"><button id="next-lesson" type="button">Continue to next lesson</button><button id="replay" class="quiet" type="button">Replay this lesson</button><button id="summary-path" class="quiet" type="button">Back to course</button></div>
+  </section>
+
+  <section aria-labelledby="achievements-title"><h2 id="achievements-title">Your achievements</h2><p>Small milestones for showing up. Practice XP measures participation.</p><ul id="achievements" class="achievements"></ul></section>
+  <details class="backup"><summary>Keep a backup · move to another device</summary><p>A learning backup includes all quizzes on this device, their answers, and your learning progress as plain JSON. Keep it somewhere you trust. Restore it in another browser to continue there.</p><button id="export" type="button">Download learning backup</button><label for="restore">Restore learning backup (JSON, up to 2 MB)</label><input id="restore" type="file" accept=".json,application/json" /><p>Restoring adds quizzes and merges achievements. It never replaces a different existing quiz. Quiz-maker backups can still be imported in My quizzes.</p></details>
+  <footer><a href="./create.html">My quizzes</a> · <a href="/learn-demo">Sample lessons</a> · <a href="/">Home</a><p>No email, password, hearts limit, or paid continuation. Progress is device-local and does not sync automatically.</p></footer>
+</main>
+</body>
+</html>
