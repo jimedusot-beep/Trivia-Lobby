@@ -114,6 +114,7 @@ export const WS_EVENTS = {
   SYNC_SNAPSHOT: 'sync_snapshot', // Added for reliability
   CONFIGURE_GAME:'configure_game', GAME_CONFIGURED:'game_configured',
   BUZZ:'buzz', BUZZ_STATE:'buzz_state', BUY_UPGRADE:'buy_upgrade', PLAYER_STATUS:'player_status', ANSWER_ACCEPTED:'answer_accepted',
+  ODD_REVIEW_STATE:'odd_review_state',AWARD_ODD_BONUS:'award_odd_bonus',FINALIZE_ODD_REVIEW:'finalize_odd_review',
 } as const;
 
 // Define payload types for better type safety in socket handlers

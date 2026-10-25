@@ -3,12 +3,13 @@ import { useToast } from "@/hooks/use-toast";
 import { WS_EVENTS } from "@shared/schema";
 import {
   PROTOCOL_VERSION, serverMessageSchema,
-  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState,
+  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState, type OddReview,
 } from "@shared/game-protocol";
 
 export type GameState = {
-  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party";
+  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party"|"odd_one_out";
   status?:{coins:number;focus:number;guard:number};
+  oddReview?:OddReview;
   buzzedPlayerId?:string|null;
   answered?:boolean;
   roomCode?: string;
@@ -125,10 +126,12 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.QUESTION_START:
             setGameState(prev => ({
               ...prev, currentQuestion: payload, lastAnswerResult: undefined,
-              phase: "playing", gameStatus: "playing", answered:false,
+              phase: "playing", gameStatus: "playing", answered:false,oddReview:undefined,
               serverStartTs: payload.serverStartTs, timeRemainingMs: payload.timeLimitMs,
             }));
             break;
+          case WS_EVENTS.ODD_REVIEW_STATE:
+            setGameState(prev=>({...prev,oddReview:payload}));break;
           case WS_EVENTS.ANSWER_RESULT:
             setGameState(prev => ({ ...prev, phase: "reveal", lastAnswerResult: payload }));
             break;
@@ -148,7 +151,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
               leaderboard: payload.leaderboard,
               serverStartTs: payload.question?.serverStartTs,
               timeRemainingMs: payload.question?.timeLimitMs,
-              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,
+              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,oddReview:payload.oddReview,
             }));
             break;
           case WS_EVENTS.GAME_OVER:
