@@ -1,0 +1,30 @@
+name: One-time live mobile build verification
+on:
+  push:
+    branches:
+      - ops/check-live-mobile-build-20261025
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify public health and socket safeguards
+        run: npm run smoke
+      - name: Verify faster entry bundle is the deployed version
+        run: |
+          curl -fsS --retry 2 --max-time 90 "$SMOKE_URL/" > /tmp/trivia-home.html
+          if ! grep -q 'index-BU5xsjui.js' /tmp/trivia-home.html; then
+            echo 'Frontend has not rolled forward to the verified code-split bundle yet'
+            exit 1
+          fi
+          echo 'Verified route-split public frontend is live'
