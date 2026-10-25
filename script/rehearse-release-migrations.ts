@@ -98,7 +98,10 @@ try{
   }finally{await database.end();}
 }finally{
   if(databaseCreated){
-    await admin.query("DROP DATABASE "+targetName+" WITH (FORCE)").catch(err=>{
+    // All rehearsal connections must close before cleanup. WITH (FORCE) kills
+    // idle pg.Pool clients and can emit an unhandled error after tests pass.
+    // A plain DROP is stricter: it fails visibly if a connection leaked.
+    await admin.query("DROP DATABASE "+targetName).catch(err=>{
       console.error("Could not clean disposable upgrade database:",err);
       process.exitCode=1;
     });
