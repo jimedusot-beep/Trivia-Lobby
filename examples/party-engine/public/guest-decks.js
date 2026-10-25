@@ -173,3 +173,34 @@ export async function saveGuestDeck(data) {
 export function removeGuestDeck(id) {
   return operation("readwrite", (store, done) => { store.delete(id); done(true); });
 }
+
+// Restore learning backups atomically within the quiz library. Never overwrite
+// different existing content, even when a backup reuses its ID.
+export function restoreGuestDecks(records) {
+  if (!Array.isArray(records) || records.length > MAX_DECKS) fail("Too many quizzes in learning backup.");
+  const safe = records.map(record => {
+    if (!/^[\w-]{8,80}$/.test(record?.id)) fail("Invalid backup quiz ID.");
+    return { id: record.id, ...validateLocalDeck(record) };
+  });
+  if (new Set(safe.map(record => record.id)).size !== safe.length) fail("Duplicate backup quiz ID.");
+  let reason;
+  return operation("readwrite", (store, done) => {
+    store.getAll().onsuccess = event => {
+      try {
+      const current = event.target.result;
+      const existing = new Map(current.map(record => [record.id, record]));
+      const conflict = safe.find(record => existing.has(record.id) &&
+        JSON.stringify(validateLocalDeck(existing.get(record.id))) !== JSON.stringify(validateLocalDeck(record)));
+      if (conflict || current.length + safe.filter(record => !existing.has(record.id)).length > MAX_DECKS) {
+        reason = conflict ? `A different version of "${conflict.title}" already exists on this device. No quizzes were changed.`
+          : `Restore would exceed ${MAX_DECKS} local quizzes. No quizzes were changed.`;
+        store.transaction.abort(); return;
+      }
+      for (const record of safe) {
+        if (!existing.has(record.id)) store.put({ ...record, updatedAt: Date.now() });
+      }
+      done(safe.length);
+      } catch (error) { reason = error.message; store.transaction.abort(); }
+    };
+  }).catch(error => { throw new Error(reason || error.message || "Quiz restoration failed."); });
+}

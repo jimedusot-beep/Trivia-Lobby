@@ -108,3 +108,38 @@ Hosted CI resolved the browser gate for implementation commit `b9dc1c`: [Guest p
 The main application now mounts the same guest engine at `/party/` on its existing HTTP port. The sign-in screen, signed-in navigation and home page link to it. Invite URLs retain `/party/?code=...`; guest credentials are scoped to the page path. The production build ships the page assets in `dist/party`. No second service or standalone dependency install is needed when running the main application.
 
 `transport.js` owns the reusable guest socket handler; `server.js` remains the standalone launcher. `/party/socket`, the existing private-deck `/ws` transport and development HMR handle only their own upgrade paths. The guest route never reads private decks or account sessions. Set `PUBLIC_ORIGIN` to the exact external HTTPS origin behind a reverse proxy; without it the origin must be HTTP(S) with the incoming Host. Proxy WebSocket upgrades and retain Host. Rooms remain in memory and disappear on restart. This code change is not a deployment.
+
+## Personal courses without an account
+
+Open `learn.html` (`/party/learn.html` in the main app), or choose **Save & learn**
+in the quiz creator. Use HTTPS or localhost for browser storage and course hashing.
+Each quiz becomes an ordered course with lessons of up to five questions. Earlier
+lessons unlock later ones; completed lessons remain available for replay. Missed
+questions return once after the first pass, with answer explanations. Refresh and
+choose **Resume** to return to the saved prompt or feedback.
+
+The first completion of a versioned lesson earns 5 XP plus 10 for each first-pass
+correct answer. A replay can improve its displayed best score and count toward
+today's goal, but does not earn additional XP. Every 100 XP adds a level. Finish
+one lesson per day for the optional daily goal; streaks use the timezone saved
+when learning begins. A break preserves the best streak and achievements. These
+are local participation milestones, not a mastery rating or competitive score.
+
+Changing quiz questions starts a fresh path for that version while keeping earlier
+XP and achievements. Renaming a quiz keeps its path. The local learning store is
+separate from the quiz store and private cloud data. Failed or corrupt progress
+storage displays a session-only warning and leaves saved records intact.
+
+**Download learning backup** includes the local quizzes, answer keys and completed
+learning progress in plain JSON. It does not include unfinished answer sessions.
+Restore it on another device or after clearing browser data. Imports are bounded,
+validated, merged without removing milestones, and refuse to overwrite a different
+quiz with the same ID. Quiz and progress restoration use separate transactions;
+an error explicitly says if quizzes were added but progress could not be saved.
+The original quiz-maker JSON backup remains supported separately.
+
+See [the focused specification](../../docs/GUEST_LEARNING_PATH.md) for limits and
+acceptance checks. The guest workflow runs the learning unit and browser scenarios;
+the main-app workflow also verifies public integration and accessibility in all
+three supported browser engines. Historical verification counts above describe
+their original deliveries, not this change.

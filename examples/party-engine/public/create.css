@@ -30,6 +30,7 @@ h3 { font-size: 1.25rem; }
 #saved-list li { margin: 5px 0; }
 #saved-list button { text-align: left; background: #24233d; color: white; border: 1px solid #827f9f; }
 #saved-list button:hover { background: #3e395e; }
+#saved-list a { color: #dbd9ff; display: inline-block; min-height: 44px; padding: 12px 0; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid white; outline-offset: 3px; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 @media (max-width: 600px) {
