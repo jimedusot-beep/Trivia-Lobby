@@ -18,6 +18,17 @@ Want to learn instead? Choose **Try a Lesson** from the welcome page. Three samp
 
 **Private study-library access remains optional** and still requires account authentication. Only use that path when you want server-backed personal decks and documents. The guest party uses original sample content, not another user's private library.
 
+## Make and host your own quiz without signing in
+
+1. Open Trivia Lobby and choose **Make a Quiz**. No email/password is needed.
+2. Enter a quiz title, your question, 2–4 answer choices, the correct choice and an optional explanation. Select **Add question**. Repeat up to 20 questions.
+3. Select **Save quiz on this device**. Your quiz remains editable after refreshing the browser. For a separate backup, select **Download JSON backup** (or **Download CSV**). You can import CSV, TSV, TXT with a header, or your exported JSON backup. Choose **Save & practice solo** to study your custom questions with explanations without an account.
+4. Select **Save & host this quiz**. This opens the guest party with your locally saved quiz ready to host.
+5. Choose **Create host screen**, share the six-character room code, and have **3–8 guests** join by nickname.
+6. Select **Quiz** and **Start match**. The server checks answers and announces the winner; friends never need your private-library login.
+
+**Important:** the local quiz belongs to this browser only. Clearing site data or losing the device erases it unless you exported a JSON backup. For the active party, question text and answer keys are sent to the server temporarily for scoring; they are not saved to your private PostgreSQL library. Do not use sensitive class records as party questions. Render Free can restart and end a room. Cloud-backed private study decks still require optional account authentication.
+
 ## Optional: create a private custom deck
 
 ### Make a tiny test quiz

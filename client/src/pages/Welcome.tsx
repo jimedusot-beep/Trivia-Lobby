@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { BookOpen, Gamepad2, GraduationCap, LockKeyhole, Smartphone, Sparkles, Users } from "lucide-react";
+import { BookOpen, Gamepad2, GraduationCap, LockKeyhole, Smartphone, Sparkles, Users, PencilLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -13,6 +13,7 @@ export default function Welcome() {
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="ghost" size="sm"><a href="/party/">Party games</a></Button>
             <Button asChild variant="ghost" size="sm"><Link href="/learn-demo">Try learning</Link></Button>
+            <Button asChild variant="ghost" size="sm"><a href="/party/create.html">Make a quiz</a></Button>
             <Button asChild variant="outline" size="sm"><Link href="/decks">Private library</Link></Button>
           </div>
         </nav>
@@ -24,8 +25,9 @@ export default function Welcome() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-3">
             <Button asChild size="lg" className="min-h-14 text-lg rounded-xl"><a href="/party/"><Gamepad2 className="mr-2 h-5 w-5" /> Start a Party</a></Button>
             <Button asChild size="lg" variant="secondary" className="min-h-14 text-lg rounded-xl"><Link href="/learn-demo"><GraduationCap className="mr-2 h-5 w-5" /> Try a Lesson</Link></Button>
+            <Button asChild size="lg" variant="outline" className="min-h-14 text-lg rounded-xl"><a href="/party/create.html"><PencilLine className="mr-2 h-5 w-5" /> Make a Quiz</a></Button>
           </div>
-          <p className="text-sm text-muted-foreground">Party hosts and players enter as guests. Your demo lesson progress stays on this device.</p>
+          <p className="text-sm text-muted-foreground">Party hosts and players enter as guests. Your sample-lesson progress and personal quizzes stay on this device.</p>
         </section>
 
         <section className="grid gap-4 md:grid-cols-3" aria-label="How to get started">

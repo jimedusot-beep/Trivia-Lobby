@@ -1,6 +1,6 @@
 # Trivia Lobby: standalone guest party engine
 
-Approved match flow implemented as a separate runnable example. It does not modify the existing Trivia Lobby app, accounts, database, private decks or document authorization. Its server exposes only original public demo content.
+Approved match flow implemented as a separate runnable example. It does not modify the existing Trivia Lobby app, accounts, database, private decks or document authorization. Its server exposes original public demo content plus bounded guest-authored quizzes for the lifetime of a room. It never reads authenticated private decks or documents.
 
 ## Files (Step 5)
 
@@ -13,7 +13,7 @@ Approved match flow implemented as a separate runnable example. It does not modi
 | `projections.js`                    | Explicit public host/player views and hidden-answer/author boundaries                          |
 | `engine.js`                         | Authoritative phases, deadlines, submissions, voting, scoring and player-specific views        |
 | `charades.js`                       | Original guessing packs, shuffle, mark history and exhaustion                                  |
-| `content.js`                        | Five original quiz questions and eight original creative prompts                               |
+| `content.js`                        | Five original quiz questions and eight original creative prompts                               |\n| `custom-quiz.js`                    | Strict server-side guest-authored quiz validation                                             |\n| `public/guest-decks.js`             | Versioned browser-local IndexedDB quiz storage; import/export validation                      |\n| `public/create.html`, `create.js`    | Create, edit, reorder, import, export and host own quizzes without sign-in                    |\n| `public/practice.html`, `practice.js` | Play solo practice with feedback using own device-local quiz                             |
 | `public/index.html`                 | Accessible host/player page structure                                                          |
 | `public/app.js`                     | Browser connection, acknowledgment/reconnect handling and interface                            |
 | `public/style.css`                  | Responsive mobile styling                                                                      |
@@ -55,7 +55,7 @@ Replace the example domain. Forward that HTTPS origin to port 3001, including We
 ## Rules
 
 - 3–8 connected players, nickname only. One six-character code survives successive matches.
-- Quiz: five questions, 30 seconds each, first valid answer locked; 100 points per correct answer and no speed bonus. All answers or the deadline ends a question; reveal occurs once.
+- Quiz: five demo questions **or 1–20 validated local custom questions**, 30 seconds each, first valid answer locked; 100 points per correct answer and no speed bonus. All answers or the deadline ends a question; reveal occurs once.
 - Charades: select Actions or Animals; each participant acts once for up to 60 seconds after a three-second countdown. Only the performer sees the active clue. Correct adds one point; Pass adds none. Marks require group agreement and are self-reported. The round ends at the deadline or deck exhaustion; the turn summary reveals completed/pass/unanswered clues. No motion permission is needed.
 - Prompt Duel: one paired prompt per player, two assignments per player, 90 seconds to write. Responses lock on submission. Each matchup has 20 seconds for eligible players to vote; neither author may vote. Every valid vote gives its chosen author 100 points. Missing-response matchups skip without points. Identical response text still has distinct choice IDs.
 - The host advances after reveal and returns to the same lobby after the final result. Ties remain ties. Scores reset when the next match starts.
@@ -64,9 +64,9 @@ Replace the example domain. Forward that HTTPS origin to port 3001, including We
 
 ## Storage and operational limits
 
-Party state is held in one server process. A restart loses rooms; there is no database, cross-device account sync or multi-server room coordination in this example. Idle rooms expire after ten minutes. Guests' credentials and unsubmitted writing drafts use tab session storage; denied storage means a reload may lose reconnect access. Leaving the device ends its session; use a different tab to simulate another player. Do not share reconnect credentials.
+Custom quiz questions are saved only on the creator's browser until they choose to host. Creating a room sends that validated quiz to the server **in memory** so it can score other participants' answers. Its answer key is not disclosed to players before reveal. Rooms are limited to 1–20 questions, 2–4 choices each and bounded title/question/answer lengths. No user source document or private cloud deck is accessed.\n\nParty state is held in one server process. A restart loses rooms; there is no database, cross-device account sync or multi-server room coordination in this example. Idle rooms expire after ten minutes. Guests' credentials and unsubmitted writing drafts use tab session storage; denied storage means a reload may lose reconnect access. Leaving the device ends its session; use a different tab to simulate another player. Do not share reconnect credentials.
 
-The demo caps rooms, message sizes and action/connection rates and checks browser origins. Public deployment needs HTTPS, trusted proxy configuration, operational monitoring and deployment-specific abuse controls. No 100-player/load, screen-reader or physical-phone compatibility claim is made. These party scores never update study history or FSRS. This example remains a separate entry point until an independently reviewed integration with the main application.
+The demo caps rooms, message sizes and action/connection rates and checks browser origins. Public deployment needs HTTPS, trusted proxy configuration, operational monitoring and deployment-specific abuse controls. No 100-player/load, screen-reader or physical-phone compatibility claim is made. These party scores never update study history or FSRS. The guest pages are now integrated at `/party/` and `/party/create.html` in the main app while remaining independently runnable here.
 
 ## Verification recorded for this delivery
 

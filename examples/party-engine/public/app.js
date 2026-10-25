@@ -84,7 +84,19 @@ function hello(message) {
   if (ws?.readyState === 1) ws.send(JSON.stringify(message));
   else connect(message);
 }
-$("create").onclick = () => hello({ type: "create" });
+$("create").onclick = async () => {
+  const localId = new URLSearchParams(location.search).get("deck");
+  if (!localId) return hello({ type: "create" });
+  try {
+    const { getGuestDeck, validateLocalDeck } = await import("./guest-decks.js");
+    const record = await getGuestDeck(localId);
+    if (!record) throw new Error("Saved quiz not found on this device. Return to Make a Quiz.");
+    const quiz = validateLocalDeck(record);
+    hello({ type: "create", quiz });
+  } catch (error) {
+    status(error instanceof Error ? error.message : "Cannot open saved quiz.");
+  }
+};
 $("join").onsubmit = (e) => {
   e.preventDefault();
   hello({
@@ -168,7 +180,7 @@ function render() {
     element("p", invite.href);
     element(
       "p",
-      "Quiz: 5 questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.",
+      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.`,
     );
     if (host) {
       const label = element("label", "Game mode");

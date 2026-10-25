@@ -2,9 +2,9 @@
 
 **Live $0 preview:** [Open Trivia Lobby](https://trivia-lobby.onrender.com) · [Render Free service](https://dashboard.render.com/web/srv-dbecn2nb9u1s7398u8j0) · [Neon dashboard](https://console.neon.tech).
 
-The public preview was originally launched October 24, 2026. This guest-first branch adds an account-free homepage, **Start a Party** (Quiz, Prompt Duel and Charades for 3–8 players), and **Try a Lesson** (three browser-local sample lessons). A separate **Private library** option still requires an account for saved server-backed decks and documents. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
+The public preview was originally launched October 24, 2026. This guest-first app provides an account-free homepage, **Start a Party** (Quiz, Prompt Duel and Charades for 3–8 players), **Make a Quiz** (create/import a quiz, save it in IndexedDB, download a backup, practice solo or host it as a guest), and **Try a Lesson** (three browser-local sample lessons). A separate **Private library** option still requires an account for saved server-backed decks and documents. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
 
-**[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** choose the new guest party, share a room code and join by nickname. Private custom-deck hosting still requires signing in.
+**[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** start a guest party or [make a quiz without signing in](docs/FIRST_GAME.md#make-and-host-your-own-quiz-without-signing-in), then share a room code and join by nickname. Cloud-backed *private* decks and documents still require optional sign-in.
 
 
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
@@ -37,7 +37,7 @@ Back up existing databases before migration. Pre-account decks require verified 
 
 ## Features
 
-- One account for private decks, documents, drafts and learning history; guests can join live rooms.
+- No account required for public party games, three sample learning lessons, or locally saved custom quizzes. Optional private accounts continue to protect cloud-backed decks, documents and cross-device histories.
 - Retained originals, course/folder/tag organization, extracted-content search, reviewed imports and source-linked drafting.
 - MCQ, short-answer, flashcard, true/false, matching and hotspot authoring with editing, reordering and server autosave. Eleven graded model kinds. Imported legacy cards also support editing and reordering.
 - Visual practice with saved attempts, FSRS schedules, timed/untimed/adaptive modes, explanations and citations.

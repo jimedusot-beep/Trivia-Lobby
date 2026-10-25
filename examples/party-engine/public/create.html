@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Make your own quiz · Trivia Lobby</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./create.css" />
+  <script src="./create.js" type="module"></script>
+</head>
+<body>
+<main>
+  <header>
+    <p>TRIVIA LOBBY · MY DEVICE LIBRARY</p>
+    <h1>Make your own quiz</h1>
+    <p>No email or password. Create questions, save on this device, and invite your friends to play.</p>
+    <nav class="actions" aria-label="Quiz maker navigation">
+      <a href="/">Home</a>
+      <a href="./">Guest party games</a>
+    </nav>
+  </header>
+  <p class="note">Your custom quizzes stay in this browser's local storage (IndexedDB), not in the private cloud library. Clearing website data can erase them. Export a JSON backup if you want to keep them.</p>
+  <p id="status" role="status" aria-live="polite">Checking device storage…</p>
+  <section aria-labelledby="stored-title">
+    <h2 id="stored-title">My saved quizzes</h2>
+    <div id="saved-list" aria-live="polite"></div>
+    <div class="actions">
+      <button id="new-quiz" type="button">New quiz</button>
+      <label class="file-picker" for="import-file">Import CSV, TSV, TXT or JSON
+        <input type="file" id="import-file" accept=".csv,.tsv,.txt,.json,text/csv,application/json,text/plain" />
+      </label>
+    </div>
+    <p class="small">Import header example: Question, OptionA, OptionB, OptionC, OptionD, Correct, Explanation. Correct is A–D or 1–4.</p>
+  </section>
+  <section aria-labelledby="edit-title">
+    <h2 id="edit-title">Build your quiz</h2>
+    <label for="quiz-title">Quiz title (80 characters max)</label>
+    <input id="quiz-title" maxlength="80" placeholder="Family game night" required />
+    <p class="small">Add 1–20 questions with 2–4 answers each. Your quiz stays editable after saving.</p>
+    <h3>Questions <span id="count">0 / 20</span></h3>
+    <ol id="question-list" class="question-list"></ol>
+    <form id="question-form">
+      <h3 id="form-heading">Add question</h3>
+      <label for="prompt">Question (200 characters max)</label>
+      <textarea id="prompt" maxlength="200" rows="2" required placeholder="What is the capital of France?"></textarea>
+      <div class="answer-grid">
+        <div><label for="answer-a">Answer A</label><input id="answer-a" maxlength="120" required /></div>
+        <div><label for="answer-b">Answer B</label><input id="answer-b" maxlength="120" required /></div>
+        <div><label for="answer-c">Answer C (optional)</label><input id="answer-c" maxlength="120" /></div>
+        <div><label for="answer-d">Answer D (optional)</label><input id="answer-d" maxlength="120" /></div>
+      </div>
+      <label for="correct">Correct answer</label>
+      <select id="correct" required><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
+      <label for="explanation">Explanation (optional, 240 characters max)</label>
+      <textarea id="explanation" rows="2" maxlength="240" placeholder="This helps players learn why the answer is correct."></textarea>
+      <div class="actions">
+        <button type="submit" id="add-question">Add question</button>
+        <button type="button" id="cancel-edit" hidden>Cancel edit</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button type="button" id="save-quiz">Save quiz on this device</button>
+      <button type="button" id="host-quiz">Save &amp; host this quiz</button>
+      <button type="button" id="practice-quiz">Save &amp; practice solo</button>
+      <button type="button" id="backup-quiz">Download JSON backup</button>
+      <button type="button" id="csv-quiz">Download CSV</button>
+      <button type="button" id="delete-quiz">Delete this quiz</button>
+    </div>
+  </section>
+</main>
+</body>
+</html>

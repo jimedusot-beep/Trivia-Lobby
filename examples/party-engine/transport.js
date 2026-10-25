@@ -3,6 +3,7 @@ import { Party, roomCode } from "./engine.js";
 import { ParticipantSessions } from "./sessions.js";
 import { DeadlineScheduler } from "./scheduler.js";
 import { validateHello } from "./protocol.js";
+import { validateGuestQuiz } from "./custom-quiz.js";
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -13,7 +14,7 @@ export function attachPartySocket(server, {
 } = {}) {
   const scheduler = new DeadlineScheduler({ clock: partyOptions.clock, ...schedulerOptions });
   const rooms = new Map(), limits = new Map();
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 32768, perMessageDeflate: false });
   const send = (ws, data) => {
     if (ws.readyState === WebSocket.OPEN) {
       if (ws.bufferedAmount > 65536) ws.close(1013, "Slow connection");
@@ -110,7 +111,10 @@ export function attachPartySocket(server, {
             if (rooms.size >= 200) throw new Error("Server is full.");
             const code = roomCode(rooms);
             candidate = {
-              party: new Party(code, partyOptions),
+              party: new Party(code, {
+                ...partyOptions,
+                ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
+              }),
               sessions: new ParticipantSessions(),
             };
             rooms.set(code, candidate);

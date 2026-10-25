@@ -1,0 +1,39 @@
+/* The guest editor is an intentionally separate, account-free experience. */
+main { max-width: 920px; }
+nav.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+nav.actions a, .actions a { color: #dbd9ff; text-underline-offset: 3px; }
+.note { background: #25233d; border: 1px solid #807ab6; padding: 15px; border-radius: 12px; line-height: 1.5; }
+.small { color: #c6c3db; font-size: 0.9rem; }
+section { padding: 8px 0 20px; border-bottom: 1px solid #56516a; }
+h2 { font-size: 1.65rem; margin-bottom: 6px; }
+h3 { font-size: 1.25rem; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; align-items: center; }
+.actions button, .actions .file-picker {
+  width: auto; flex: 1 1 205px; text-align: center; margin: 0; cursor: pointer;
+}
+.file-picker {
+  display: inline-block; font-weight: 700; background: #24233d; border: 1px solid #ada9dd;
+  border-radius: 10px; padding: 12px; min-height: 48px; color: white;
+}
+.file-picker:focus-within { outline: 3px solid #fff; outline-offset: 3px; }
+.file-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.question-list { padding-left: 28px; }
+.question-list li { background: #24233d; border: 1px solid #777297; padding: 14px; margin: 12px 0; border-radius: 12px; }
+.question-list li p { margin: 6px 0; color: #dfdcf0; }
+.question-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.question-actions button {
+  flex: 1 1 140px; width: auto; min-height: 44px; margin: 0;
+  font-weight: 600; font-size: .85rem; padding: 8px;
+}
+#saved-list ul { padding: 0; list-style: none; }
+#saved-list li { margin: 5px 0; }
+#saved-list button { text-align: left; background: #24233d; color: white; border: 1px solid #827f9f; }
+#saved-list button:hover { background: #3e395e; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 600px) {
+  .answer-grid { grid-template-columns: 1fr; }
+  .actions button, .actions .file-picker { flex-basis: 100%; }
+  h1 { font-size: 2.6rem; }
+}
