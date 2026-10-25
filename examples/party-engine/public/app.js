@@ -5,17 +5,20 @@ let ws,
   offset = 0,
   retryTimer,
   phaseKey = "";
+// Works both at /party/ in the main app and at / in the standalone demo.
+const partyUrl = new URL("./", location.href);
+const credentialKey = `party-credential:${partyUrl.pathname}`;
 const $ = (id) => document.getElementById(id);
 const status = (text) => {
   $("status").textContent = text;
 };
 try {
-  credential = JSON.parse(sessionStorage.getItem("party-credential"));
+  credential = JSON.parse(sessionStorage.getItem(credentialKey));
 } catch {}
 $("code").value = new URLSearchParams(location.search).get("code") || "";
 function save() {
   try {
-    sessionStorage.setItem("party-credential", JSON.stringify(credential));
+    sessionStorage.setItem(credentialKey, JSON.stringify(credential));
   } catch {
     status(
       "Storage unavailable: keep this tab open to preserve your reconnect credential.",
@@ -24,9 +27,9 @@ function save() {
 }
 function connect(hello) {
   clearTimeout(retryTimer);
-  ws = new WebSocket(
-    `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/socket`,
-  );
+  const socketUrl = new URL("socket", partyUrl);
+  socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(socketUrl);
   ws.onopen = () => {
     status("Connected.");
     if (credential) ws.send(JSON.stringify({ type: "resume", ...credential }));
@@ -94,7 +97,7 @@ $("leave").onclick = () => {
   credential = null;
   save();
   ws.close();
-  location.href = "/";
+  location.href = partyUrl.href;
 };
 function action(type, value, promptIndex) {
   if (pending || ws.readyState !== 1) {
@@ -157,7 +160,12 @@ function render() {
       "Host disconnected. Timed play continues; afterward we wait up to 60 seconds for the host.",
     );
   if (state.phase === "lobby") {
-    element("p", `Join link: ${location.origin}/?code=${state.code}`);
+    const invite = new URL(partyUrl);
+    invite.searchParams.set("code", state.code);
+    const link = element("a", "Join this party on your phone");
+    link.id = "invite";
+    link.href = invite.href;
+    element("p", invite.href);
     element(
       "p",
       "Quiz: 5 questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.",

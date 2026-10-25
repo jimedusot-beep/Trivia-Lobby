@@ -204,7 +204,13 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
   const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
   const createLimits = new Map<string, { count: number; resetAt: number }>();
-  const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 4096, perMessageDeflate: false });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 4096, perMessageDeflate: false });
+  // Claim only the private-deck quiz path. Other sockets share this HTTP listener.
+  const upgrade = (req: IncomingMessage, socket: import("node:stream").Duplex, head: Buffer) => {
+    if (req.url?.split("?")[0] !== "/ws") return;
+    wss.handleUpgrade(req, socket, head, ws => wss.emit("connection", ws, req));
+  };
+  server.on("upgrade", upgrade);
   const cleanup = setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
@@ -442,6 +448,6 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       }
     });
   });
-  wss.on("close",()=>{clearInterval(cleanup);for(const room of rooms.values()){clearTimeout(room.timer);clearTimeout(room.buzzTimer);}rooms.clear();});
+  wss.on("close",()=>{server.off("upgrade",upgrade);clearInterval(cleanup);for(const room of rooms.values()){clearTimeout(room.timer);clearTimeout(room.buzzTimer);}rooms.clear();});
   return wss;
 }

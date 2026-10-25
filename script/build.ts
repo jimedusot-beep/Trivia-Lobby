@@ -72,6 +72,8 @@ async function buildAll() {
     logLevel: "info",
   });
   await cp("migrations", "dist/migrations", { recursive: true });
+  // The guest page uses relative assets and ships with the compiled server.
+  await cp("examples/party-engine/public", "dist/party", { recursive: true });
 }
 
 buildAll().catch((err) => {

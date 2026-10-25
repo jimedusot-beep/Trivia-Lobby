@@ -102,3 +102,9 @@ PDF-extraction delivery: the current standalone suite passes 27 tests with no fa
 The three browser cases were attempted locally and all were blocked at browser launch by the missing Chromium executable; they are not included in the 27 passing server/engine tests.
 
 Hosted CI resolved the browser gate for implementation commit `b9dc1c`: [Guest party engine run](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/40193016168) passed all **27 engine/server tests and 3 Chromium scenarios** (28.0 seconds for browser scenarios). This covers rendered Quiz, Prompt Duel and a complete three-player Charades rotation, including mobile-sized viewports. It does not certify physical devices, motion sensors or manual screen-reader behavior.
+
+## Main-app integration
+
+The main application now mounts the same guest engine at `/party/` on its existing HTTP port. The sign-in screen, signed-in navigation and home page link to it. Invite URLs retain `/party/?code=...`; guest credentials are scoped to the page path. The production build ships the page assets in `dist/party`. No second service or standalone dependency install is needed when running the main application.
+
+`transport.js` owns the reusable guest socket handler; `server.js` remains the standalone launcher. `/party/socket`, the existing private-deck `/ws` transport and development HMR handle only their own upgrade paths. The guest route never reads private decks or account sessions. Set `PUBLIC_ORIGIN` to the exact external HTTPS origin behind a reverse proxy; without it the origin must be HTTP(S) with the incoming Host. Proxy WebSocket upgrades and retain Host. Rooms remain in memory and disappear on restart. This code change is not a deployment.
