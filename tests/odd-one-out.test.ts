@@ -6,7 +6,7 @@ import WebSocket from "ws";
 import { scoreRound } from "../server/game-modes";
 import { attachGameSocket } from "../server/live-game";
 import { WS_EVENTS } from "../shared/schema";
-import { oddOneOutStarterCards } from "../client/src/lib/odd-one-out-pack";
+import { oddOneOutStarterCards } from "../server/odd-one-out-pack";
 import type { IStorage } from "../server/storage";
 
 type Message = {v:number;type:string;payload:any};
