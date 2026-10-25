@@ -108,6 +108,7 @@ export const WS_EVENTS = {
   LOBBY_UPDATE: 'lobby_update',
   GAME_STARTED: 'game_started',
   QUESTION_START: 'question_start',
+  SUBMISSION_PROGRESS: 'submission_progress', // Aggregate, host-only
   ANSWER_RESULT: 'answer_result',
   GAME_OVER: 'game_over',
   ERROR: 'error',

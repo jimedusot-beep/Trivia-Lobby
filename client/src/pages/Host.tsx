@@ -113,7 +113,7 @@ export default function Host() {
     <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
       {/* Top Bar */}
       <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
-         <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/decks">
+         <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
            </Link></Button>
          <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +129,7 @@ export default function Host() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-6xl mx-auto w-full">
-        {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/decks" className="underline">Return to decks</Link></p>}
+        {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/" className="underline">Return to decks</Link></p>}
         
         {/* LOBBY STATE */}
         {gameState.gameStatus === 'lobby' && (
@@ -137,9 +137,9 @@ export default function Host() {
             <div className="space-y-3"><label htmlFor="game-mode" className="block">Game mode</label>
               <select id="game-mode" className="p-3 rounded bg-slate-800 text-white border" value={gameState.mode??"classic"} disabled={!gameState.roomCode}
                 onChange={e=>emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:e.target.value})}>
-                {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+                {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"],["sprint","Sprint Trivia (speed bonus)"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
               </select>
-              <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round.</p>
+              <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round. Sprint awards 500–1,000 points for correct answers depending on server-measured response speed.</p>
             </div>
             <div className="space-y-4">
               <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
@@ -200,6 +200,22 @@ export default function Host() {
              {gameState.currentQuestion && !gameState.lastAnswerResult && (
                <div className="space-y-8 animate-in zoom-in-90 duration-300">
                  <p role="status" className="text-center text-xl font-semibold">Question {gameState.currentQuestion?.questionIndex !== undefined ? gameState.currentQuestion.questionIndex+1 : "…"} of {gameState.currentQuestion?.totalQuestions ?? "?"}</p>
+                 {gameState.submissionProgress?.questionIndex === gameState.currentQuestion.questionIndex && (
+                   <div className="max-w-md mx-auto space-y-2" role="status" aria-live="polite">
+                     <p className="text-center text-lg font-semibold">
+                       Answers received: {gameState.submissionProgress.received} / {gameState.submissionProgress.total}
+                       <span className="block text-sm font-normal text-slate-300">
+                         {gameState.submissionProgress.connected} connected
+                       </span>
+                     </p>
+                     <div className="h-3 bg-white/20 rounded-full overflow-hidden" aria-hidden="true">
+                       <div className="h-full bg-green-400 transition-[width]" style={{
+                         width: (gameState.submissionProgress.total
+                           ? 100 * gameState.submissionProgress.received / gameState.submissionProgress.total : 0) + "%"
+                       }} />
+                     </div>
+                   </div>
+                 )}
                  <div className="w-full bg-white/5 rounded-full p-1">
                     <TimerBar 
                       durationMs={gameState.timeRemainingMs || 10000} 
@@ -317,7 +333,7 @@ export default function Host() {
                 )}
              </div>
 
-             <Button asChild size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black"><Link href="/decks">
+             <Button asChild size="lg" variant="outline" className="mt-8 text-black border-white hover:bg-white hover:text-black"><Link href="/">
                  Back to Home
                </Link></Button>
            </div>
