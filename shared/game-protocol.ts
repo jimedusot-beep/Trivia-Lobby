@@ -3,7 +3,7 @@ import { WS_EVENTS } from "./schema";
 
 /** Wire protocol v1. Unknown fields and unknown client event names are rejected. */
 export const PROTOCOL_VERSION = 1 as const;
-export const gameModeSchema=z.enum(["classic","teams","buzzer","wager","workshop","party"]);
+export const gameModeSchema=z.enum(["classic","teams","buzzer","wager","workshop","party","sprint"]);
 const playerStatusSchema=z.object({coins:z.number().int().nonnegative(),focus:z.number().int().nonnegative(),guard:z.number().int().nonnegative()}).strict();
 export const roomCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
 const action = z.object({ roomCode: roomCodeSchema.optional() }).strict();
@@ -79,6 +79,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   envelope(WS_EVENTS.BUZZ_STATE,z.object({playerId:z.string().uuid().nullable()}).strict()),
   envelope(WS_EVENTS.PLAYER_STATUS,playerStatusSchema),
   envelope(WS_EVENTS.ANSWER_ACCEPTED,z.object({questionIndex:z.number().int().nonnegative()}).strict()),
+  envelope(WS_EVENTS.SUBMISSION_PROGRESS,z.object({questionIndex:z.number().int().nonnegative(),received:z.number().int().nonnegative(),total:z.number().int().nonnegative(),connected:z.number().int().nonnegative()}).strict()),
   envelope(WS_EVENTS.QUESTION_START, questionSchema),
   envelope(WS_EVENTS.ANSWER_RESULT, answerResultSchema),
   envelope(WS_EVENTS.LEADERBOARD, z.object({ leaderboard: z.array(publicPlayerSchema) }).strict()),

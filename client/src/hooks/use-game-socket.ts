@@ -7,7 +7,8 @@ import {
 } from "@shared/game-protocol";
 
 export type GameState = {
-  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party";
+  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party"|"sprint";
+  submissionProgress?:{questionIndex:number;received:number;total:number;connected:number};
   status?:{coins:number;focus:number;guard:number};
   buzzedPlayerId?:string|null;
   answered?:boolean;
@@ -122,10 +123,13 @@ export function useGameSocket(role: "host" | "player" = "player") {
             setGameState(prev=>({...prev,status:payload}));break;
           case WS_EVENTS.ANSWER_ACCEPTED:
             setGameState(prev=>({...prev,answered:true}));break;
+          case WS_EVENTS.SUBMISSION_PROGRESS:
+            if(role==="host") setGameState(prev=>({...prev,submissionProgress:payload}));
+            break;
           case WS_EVENTS.QUESTION_START:
             setGameState(prev => ({
               ...prev, currentQuestion: payload, lastAnswerResult: undefined,
-              phase: "playing", gameStatus: "playing", answered:false,
+              phase: "playing", gameStatus: "playing", answered:false,submissionProgress:undefined,
               serverStartTs: payload.serverStartTs, timeRemainingMs: payload.timeLimitMs,
             }));
             break;
@@ -148,7 +152,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
               leaderboard: payload.leaderboard,
               serverStartTs: payload.question?.serverStartTs,
               timeRemainingMs: payload.question?.timeLimitMs,
-              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,
+              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,submissionProgress:undefined,
             }));
             break;
           case WS_EVENTS.GAME_OVER:
