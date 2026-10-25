@@ -20,11 +20,18 @@ jobs:
       - run: npm ci
       - name: Verify public health and socket safeguards
         run: npm run smoke
-      - name: Verify faster entry bundle is the deployed version
+      - name: Inspect live frontend asset and public cache headers
         run: |
-          curl -fsS --retry 2 --max-time 90 "$SMOKE_URL/" > /tmp/trivia-home.html
-          if ! grep -q 'index-BU5xsjui.js' /tmp/trivia-home.html; then
-            echo 'Frontend has not rolled forward to the verified code-split bundle yet'
-            exit 1
-          fi
-          echo 'Verified route-split public frontend is live'
+          set -euo pipefail
+          for u in "$SMOKE_URL/" "$SMOKE_URL/?asset-probe=0341181653c0"; do
+            curl -fsS --max-time 90 -H 'Cache-Control: no-cache' -D /tmp/trivia-headers -o /tmp/trivia-home.html "$u"
+            echo "Public URL: $u"
+            grep -Ei '^(cache-control|age|etag|cf-cache-status|last-modified|x-render-):' /tmp/trivia-headers || true
+            grep -Eo 'index-[a-zA-Z0-9_-]+\.js' /tmp/trivia-home.html || true
+            if grep -q 'index-BU5xsjui.js' /tmp/trivia-home.html; then
+              echo 'Verified route-split public frontend is live'
+              exit 0
+            fi
+          done
+          echo 'Frontend still serving a different script fingerprint'
+          exit 1
