@@ -1,6 +1,6 @@
 # Free Trivia Lobby website — Render + Neon, no Replit
 
-**Status:** This is a $0 **preview configuration**, not a published website or a production SLA. It provisions **one free Render Node web service**. A free Neon project provides PostgreSQL and private S3-compatible object storage. No paid web service, Render database, or persistent disk is provisioned by `render.yaml`.
+**Status (October 24, 2026): LIVE FREE PREVIEW at [trivia-lobby.onrender.com](https://trivia-lobby.onrender.com).** The existing Render **Free** web service is connected to the existing Neon **Free** production database and private `uploads` bucket. The app's startup verified private uploads, applied all 8 migrations and initialized 19 public-schema tables. A public GitHub-hosted smoke test passed HTTP, database readiness and secure WebSockets. This is not a production SLA or a guarantee of future $0 usage.
 
 **Do not store irreplaceable or sensitive student records in the free preview until you have independently verified backups and data-retention controls.** Any existing Replit/development data must be backed up and deliberately migrated; creating a new Neon database does not copy it.
 
@@ -29,36 +29,36 @@ Sources:
 - Remote Postgres/S3 traffic and heavy memory/CPU can hit free-tier limits. Large PDFs, sustained classrooms, 100 simultaneous *real* users and guaranteed uptime are **not promised**.
 - The free tier does not give a comprehensive independent offsite backup solution. Export and restore test before using meaningful data.
 
-## Step 1 — finish the release PRs
+## Existing live instance — do this instead of reprovisioning
 
-Review and merge [#36 — security and migrations](https://github.com/jimedusot-beep/Trivia-Lobby/pull/36) **before** [#37 — free hosting](https://github.com/jimedusot-beep/Trivia-Lobby/pull/37), and make sure the final commit passes CI. Don't deploy the vulnerable older `main` branch.
+**To use Trivia Lobby:** open [the live site](https://trivia-lobby.onrender.com), register your first private account and make a small practice deck. To inspect or redeploy, open its [existing Render service dashboard](https://dashboard.render.com/web/srv-dbecn2nb9u1s7398u8j0). Do **not** create another Render Blueprint, Neon project or storage bucket for this installation. Auto-deploy is intentionally off, so reviewed future GitHub merges need a deliberate deployment.
 
 If any current project (including unpublished Replit workspaces) contains saved decks or original documents, **do not delete it**. Export/backup and verify it before deciding to start an empty database.
 
-## Step 2 — connect the existing Neon backend (one account)
+## Existing Neon backend — already connected
 
-**For your existing organization/project/production branch, prefer the [Neon CLI setup guide](NEON_CLI_SETUP.md)** instead of creating another project. It covers the exact project IDs, private storage provisioning, env sync, build and real-service verification, and the Free plan's AI Gateway restriction.
+**Already configured:** production Postgres uses pooled `DATABASE_URL` for normal queries and direct `DATABASE_URL_UNPOOLED` for migrations; the storage bucket is private `uploads`, with an S3 credential scoped to read/write access. Paid Neon AI Gateway inference is explicitly disabled. Never copy database passwords or storage secrets into GitHub source or screenshots. The [Neon CLI guide](NEON_CLI_SETUP.md) is for rebuilding this configuration deliberately, not an additional step needed to use the site.
 
 The manual steps below are an alternative only when you do **not** already have a Neon project.
 
-## Step 2 — manual Neon Console setup (alternative)
+## New installations only — manual Neon Console setup (alternative)
 
 1. Open [Neon Console](https://console.neon.tech) and create a **Free** project, for example `trivia-lobby`, using a region supporting Neon Object Storage (e.g. AWS US East N. Virginia or Ohio). Select the free plan—not a trial with a paid upgrade.
-2. From the **Connect** view, obtain your project's **direct (not transaction-pooled)** PostgreSQL connection URI including TLS (`sslmode=require`). The app's migration runner uses a PostgreSQL advisory lock and should not use transaction-pooled PgBouncer. Save the URI privately for `DATABASE_URL`.
-3. Open the Neon **Storage** view and create a bucket named `trivia-originals` with **private** access. Never set it to public-read.
+2. From **Connect**, obtain both PostgreSQL URLs with TLS (`sslmode=require`): the **pooled** URI for `DATABASE_URL` and the **direct, not transaction-pooled** URI for `DATABASE_URL_UNPOOLED`. The migration runner uses a PostgreSQL advisory lock and requires the direct connection.
+3. Open the Neon **Storage** view and create a bucket named `uploads` with **private** access. Never set it to public-read.
 4. From **Storage → Connect**, select the **S3** connection parameters and obtain:
    - S3 endpoint URL (`AWS_ENDPOINT_URL_S3` in Neon's UI)
    - `AWS_REGION`
    - `AWS_ACCESS_KEY_ID`
    - `AWS_SECRET_ACCESS_KEY`
-   - Bucket name (`trivia-originals`, if you chose that name)
+   - Bucket name (`uploads`, if you chose that name)
 5. Keep credentials private: do **not** paste them into GitHub, frontend `VITE_*` variables, source code, screenshots, issues or public chat. Neon's credentials are server-only.
 
 Neon reference: https://neon.com/docs/storage/get-started
 
-## Step 3 — connect the free Render website
+## New installations only — create a Render website
 
-After **both PRs are merged**, open the [Deploy to Render](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby) shortcut, or choose **New → Blueprint** from [Render Dashboard](https://dashboard.render.com) and connect GitHub repo `jimedusot-beep/Trivia-Lobby`.
+Only for a separate, new installation, open the [Deploy to Render](https://render.com/deploy?repo=https://github.com/jimedusot-beep/Trivia-Lobby) shortcut, or choose **New → Blueprint** from [Render Dashboard](https://dashboard.render.com) and connect GitHub repo `jimedusot-beep/Trivia-Lobby`.
 
 **Check the pricing screen before confirmation:** the Blueprint must list only **one `trivia-lobby` web service on plan Free**—no Render database, disk, worker or paid service.
 
@@ -73,19 +73,19 @@ Render prompts for **six values** during initial setup:
 | `AWS_ACCESS_KEY_ID` | Branch-scoped Neon Storage S3 credential ID |
 | `AWS_SECRET_ACCESS_KEY` | Branch-scoped Neon Storage S3 credential secret |
 
-The private `trivia-originals` bucket is declared in `neon.ts`; the app automatically detects Neon path-style S3. The Blueprint also sets `S3_FORCE_PATH_STYLE=true`, `NODE_ENV=production`, `PORT=10000` and `NODE_VERSION=22.22.0`; no disk path needs entering. Keep `autoDeployTrigger=off` initially.
+The private `uploads` bucket is declared in `neon.ts`; the app automatically detects Neon path-style S3. The Blueprint also sets `S3_FORCE_PATH_STYLE=true`, `NODE_ENV=production`, `PORT=10000` and `NODE_VERSION=22.22.0`; no disk path needs entering. Keep `autoDeployTrigger=off` initially.
 
 **Do not approve** if the dashboard shows a paid Render service, a storage disk, or a Postgres database. You do not need a card-based Cloudflare R2 subscription for this path.
 
-## Step 4 — verify your real URL
+## Verify the existing public website
 
-Render will assign your site an actual `https://….onrender.com` address. That exact URL is unknown until you deploy. The application launches only when it can:
+Your existing site URL is **https://trivia-lobby.onrender.com**. The application launches only when it can:
 
 1. Write, read back, SHA-256-verify and delete a random test object from the `neon.ts` private Neon bucket.
 2. Apply the versioned PostgreSQL migrations.
 3. Start Express + WebSockets and serve the frontend.
 
-Check `https://YOUR-ACTUAL-ADDRESS.onrender.com/health/live` and `/health/ready` (both must return HTTP 200). In GitHub Actions, the **Public deployment smoke** manual workflow can test the actual HTTPS host with the existing `npm run smoke` command.
+Check `https://trivia-lobby.onrender.com/health/live` and `https://trivia-lobby.onrender.com/health/ready` (both must return HTTP 200). In GitHub Actions, the **Public deployment smoke** manual workflow can test the actual HTTPS host with the existing `npm run smoke` command.
 
 Then test on your iPhone and another browser: register an account, create a quiz, host and join a live room by PIN and QR, finish and reopen a report, publish and complete a guest assignment, and upload/download a **disposable** test document. Restart the service and check those completed records and file bytes remain accessible. Active games need to be restarted after a service restart.
 
