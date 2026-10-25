@@ -19,6 +19,11 @@ export default function Host() {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [oddSettings,setOddSettings]=useState({roundCount:20,timeLimitMs:45_000,shuffleQuestions:false,shuffleAnswers:false});
+  const updateOddSettings = (patch:Partial<typeof oddSettings>) => {
+    const next={...oddSettings,...patch};setOddSettings(next);
+    if(gameState.roomCode&&gameState.phase==="lobby")emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out",...next});
+  };
   const [presenting, setPresenting] = useState(false);
   const reducedMotion = useReducedMotion();
   const lastCountdownCue = useRef("");
@@ -70,7 +75,7 @@ export default function Host() {
   useEffect(() => {
     if(!connected||!gameState.roomCode||gameState.phase!=="lobby"||sessionStorage.getItem("trivia_mode_preference")!=="odd_one_out")return;
     sessionStorage.removeItem("trivia_mode_preference");
-    emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out"});
+    emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out",...oddSettings});
   },[connected,gameState.roomCode,gameState.phase,emit]);
 
   const copyCode = () => {
@@ -142,9 +147,21 @@ export default function Host() {
           <div className="w-full text-center space-y-12 animate-in fade-in duration-700">
             <div className="space-y-3"><label htmlFor="game-mode" className="block">Game mode</label>
               <select id="game-mode" className="p-3 rounded bg-slate-800 text-white border" value={gameState.mode??"classic"} disabled={!gameState.roomCode}
-                onChange={e=>emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:e.target.value})}>
+                onChange={e=>emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:e.target.value,...(e.target.value==="odd_one_out"?oddSettings:{})})}>
                 {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"],["odd_one_out","Odd One Out"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
               </select>
+              {gameState.mode==="odd_one_out"&&<section aria-label="Odd One Out settings" className="mx-auto max-w-2xl bg-white/10 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <label className="text-sm">Number of rounds
+                  <input aria-label="Odd One Out round count" type="number" className="mt-1 w-full p-3 rounded text-slate-900" min={1} max={500} value={oddSettings.roundCount} onChange={e=>updateOddSettings({roundCount:Math.max(1,Math.min(500,Math.floor(Number(e.target.value)||1)))})}/>
+                </label>
+                <label className="text-sm">Time per question
+                  <select aria-label="Odd One Out timer" className="mt-1 w-full p-3 rounded bg-slate-800 text-white" value={oddSettings.timeLimitMs} onChange={e=>updateOddSettings({timeLimitMs:Number(e.target.value)})}>
+                    {[15000,30000,45000,60000,90000].map(value=><option key={value} value={value}>{value/1000} seconds</option>)}
+                  </select>
+                </label>
+                <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={oddSettings.shuffleQuestions} onChange={e=>updateOddSettings({shuffleQuestions:e.target.checked})}/>Shuffle question order</label>
+                <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={oddSettings.shuffleAnswers} onChange={e=>updateOddSettings({shuffleAnswers:e.target.checked})}/>Shuffle answer positions</label>
+              </section>}
               <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round. Odd One Out awards 1 point for the impostor and 1 host-reviewed explanation bonus. It requires a deck of four-choice questions with explanations.</p>
             </div>
             <div className="space-y-4">
