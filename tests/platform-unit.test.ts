@@ -26,6 +26,15 @@ test("original game modes: wagers are bounded, upgrades consumed and party round
  assert.equal(scoreRound({...base,mode:"party",round:2}).awarded,240);
 });
 
+test("sprint rewards faster server-timed correct answers and clamps late inputs",()=>{
+  const base={mode:"sprint" as const,correct:true,streak:0,score:0,wager:0,focus:0,guard:0,round:0,timeLimitMs:20_000};
+  assert.equal(scoreRound({...base,responseMs:0}).awarded,1000);
+  assert.equal(scoreRound({...base,responseMs:10_000}).awarded,750);
+  assert.equal(scoreRound({...base,responseMs:20_000}).awarded,500);
+  assert.equal(scoreRound({...base,responseMs:99_000}).awarded,500);
+  assert.equal(scoreRound({...base,responseMs:10_000,correct:false}).awarded,0);
+  assert.equal(scoreRound({...base,responseMs:10_000,pointsFactor:2}).awarded,1500);
+});
 test("QTI single-choice and text exports preserve escaped questions and correct responses",()=>{
   for(const answer of [
     {kind:"multiple_choice",options:[{id:"A",label:"<yes> & \"ok\""},{id:"B",label:"No"}],correctOptionIds:["A"]},

@@ -7,6 +7,7 @@ import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Sear
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useDeleteDeck } from "@/hooks/use-decks";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +21,25 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function Home() {
-  const { data: decks, isLoading } = useDecks();
+  const { data: decks, isLoading, refetch } = useDecks();
   const deleteDeck = useDeleteDeck();
+  const [, navigate] = useLocation();
+  const [oddPending,setOddPending] = useState(false);
+  const [oddError,setOddError] = useState("");
+  const launchOddPack = async () => {
+    if(oddPending)return;
+    setOddPending(true);setOddError("");
+    try {
+      const response=await fetch("/api/odd-one-out/starter",{method:"POST"});
+      if(!response.ok)throw new Error("Could not create the starter deck");
+      const data=await response.json() as {id:number};
+      if(!Number.isInteger(data.id)||data.id<1)throw new Error("Invalid starter deck response");
+      await refetch();
+      sessionStorage.setItem("trivia_mode_preference","odd_one_out");
+      navigate(`/host/${data.id}`);
+    } catch(error) {setOddError(error instanceof Error?error.message:"Could not open Odd One Out");}
+    finally {setOddPending(false);}
+  };
   const [search, setSearch] = useState("");
   const matchingDecks = (decks ?? []).filter(deck =>
     [deck.title, deck.category, deck.description].some(value =>
@@ -55,10 +73,12 @@ export default function Home() {
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/library">Private source library</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/assignments">Self-paced assignments</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/reports"><ChartBar className="mr-2 h-5 w-5"/> Game reports</Link></Button>
+          <Button type="button" size="lg" variant="outline" disabled={oddPending} onClick={()=>void launchOddPack()} className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2">🧩 {oddPending?"Opening…":"Odd One Out · 20 Questions"}</Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
               <PlusCircle className="mr-3 h-6 w-6" /> Import Deck
             </Link></Button>
         </div>
+        {oddError&&<p role="alert" className="text-red-700 font-semibold">{oddError}</p>}
       </div>
 
       {/* Decks Grid */}

@@ -15,6 +15,7 @@ import { universalGameCards } from "./live-question-adapter";
 import { gameReportSink, registerGameReportRoutes } from "./game-reports";
 import { registerAssignmentRoutes } from "./assignment-routes";
 import { apiAbuseLimit } from "./rate-limit";
+import { ODD_ONE_OUT_STARTER_TITLE, oddOneOutStarterCards } from "./odd-one-out-pack";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -44,6 +45,16 @@ export async function registerRoutes(
       const input = api.decks.import.input.parse(req.body);
       res.status(201).json(await storage.importDeck(input.deck, input.cards, req.studyUser!.id));
     } catch (e) { if (e instanceof z.ZodError) res.status(400).json({ message: e.message }); else next(e); }
+  });
+  // Starter answers stay on the server; the caller never downloads unpublished keys.
+  app.post("/api/odd-one-out/starter", requireUser, async (req, res, next) => {
+    try {
+      const ownerId=req.studyUser!.id;
+      const title=ODD_ONE_OUT_STARTER_TITLE;
+      // Storage import receipts make concurrent identical imports idempotent.
+      const created=await storage.importDeck({title,description:"20 expert-level Odd One Out questions with explanations",category:"Dinner Games"},oddOneOutStarterCards,ownerId);
+      res.status(201).json({id:created.id});
+    } catch(err) {next(err);}
   });
   app.post(api.cards.create.path, requireUser, async (req, res, next) => {
     try {
