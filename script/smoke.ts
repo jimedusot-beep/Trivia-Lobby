@@ -81,7 +81,8 @@ for (const path of ["/api/auth/me", "/api/decks", "/api/assignments"]) {
   if (res.status !== 401 || !(res.headers.get("content-type") ?? "").includes("application/json")) throw new Error(path + " must reject anonymous users with JSON 401");
   if (res.headers.get("x-content-type-options") !== "nosniff" || !(res.headers.get("cache-control") ?? "").includes("no-store")) throw new Error(path + " must disable private response caching and content sniffing");
 }
-for (const path of ["/api/__smoke_missing__", "/assets/__smoke_missing__.js"]) {
+// Vite owns development asset fallbacks; production must also reject missing compiled assets.
+for (const path of ["/api/__smoke_missing__", ...(origin.protocol === "https:" ? ["/assets/__smoke_missing__.js"] : [])]) {
   const res = await fetch(new URL(path, origin), { signal: AbortSignal.timeout(15_000) });
   if (res.status !== 404 || !(res.headers.get("content-type") ?? "").includes("application/json")) throw new Error(path + " must not fall back to private or SPA content");
 }
