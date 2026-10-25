@@ -1,0 +1,68 @@
+# Trivia Lobby: standalone guest party engine
+
+Approved match flow implemented as a separate runnable example. It does not modify the existing Trivia Lobby app, accounts, database, private decks or document authorization. Its server exposes only original public demo content.
+
+## Files (Step 5)
+
+| File                                | Responsibility                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `server.js`                         | HTTP/static hosting, WebSockets, credentials, origin checks, limits, heartbeat and room expiry |
+| `engine.js`                         | Authoritative phases, deadlines, submissions, voting, scoring and player-specific views        |
+| `content.js`                        | Five original quiz questions and eight original creative prompts                               |
+| `public/index.html`                 | Accessible host/player page structure                                                          |
+| `public/app.js`                     | Browser connection, acknowledgment/reconnect handling and interface                            |
+| `public/style.css`                  | Responsive mobile styling                                                                      |
+| `test/engine.test.js`               | Deterministic clock, scoring, privacy and transition tests                                     |
+| `test/server.test.js`               | Real HTTP and WebSocket multi-client integration                                               |
+| `package.json`, `package-lock.json` | Standalone dependencies and startup scripts                                                    |
+
+## Local startup (Step 6)
+
+Install Node.js 22 or newer and Git first. Use a new directory to avoid altering an existing checkout:
+
+```sh
+git clone --branch feature/guest-party-engine https://github.com/jimedusot-beep/Trivia-Lobby.git Trivia-Lobby-party-demo
+cd Trivia-Lobby-party-demo/examples/party-engine
+npm ci
+npm test
+npm start
+```
+
+Open **http://localhost:3001** and click **Create host screen**. Open three separate player tabs at the same address, or use three phones with the LAN command below. Enter the displayed code and a different nickname in each. The host display does not count as a player. All players need to reach the same running server.
+
+To play on phones on your own Wi-Fi, stop the server with Ctrl+C and run:
+
+```sh
+HOST=0.0.0.0 PORT=3001 npm start
+```
+
+Open `http://YOUR-COMPUTER-LAN-IP:3001` on the host and phones; replace the IP with your computer's actual LAN address. Permit port 3001 through your local firewall if needed. Use the join link shown on the host screen. Windows PowerShell: set `$env:HOST="0.0.0.0"` and `$env:PORT="3001"` before `npm start`.
+
+For a VPS, the same clone/install/start commands work with Node 22+. The default listens on loopback. With an existing HTTPS reverse proxy and a real domain, start the backend with:
+
+```sh
+PUBLIC_ORIGIN=https://party.example.com HOST=127.0.0.1 PORT=3001 npm start
+```
+
+Replace the example domain. Forward that HTTPS origin to port 3001, including WebSocket upgrades for `/socket`; retain the original Host header. `PUBLIC_ORIGIN` must exactly match the browser origin, without a trailing slash. Keep it running with your VPS process manager. This is a startup example, not an automatic deployment or domain/TLS provisioning script.
+
+## Rules
+
+- 3–8 connected players, nickname only. One six-character code survives successive matches.
+- Quiz: five questions, 30 seconds each, first valid answer locked; 100 points per correct answer and no speed bonus. All answers or the deadline ends a question; reveal occurs once.
+- Prompt Duel: one paired prompt per player, two assignments per player, 90 seconds to write. Responses lock on submission. Each matchup has 20 seconds for eligible players to vote; neither author may vote. Every valid vote gives its chosen author 100 points. Missing-response matchups skip without points. Identical response text still has distinct choice IDs.
+- The host advances after reveal and returns to the same lobby after the final result. Ties remain ties. Scores reset when the next match starts.
+- Timers continue through player disconnects. A disconnected host may resume during timed play; after the active phase closes there is a 60-second host grace period. Expiry marks the match interrupted. No automatic promotion based on nickname.
+- Server receipt/phase state decides eligibility; no client timestamp is accepted as proof. Request IDs permit acknowledgment retries without scoring twice. Reconnect uses a secret credential, not the code or nickname alone.
+
+## Storage and operational limits
+
+Party state is held in one server process. A restart loses rooms; there is no database, cross-device account sync or multi-server room coordination in this example. Idle rooms expire after ten minutes. Guests' credentials and unsubmitted writing drafts use tab session storage; denied storage means a reload may lose reconnect access. Leaving the device ends its session; use a different tab to simulate another player. Do not share reconnect credentials.
+
+The demo caps rooms, message sizes and action/connection rates and checks browser origins. Public deployment needs HTTPS, trusted proxy configuration, operational monitoring and deployment-specific abuse controls. No 100-player/load, screen-reader or physical-phone compatibility claim is made. These party scores never update study history or FSRS. This example remains a separate entry point until an independently reviewed integration with the main application.
+
+## Verification recorded for this delivery
+
+Standalone `npm ci --ignore-scripts --no-audit --no-fund` succeeded; `npm test` passed all 11 tests with no skips. The real-server integration uses three WebSocket players and checks HTTP serving, hidden answer keys, scoring, a forged host credential and valid reconnection. Root TypeScript checking and browser-script/server syntax checks passed. Tests use short injected timings; default match durations remain 3/30/90/20 seconds.
+
+Chromium was unavailable, and Playwright's browser download returned an invalid/truncated archive. No rendered browser, physical-phone, manual screen-reader or load verification was completed. This implementation is provided for local review and further integration, not described as a tested live deployment.
