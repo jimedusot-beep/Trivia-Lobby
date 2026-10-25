@@ -4,6 +4,8 @@
 
 The existing website has already launched and its public HTTP/database-readiness/WebSocket smoke test passed on October 24, 2026. The database is initially empty; sign up to create your first private deck. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
 
+**[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** register, save a few questions, host, share a room code, and join from another device.
+
 
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
 
