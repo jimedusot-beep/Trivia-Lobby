@@ -65,6 +65,16 @@ function broadcast(room: Room, type: string, payload: unknown) {
 function lobbyUpdate(room: Room) {
   broadcast(room, WS_EVENTS.LOBBY_UPDATE, { players: publicPlayers(room) });
 }
+/** Aggregate-only signal restricted to the authenticated host's current socket. */
+function sendSubmissionProgress(room: Room) {
+  if (room.state !== "playing") return;
+  send(room.hostWs, WS_EVENTS.SUBMISSION_PROGRESS, {
+    questionIndex: room.questionIndex,
+    received: room.answers.size,
+    total: room.players.size,
+    connected: [...room.players.values()].filter(p => p.connected).length,
+  });
+}
 function resultFor(room: Room, playerId?: string): AnswerResult {
   const record = playerId ? room.answers.get(playerId) : undefined;
   const card = room.questions[room.questionIndex];
@@ -91,6 +101,7 @@ function snapshot(room: Room, ws: WebSocket, player?: Player) {
     ...(room.state === "reveal" || room.state === "leaderboard" || room.state === "finished"
       ? { answerResult: resultFor(room, player?.id), leaderboard: publicPlayers(room) } : {}),
   });
+  if (!player && room.state === "playing") sendSubmissionProgress(room);
 }
 function reveal(room: Room) {
   if (room.state !== "playing") return;
@@ -158,6 +169,7 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
     timeLimitMs: questionDuration, totalQuestions: room.questions.length, serverStartTs: now, deadlineTs: room.deadlineTs,
   };
   broadcast(room, WS_EVENTS.QUESTION_START, room.question);
+  sendSubmissionProgress(room);
   room.timer = setTimeout(() => reveal(room), questionDuration);
   room.timer.unref?.();
 }
@@ -318,7 +330,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           player.ws = ws; player.connected = true; player.tokenHash = tokenHash(newToken);
           room = target; role = "player"; playerId = player.id; target.touchedAt = now;
           send(ws, WS_EVENTS.ROOM_JOINED, { roomCode: target.code, playerId: player.id, token: newToken });
-          snapshot(target, ws, player); lobbyUpdate(target);
+          snapshot(target, ws, player); lobbyUpdate(target); sendSubmissionProgress(target);
           if (prior !== ws) prior.close(1000, "Session replaced");
           return;
         }
@@ -418,9 +430,11 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             }
             correct = received === current.correctOption;
           }
-          const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor});
-          room.answers.set(playerId, { answer:msg.payload.answer,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
+          const responseMs = Math.max(0, now - (room.question?.serverStartTs ?? now));
+          const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor,responseMs,timeLimitMs:room.question?.timeLimitMs});
+          room.answers.set(playerId, { answer:msg.payload.answer,correct,responseMs,...scored });
           send(ws,WS_EVENTS.ANSWER_ACCEPTED,{questionIndex:room.questionIndex});
+          sendSubmissionProgress(room);
           if(room.mode==="buzzer"){
             clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
             broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
@@ -438,7 +452,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       if (role === "host" && room.hostWs === ws) room.hostConnected = false;
       if (role === "player" && playerId) {
         const player = room.players.get(playerId);
-        if (player?.ws === ws) { player.connected = false; lobbyUpdate(room); }
+        if (player?.ws === ws) { player.connected = false; lobbyUpdate(room); sendSubmissionProgress(room); }
       }
     });
   });
