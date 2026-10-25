@@ -1,4 +1,3 @@
-import { quiz } from "./content.js";
 
 // Explicit public fields only: never serialize the complete match or a session record.
 export function projectParty(party, actor) {
@@ -16,6 +15,8 @@ export function projectParty(party, actor) {
     interrupted: party.interrupted,
     index: party.index,
     role: actor === "host" ? "host" : "player",
+    quizTitle: party.quizTitle,
+    quizLength: party.quiz.length,
     players: [...party.players.values()]
       .map(({ id, name, connected, score, correct }) => ({
         id,
@@ -27,11 +28,11 @@ export function projectParty(party, actor) {
       .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)),
   };
   if (party.mode === "quiz" && ["question", "reveal"].includes(party.phase)) {
-    const q = quiz[party.index];
+    const q = party.quiz[party.index];
     v.question = { prompt: q.prompt, choices: [...q.choices] };
     v.locked = party.answers.has(actor);
     v.received = party.answers.size;
-    v.total = quiz.length;
+    v.total = party.quiz.length;
     if (reveal) {
       v.question.correct = q.correct;
       v.question.explanation = q.explanation;
