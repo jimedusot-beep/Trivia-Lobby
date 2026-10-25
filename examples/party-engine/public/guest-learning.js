@@ -54,6 +54,7 @@ export function validateProgress(value) {
 export async function courseFromDeck(record) {
   if (!deckIdPattern.test(record?.id)) fail("Invalid saved quiz ID.");
   const deck = validateLocalDeck(record);
+  if (!globalThis.crypto?.subtle) fail("Learning courses need HTTPS or localhost. Open the secure Trivia Lobby website.");
   // Only question content versions a path; renaming a quiz preserves its progress.
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(deck.questions)));
   const version = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");

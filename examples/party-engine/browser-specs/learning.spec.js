@@ -28,6 +28,10 @@ test("own quiz becomes a guest course with reload recovery, retries, unlocks, ac
   await page.locator("#daily").click();
   await page.getByRole("button", { name: "B. Wrong answer", exact: true }).click();
   await expect(page.locator("#answer-explanation")).toContainText("Right answer. Explanation 1.");
+  await page.locator("#back-path").click();
+  await page.locator("#daily").click();
+  await expect(page.locator("#feedback")).toBeVisible();
+  await expect(page.locator("#question-position")).toContainText("Question 1 of 5");
   await page.reload();
   await page.getByRole("button", { name: "Resume Lesson 1", exact: true }).click();
   await expect(page.locator("#feedback")).toBeVisible();
@@ -118,22 +122,23 @@ test("editing course questions starts a fresh path while keeping historical XP a
 test("two tabs deduplicate rewards and preserve independent course completions atomically", async ({ page, context }) => {
   await createCourse(page, 1);
   const other = await context.newPage(); await other.goto("/learn.html");
-  const complete = async target => target.evaluate(async () => {
+  const complete = async (target, quizIndex = 0) => target.evaluate(async index => {
     const { listGuestDecks } = await import("./guest-decks.js");
     const model = await import("./guest-learning.js"), store = await import("./guest-learning-store.js");
-    const course = await model.courseFromDeck((await listGuestDecks())[0]);
+    const course = await model.courseFromDeck((await listGuestDecks())[index]);
     let session = model.newSession(course, 0);
     session = model.answerSession(course, session, 0); session = model.advanceSession(course, session);
     return (await store.finishLearningSession(course, session)).earnedXP;
-  });
+  }, quizIndex);
   expect((await Promise.all([complete(page), complete(other)])).sort((a, b) => a - b)).toEqual([0, 15]);
   await page.evaluate(async () => {
     const { listGuestDecks, saveGuestDeck } = await import("./guest-decks.js");
-    const [deck] = await listGuestDecks(); await saveGuestDeck({ ...deck, id: crypto.randomUUID(), title: "Another course" });
+    const [deck] = await listGuestDecks();
+    for (let i = 0; i < 2; i++) await saveGuestDeck({ ...deck, id: crypto.randomUUID(), title: `Another course ${i}` });
   });
-  await Promise.all([complete(page), complete(other)]);
-  await page.reload(); await expect(page.locator("#xp")).toHaveText("30 practice XP");
-  await expect(page.locator("#lesson-count")).toHaveText("2");
+  await Promise.all([complete(page, 0), complete(other, 1)]);
+  await page.reload(); await expect(page.locator("#xp")).toHaveText("45 practice XP");
+  await expect(page.locator("#lesson-count")).toHaveText("3");
 });
 
 test("storage failure keeps lessons usable and marks progress as session-only", async ({ page }) => {

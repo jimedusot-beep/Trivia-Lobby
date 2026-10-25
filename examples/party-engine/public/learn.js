@@ -118,6 +118,10 @@ async function checkpoint() {
 async function openLesson(index) {
   await refreshProgress();
   if (!isUnlocked(progress, course, index)) throw new Error("Finish the earlier lesson first.");
+  if (savedSession?.lessonIndex === index && !sessionStep(course, savedSession).done) {
+    session = structuredClone(savedSession); sessionXP = null; renderRunner();
+    say("Resumed your saved lesson."); return;
+  }
   session = newSession(course, index); sessionXP = null;
   await checkpoint(); renderRunner();
   say(persistent ? "Lesson started. Progress saves on this device." : "Lesson started. Progress is available for this page session only.");

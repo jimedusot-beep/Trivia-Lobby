@@ -6,6 +6,8 @@ The public preview was originally launched October 24, 2026. This guest-first ap
 
 **[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** start a guest party or [make a quiz without signing in](docs/FIRST_GAME.md#make-and-host-your-own-quiz-without-signing-in), then share a room code and join by nickname. Cloud-backed *private* decks and documents still require optional sign-in.
 
+**Learn from your own quizzes:** open **My courses** or choose **Save & learn** in the quiz maker. `/party/learn.html` turns each saved quiz into ordered lessons of up to five questions, with explanations, one retry per missed question, a daily goal, practice XP, levels and achievements. Refresh can resume an unfinished lesson. Replays improve your best first-try score without extra XP. Use **Download learning backup** to move quizzes and completed progress to another device. This is browser-local practice, not automatic sync. See the [guest learning contract and limits](docs/GUEST_LEARNING_PATH.md).
+
 
 Private study materials, visual exams, saved learning progress and live classroom games in one TypeScript/React/Express/PostgreSQL application.
 
