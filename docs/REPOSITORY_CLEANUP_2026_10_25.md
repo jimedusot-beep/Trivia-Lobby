@@ -28,7 +28,7 @@ The Neon **Free** production branch had no snapshots and no snapshot schedule at
 
 ## Branch archive candidates
 At audit, 30 branches belonged to already-merged pull requests. These can be considered for branch deletion once each relevant PR merge, branch HEAD and absence of unique unmerged work are confirmed. GitHub retains merged commits and PR histories.
-Additional old branches include the superseded PR #9 and three `ops/*` verification branches. Inspect their unique commits before deleting. The current GitHub connector lacks delete-ref support: **no branches were deleted by this cleanup**.
+Additional old branches include the superseded PR #9 and three `ops/*` verification branches. Inspect their unique commits before deleting. The current GitHub connector lacks delete-ref support: **no branches were deleted by this cleanup**. A [dry-run-first verified cleanup helper](../script/cleanup-merged-branches.sh) is available for an authenticated repository administrator: `bash script/cleanup-merged-branches.sh --dry-run`; only after inspecting each eligible branch should they opt in with `--execute`. The helper skips open PRs, non-merged branches and branch refs that moved after the merge.
 
 ## Release tag
 A release tag should identify an immutable, passing and reviewed **main** commit. Do not label #45-#47 as shipped until combined acceptance is complete. The available connector cannot create Git tags or GitHub Releases; the repository administrator should tag using their standard release process only after verification. No release tag was created in this cleanup.
