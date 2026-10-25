@@ -223,7 +223,7 @@ const questions = [
     "Mary Shelley wrote Frankenstein. Bram Stoker, Oscar Wilde, and Robert Louis Stevenson wrote the other three novels."
   ]
 ] as const;
-export const oddOneOutStarterCards: Omit<InsertCard,"deckId">[] = questions.map(([category,choices,correctOption,explanation],index)=>({
-  type:"multiple_choice" as const,front:`Odd One Out ${index+1} — ${category}: Which ONE does not belong?`,
+export const oddOneOutStarterCards: Omit<InsertCard,"deckId">[] = questions.map(([_category,choices,correctOption,explanation],index)=>({
+  type:"multiple_choice" as const,front:`Odd One Out ${index+1}: Which ONE does not belong?`,
   back:explanation,options:[...choices],correctOption,
 }));
