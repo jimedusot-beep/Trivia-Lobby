@@ -1,0 +1,20 @@
+name: Verify deployed Trivia Lobby
+on:
+  push:
+    branches: [ops/verify-pr40-20261025]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run smoke
