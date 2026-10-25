@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { randomUUID } from "node:crypto";
 import WebSocket from "ws";
 import { attachGameSocket, makeRoomCode } from "../server/live-game";
 import { WS_EVENTS } from "../shared/schema";
