@@ -3,7 +3,7 @@ import { WS_EVENTS } from "./schema";
 
 /** Wire protocol v1. Unknown fields and unknown client event names are rejected. */
 export const PROTOCOL_VERSION = 1 as const;
-export const gameModeSchema=z.enum(["classic","teams","buzzer","wager","workshop","party","sprint"]);
+export const gameModeSchema=z.enum(["classic","teams","buzzer","wager","workshop","party","sprint","odd_one_out"]);
 const playerStatusSchema=z.object({coins:z.number().int().nonnegative(),focus:z.number().int().nonnegative(),guard:z.number().int().nonnegative()}).strict();
 export const roomCodeSchema = z.string().regex(/^[A-HJ-NP-Z2-9]{6}$/);
 const action = z.object({ roomCode: roomCodeSchema.optional() }).strict();
@@ -26,12 +26,15 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }).strict()),
   envelope(WS_EVENTS.START_GAME, action),
   envelope(WS_EVENTS.NEXT_QUESTION, action),
-  envelope(WS_EVENTS.CONFIGURE_GAME,z.object({roomCode:roomCodeSchema,mode:gameModeSchema}).strict()),
+  envelope(WS_EVENTS.CONFIGURE_GAME,z.object({roomCode:roomCodeSchema,mode:gameModeSchema,roundCount:z.number().int().min(1).max(500).optional(),timeLimitMs:z.number().int().min(5000).max(120000).optional(),shuffleQuestions:z.boolean().optional(),shuffleAnswers:z.boolean().optional()}).strict()),
   envelope(WS_EVENTS.BUZZ,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative()}).strict()),
   envelope(WS_EVENTS.BUY_UPGRADE,z.object({roomCode:roomCodeSchema,upgrade:z.enum(["focus","guard"])}).strict()),
+  envelope(WS_EVENTS.AWARD_ODD_BONUS,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative(),playerId:z.string().uuid()}).strict()),
+  envelope(WS_EVENTS.FINALIZE_ODD_REVIEW,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative()}).strict()),
   envelope(WS_EVENTS.SUBMIT_ANSWER, z.object({
     roomCode: roomCodeSchema.optional(), questionIndex: z.number().int().nonnegative(),
     answer: responseSchema,
+    explanation:z.string().trim().max(200).optional(),
     wager:z.number().int().min(0).max(100).default(0),
   }).strict()),
 ]);
@@ -52,11 +55,13 @@ export const questionSchema = z.object({
   deadlineTs: z.number(),
 }).strict();
 export type PublicQuestion = z.infer<typeof questionSchema>;
+export const oddReviewSchema=z.object({questionIndex:z.number().int().nonnegative(),finalized:z.boolean(),entries:z.array(z.object({playerId:z.string().uuid(),name:z.string(),correct:z.boolean(),explanation:z.string(),bonusAwarded:z.boolean()}).strict())}).strict();
+export type OddReview=z.infer<typeof oddReviewSchema>;
 export const answerResultSchema = z.object({
   questionIndex: z.number().int(), correctLetter: letter.optional(),
   correctAnswers: z.array(z.string().max(500)).max(8).optional(),
   isCorrect: z.boolean().nullable(), awarded: z.number().int().min(-100),
-  explanation:z.string().optional(),
+  explanation:z.string().optional(), bonusAwarded:z.number().int().min(0).max(1).optional(),
 }).strict();
 export type AnswerResult = z.infer<typeof answerResultSchema>;
 export const snapshotSchema = z.object({
@@ -64,7 +69,7 @@ export const snapshotSchema = z.object({
   mode:gameModeSchema.optional(),status:playerStatusSchema.optional(),buzzedPlayerId:z.string().uuid().nullable().optional(),
   playerId: z.string().uuid().optional(), score: z.number().optional(), answered:z.boolean().optional(),
   question: questionSchema.optional(), answerResult: answerResultSchema.optional(),
-  leaderboard: z.array(publicPlayerSchema).optional(),
+  leaderboard: z.array(publicPlayerSchema).optional(), oddReview:oddReviewSchema.optional(),
 }).strict();
 
 export const serverMessageSchema = z.discriminatedUnion("type", [
@@ -82,6 +87,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   envelope(WS_EVENTS.SUBMISSION_PROGRESS,z.object({questionIndex:z.number().int().nonnegative(),received:z.number().int().nonnegative(),total:z.number().int().nonnegative(),connected:z.number().int().nonnegative()}).strict()),
   envelope(WS_EVENTS.QUESTION_START, questionSchema),
   envelope(WS_EVENTS.ANSWER_RESULT, answerResultSchema),
+  envelope(WS_EVENTS.ODD_REVIEW_STATE,oddReviewSchema),
   envelope(WS_EVENTS.LEADERBOARD, z.object({ leaderboard: z.array(publicPlayerSchema) }).strict()),
   envelope(WS_EVENTS.GAME_OVER, z.object({ leaderboard: z.array(publicPlayerSchema) }).strict()),
   envelope(WS_EVENTS.ERROR, z.object({ message: z.string() }).strict()),
