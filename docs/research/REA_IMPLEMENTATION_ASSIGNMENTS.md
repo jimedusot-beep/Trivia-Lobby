@@ -134,3 +134,26 @@ Every slice supplies original code and content, acceptance tests for observable 
 ## Research-to-implementation handoff
 
 Before coding each slice, verify its linked source paths and latest-main status, then select one ambiguous behavior that would change design. Resolve that ambiguity with permitted public observation or a focused source experiment if tooling is available; record any remaining unknown. Do not re-open a broad ten-platform survey before every PR. Each implementation PR links its assignment, tests actually run and intentional differences. Existing private account protections and guest product requirements are release constraints throughout.
+
+
+## Follow-up: party references, without blocking the guest release
+
+See [new reference extraction](REA_PARTY_REFERENCE_EXTRACTION.md) for pinned sources, license/status limitations, corrected claims and one tested scoring function. G0–G7 stay the immediate guest-delivery sequence. G5/G6 should additionally study ubat and Charades Expo; the latter's incomplete tilt/sound implementation strengthens the existing touch-first decision. Do not add a mandatory competitor integration.
+
+### G12 — Party session survives game changes
+
+Proposed owner: live transport developer; depends on G0/G1/G2 and G7's first public online journey. Add PartySession/MatchInstance separation and an allowlisted activity descriptor. Preserve roster/code and credentialed host authority on return-to-party; invalidate prior match actions and cancel timers. Coordinate live-game/protocol edits with G2/G9. Keep private hosting and account routes protected.
+
+Acceptance: two clean clients finish a demo, return to party and begin another without re-entering nickname/code. Stale match answer/start, forged host parameter and duplicate switch request cannot change current state. A failed adapter launch retains the party with a recoverable status. Enforce player bounds server-side and test min−1/min/max/max+1. p95 switch acknowledgment target <500 ms at 100-ms RTT for 8 players, measured on documented staging; no load result is claimed yet.
+
+### G13 — Prompt Duel, one original writing/voting round
+
+Proposed owner: game reducer/backend developer with UI developer; depends on G12 and frozen projection contract. Implement the bounded three-to-eight-player writing/voting/reveal contract in the new extraction document with original prompts. One PR may deliver a pure reducer and fixtures; a second adds public UI/transport after reducer acceptance. Reuse validation/credentials, not a third-party stack or answer-text identity.
+
+Acceptance: balanced prompt assignments, anonymous responses, no self-vote, deadline and missing-response rules, stable duplicate-text IDs, duplicate-vote idempotency, reconnect projection and one final award per vote. Test all boundaries in reducer plus a three-client browser journey and keyboard-only voting. p95 acknowledgment target <300 ms at 100-ms RTT for 8 players. Humor votes never update factual correctness or FSRS. Source licenses without a clear grant are reference-only.
+
+### G14 — Trace fixtures for new mode transitions
+
+Proposed owner: QA/game-systems developer; can begin with G5 or G13's contract. Store sanitized action/clock/content fixtures and independent expected state/projection assertions. Include phase close races, duplicate delivery, reconnect and stale-match events. Report the first divergence; don't compare only a function to itself or remove security fields during normalization. Test that an intentional double-award or pre-reveal author leak makes the harness fail. Run representative fake-clock traces in <1 s on a documented CI runner; retain a separate real-browser scenario. Never store tokens or private document text in fixtures.
+
+Bluff & Learn, Clue Scale and Sketch Relay remain scoped future mode proposals, not concurrent prerequisites. Promote only one after the first shared-party writing/voting journey passes. Content filters/aliases are small extensions to existing manifests and canonical acceptedAnswers, not new competing storage systems.

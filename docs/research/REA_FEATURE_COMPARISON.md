@@ -77,3 +77,8 @@ Use topic budgets with a documented device/server, production build, network ass
 ## Delivery policy
 
 For each assignment: investigate one feature → freeze a small behavior contract → implement an original version → test it → report measured gaps → move on. Research is part of delivery, not an indefinitely expanding prerequisite. Current Task 0 supplies the initial contracts; no competitor UI/code/assets were vendored. Re-check main and open PRs before each implementation assignment to avoid overwriting parallel work.
+
+
+## Follow-up reference extraction
+
+[Party-game extraction](REA_PARTY_REFERENCE_EXTRACTION.md) adds twelve pinned references, corrects overclaims about sensor/audio completeness and launcher player-bound enforcement, and proposes a persistent party with separate match instances. One pure Longwave score function was executed against nine finite boundary fixtures plus NaN behavior; full games and REA runtime remain untested. This follow-up does not change the original 21-repository count or ten-platform baseline survey. G12–G14 add shared-party, prompt-vote and trace-test slices after the initial guest journey; they do not block G0–G7.
