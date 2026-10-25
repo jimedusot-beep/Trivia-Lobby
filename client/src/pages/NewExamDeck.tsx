@@ -29,9 +29,9 @@ export default function NewExamDeck() {
     <section className="max-w-xl mx-auto space-y-6">
       <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
       <h1 className="text-3xl font-bold">New Visual Exam Deck</h1>
-      <p className="text-sm text-amber-800 bg-amber-50 rounded p-3">
-        Decks are currently public until accounts and ownership are implemented.
-        Do not enter private exam or student information.
+      <p className="text-sm text-amber-800 bg-amber-50 rounded p-3" role="note">
+        Your saved decks and questions are private to your signed-in account.
+        Live games share their questions with invited players. Keep sensitive student records out of this free preview until independent backups and access controls have been verified.
       </p>
       <Card><CardHeader><CardTitle>Deck details</CardTitle></CardHeader>
         <CardContent><form onSubmit={e=>void submit(e)} className="space-y-4">
