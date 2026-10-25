@@ -112,10 +112,10 @@ export default function VisualPractice() {
     setOrderIds(ids);
   }
   if(loading)return <main className="p-8">Loading questions…</main>;
-  if(error&&!items.length)return <main className="p-8" role="alert">{error} <Link href="/">Back</Link></main>;
+  if(error&&!items.length)return <main className="p-8" role="alert">{error} <Link href="/decks">Back</Link></main>;
   return <main className="min-h-screen p-4 md:p-8 bg-muted/30">
     <section className="max-w-3xl mx-auto space-y-5">
-      <Button asChild variant="ghost"><Link href="/">Back to library</Link></Button>
+      <Button asChild variant="ghost"><Link href="/decks">Back to library</Link></Button>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — {timed?"Timed Test":"Visual Practice"}</h1>
       <p className="text-sm text-muted-foreground">Answers and review schedules are saved to your account. Choose timed, untimed or adaptive practice.</p>
       <div className="flex flex-wrap gap-3"><a href={`/visual-practice/${deckId}`} className="underline">Untimed</a><a href={`/visual-practice/${deckId}?mode=timed`} className="underline">Timed</a><a href={`/visual-practice/${deckId}?mode=adaptive`} className="underline">Adaptive</a></div>
