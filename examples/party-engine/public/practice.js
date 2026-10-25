@@ -53,6 +53,9 @@ $("again").addEventListener("click", () => {
     const url = new URL("./create.html", location.href);
     url.searchParams.set("edit", id);
     $("edit").href = url.href;
+    const learning = new URL("./learn.html", location.href);
+    learning.searchParams.set("deck", id);
+    $("learn").href = learning.href;
     $("status").textContent = "Ready to practice. Choose an answer.";
     render();
   } catch (err) {

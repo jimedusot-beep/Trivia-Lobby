@@ -83,6 +83,10 @@ async function renderSaved() {
       load(item);
       $("edit-title").scrollIntoView({ behavior: "smooth" });
     });
+    const learn = element("a", `Learn ${item.title}`, li);
+    const url = new URL("./learn.html", location.href);
+    url.searchParams.set("deck", item.id);
+    learn.href = url.href;
   }
 }
 function load(record) {
@@ -172,6 +176,12 @@ $("host-quiz").addEventListener("click", () => attempt(async () => {
 $("practice-quiz").addEventListener("click", () => attempt(async () => {
   const record = await save();
   const target = new URL("./practice.html", location.href);
+  target.searchParams.set("deck", record.id);
+  location.assign(target.href);
+}));
+$("learn-quiz").addEventListener("click", () => attempt(async () => {
+  const record = await save();
+  const target = new URL("./learn.html", location.href);
   target.searchParams.set("deck", record.id);
   location.assign(target.href);
 }));
