@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Practice my quiz · Trivia Lobby</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./create.css" />
+  <script src="./practice.js" type="module"></script>
+</head>
+<body>
+<main>
+  <header>
+    <p>TRIVIA LOBBY · PRACTICE</p>
+    <h1 id="title">Practice my quiz</h1>
+    <p>No account required. This is self-paced practice on your current device.</p>
+    <nav class="actions"><a href="./create.html">My quizzes</a> · <a href="/">Home</a></nav>
+  </header>
+  <p id="status" role="status" aria-live="polite">Loading quiz from this device…</p>
+  <section id="lesson" hidden aria-label="Practice questions">
+    <p id="progress"></p>
+    <h2 id="prompt" tabindex="-1"></h2>
+    <div id="choices"></div>
+    <section id="feedback" aria-live="polite" hidden>
+      <h3 id="result"></h3>
+      <p id="explanation"></p>
+      <button id="next">Next question</button>
+    </section>
+  </section>
+  <section id="completed" hidden aria-label="Practice results">
+    <h2>Practice complete</h2>
+    <p id="score"></p>
+    <button id="again">Try again</button>
+    <p><a id="edit" href="./create.html">Edit this quiz</a> · <a href="./">Host a guest party</a></p>
+  </section>
+</main>
+</body>
+</html>
