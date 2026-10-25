@@ -3,13 +3,14 @@ import { useToast } from "@/hooks/use-toast";
 import { WS_EVENTS } from "@shared/schema";
 import {
   PROTOCOL_VERSION, serverMessageSchema,
-  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState,
+  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState, type OddReview,
 } from "@shared/game-protocol";
 
 export type GameState = {
-  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party"|"sprint";
+  mode?:"classic"|"teams"|"buzzer"|"wager"|"workshop"|"party"|"sprint"|"odd_one_out";
   submissionProgress?:{questionIndex:number;received:number;total:number;connected:number};
   status?:{coins:number;focus:number;guard:number};
+  oddReview?:OddReview;
   buzzedPlayerId?:string|null;
   answered?:boolean;
   roomCode?: string;
@@ -129,9 +130,12 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.QUESTION_START:
             setGameState(prev => ({
               ...prev, currentQuestion: payload, lastAnswerResult: undefined,
-              phase: "playing", gameStatus: "playing", answered:false,submissionProgress:undefined,
+              phase: "playing", gameStatus: "playing", answered:false,submissionProgress:undefined,oddReview:undefined,
               serverStartTs: payload.serverStartTs, timeRemainingMs: payload.timeLimitMs,
             }));
+            break;
+          case WS_EVENTS.ODD_REVIEW_STATE:
+            if(role==="host") setGameState(prev=>({...prev,oddReview:payload}));
             break;
           case WS_EVENTS.ANSWER_RESULT:
             setGameState(prev => ({ ...prev, phase: "reveal", lastAnswerResult: payload }));
@@ -152,7 +156,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
               leaderboard: payload.leaderboard,
               serverStartTs: payload.question?.serverStartTs,
               timeRemainingMs: payload.question?.timeLimitMs,
-              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,submissionProgress:undefined,
+              mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,submissionProgress:undefined,oddReview:payload.oddReview,
             }));
             break;
           case WS_EVENTS.GAME_OVER:
