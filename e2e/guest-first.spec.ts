@@ -37,5 +37,5 @@ test("public guest party loads, while private deck APIs stay protected", async (
   const privateDecks = await request.get("/api/decks");
   expect(privateDecks.status()).toBe(401);
   await page.goto("/decks");
-  await expect(page.getByRole("heading", { name: "Sign in to your study library" })).toBeVisible();
+  await expect(page.getByText("Sign in to your study library", { exact: true })).toBeVisible();
 });
