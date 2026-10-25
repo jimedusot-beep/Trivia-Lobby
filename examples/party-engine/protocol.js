@@ -1,4 +1,5 @@
 // Original transport contracts. Identity always comes from the authenticated socket.
+import { validateGuestQuiz } from "./custom-quiz.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -28,7 +29,7 @@ export function validateHello(message) {
     resume: ["type", "code", "actor", "token"],
   }[message.type];
   if (!required) fail("Create or join a room first.");
-  fields(message, required);
+  fields(message, required, message.type === "create" ? ["quiz"] : []);
   if (
     message.type !== "create" &&
     (typeof message.code !== "string" ||
@@ -49,6 +50,8 @@ export function validateHello(message) {
       !/^[A-Za-z0-9_-]{43}$/.test(message.token))
   )
     fail("Invalid reconnect credential.");
+  if (message.type === "create" && Object.hasOwn(message, "quiz"))
+    validateGuestQuiz(message.quiz);
   return message;
 }
 export function validateAction(message) {
