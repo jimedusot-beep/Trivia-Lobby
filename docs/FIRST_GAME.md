@@ -22,7 +22,7 @@ Want to learn instead? Choose **Try a Lesson** from the welcome page. Three samp
 
 1. Open Trivia Lobby and choose **Make a Quiz**. No email/password is needed.
 2. Enter a quiz title, your question, 2–4 answer choices, the correct choice and an optional explanation. Select **Add question**. Repeat up to 20 questions.
-3. Select **Save quiz on this device**. Your quiz remains editable after refreshing the browser. For a separate backup, select **Download JSON backup** (or **Download CSV**). You can import CSV, TSV, TXT with a header, or your exported JSON backup.
+3. Select **Save quiz on this device**. Your quiz remains editable after refreshing the browser. For a separate backup, select **Download JSON backup** (or **Download CSV**). You can import CSV, TSV, TXT with a header, or your exported JSON backup. Choose **Save & practice solo** to study your custom questions with explanations without an account.
 4. Select **Save & host this quiz**. This opens the guest party with your locally saved quiz ready to host.
 5. Choose **Create host screen**, share the six-character room code, and have **3–8 guests** join by nickname.
 6. Select **Quiz** and **Start match**. The server checks answers and announces the winner; friends never need your private-library login.
