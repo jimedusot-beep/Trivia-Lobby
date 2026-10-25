@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { quiz, prompts } from "./content.js";
 import { validateAction } from "./protocol.js";
+import { makeTurn, markClue, finishTurn } from "./charades.js";
 import { projectParty } from "./projections.js";
 const fail = (message) => {
   throw new Error(message);
@@ -14,9 +15,18 @@ export class Party {
       writeMs = 90000,
       voteMs = 20000,
       countdownMs = 3000,
+      charadesMs = 60000,
     } = {},
   ) {
-    Object.assign(this, { code, clock, quizMs, writeMs, voteMs, countdownMs });
+    Object.assign(this, {
+      code,
+      clock,
+      quizMs,
+      writeMs,
+      voteMs,
+      countdownMs,
+      charadesMs,
+    });
     this.players = new Map();
     this.hostConnected = true;
     this.phase = "lobby";
@@ -84,7 +94,7 @@ export class Party {
       else if (this.phase === "writing") {
         this.index = 0;
         this.openVote();
-      } else if (this.phase === "question" || this.phase === "voting")
+      } else if (["question", "voting", "acting"].includes(this.phase))
         this.closeRound();
     }
     if (this.hostWaitAt !== null && this.clock() - this.hostWaitAt >= 60000) {
@@ -93,6 +103,11 @@ export class Party {
     }
   }
   open() {
+    if (this.mode === "charades") {
+      this.turn = makeTurn(this.roster[this.index], this.category);
+      this.enter("acting", this.charadesMs);
+      return;
+    }
     if (this.mode === "quiz") {
       this.answers = new Map();
       this.enter("question", this.quizMs);
@@ -126,12 +141,13 @@ export class Party {
           p.score += 100;
           p.correct++;
         }
-    } else {
+    } else if (this.mode === "duel") {
       for (const optionId of this.votes.values()) {
         const option = this.options.find((o) => o.id === optionId);
         this.players.get(option.author).score += 100;
       }
     }
+    if (this.mode === "charades") finishTurn(this.turn);
     this.enter("reveal");
   }
   // Credentials bind actor outside this reducer. Request IDs are bounded per actor.
@@ -151,7 +167,8 @@ export class Party {
     if (msg.type === "start") {
       if (actor !== "host" || this.phase !== "lobby")
         fail("Only the host can start from the lobby.");
-      if (!["quiz", "duel"].includes(msg.value)) fail("Unknown game mode.");
+      if (!["quiz", "duel", "charades"].includes(msg.value))
+        fail("Unknown game mode.");
       // Validate before pruning: a rejected start must not revoke a disconnected
       // participant's reconnect access while the party is still in the lobby.
       const activePlayers = [...this.players.values()].filter(
@@ -162,6 +179,7 @@ export class Party {
       for (const [id, p] of this.players)
         if (!p.connected) this.players.delete(id);
       this.mode = msg.value;
+      this.category = msg.category ?? "actions";
       this.matchId = randomUUID();
       this.index = 0;
       this.interrupted = false;
@@ -215,11 +233,33 @@ export class Party {
       if (!this.options.some((o) => o.id === msg.value)) fail("Invalid vote.");
       this.votes.set(actor, msg.value);
       if (this.votes.size === this.roster.length - 2) this.closeRound();
+    } else if (msg.type === "mark") {
+      if (
+        this.mode !== "charades" ||
+        this.phase !== "acting" ||
+        actor !== this.turn.performerId
+      )
+        fail("Only the current performer may mark a clue.");
+      this.players.get(actor).score += markClue(
+        this.turn,
+        msg.clueId,
+        msg.value,
+      );
+      // Invalidate duplicate physical/touch actions without extending the turn deadline.
+      this.revision++;
+      if (this.turn.cursor === this.turn.queue.length) this.closeRound();
     } else if (msg.type === "next") {
       if (actor !== "host" || this.phase !== "reveal")
         fail("Only the host can advance after reveal.");
-      const total = this.mode === "quiz" ? quiz.length : this.pairs.length;
+      const total =
+        this.mode === "quiz"
+          ? quiz.length
+          : this.mode === "charades"
+            ? this.roster.length
+            : this.pairs.length;
       if (++this.index >= total) this.enter("finished");
+      else if (this.mode === "charades")
+        this.enter("countdown", this.countdownMs);
       else if (this.mode === "quiz") this.open();
       else this.openVote();
     } else if (msg.type === "lobby") {

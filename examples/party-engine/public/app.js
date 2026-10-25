@@ -112,6 +112,9 @@ function action(type, value, promptIndex) {
   };
   if (value !== undefined) pending.value = value;
   if (promptIndex !== undefined) pending.promptIndex = promptIndex;
+  if (type === "start" && value === "charades")
+    pending.category = $("charades-category").value;
+  if (type === "mark") pending.clueId = state.charades.clue.id;
   ws.send(JSON.stringify(pending));
   status("Sending…");
   render();
@@ -136,13 +139,14 @@ function render() {
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
   const selectedMode = $("mode")?.value || "quiz";
+  const selectedCategory = $("charades-category")?.value || "actions";
   const previousPhase = phaseKey;
   $("entry").hidden = true;
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
   $("heading").textContent = `${state.code} · ${state.phase}`;
-  const key = `${state.matchId}:${state.phase}:${state.index}`;
+  const key = `${state.matchId}:${state.phase}:${state.index}:${state.charades?.clue?.id ?? ""}`;
   if (key !== phaseKey) {
     phaseKey = key;
     $("heading").focus();
@@ -156,7 +160,7 @@ function render() {
     element("p", `Join link: ${location.origin}/?code=${state.code}`);
     element(
       "p",
-      "Quiz: 5 questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup.",
+      "Quiz: 5 questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.",
     );
     if (host) {
       const label = element("label", "Game mode");
@@ -166,11 +170,29 @@ function render() {
       for (const [value, text] of [
         ["quiz", "Quiz"],
         ["duel", "Prompt Duel"],
+        ["charades", "Charades"],
       ]) {
         const o = element("option", text, select);
         o.value = value;
       }
       select.value = selectedMode;
+      const packLabel = element("label", "Charades pack");
+      packLabel.htmlFor = "charades-category";
+      const pack = element("select");
+      pack.id = "charades-category";
+      for (const [value, text] of [
+        ["actions", "Everyday actions"],
+        ["animals", "Animals"],
+      ]) {
+        const option = element("option", text, pack);
+        option.value = value;
+      }
+      pack.value = selectedCategory;
+      const showPack = () => {
+        pack.hidden = packLabel.hidden = select.value !== "charades";
+      };
+      select.onchange = showPack;
+      showPack();
       button(
         "Start match",
         () => action("start", select.value),
@@ -253,6 +275,36 @@ function render() {
           : "Waiting: you have voted or are an author on this matchup.",
       );
   }
+  if (state.charades) {
+    const c = state.charades;
+    element(
+      "p",
+      `Turn ${c.turnNumber} of ${c.totalTurns} · Performer: ${c.performerName} · ${c.category}`,
+    );
+    if (state.phase === "acting") {
+      if (c.canMark) {
+        const clue = element("h3", c.clue.text);
+        clue.id = "current-clue";
+        clue.tabIndex = -1;
+        element(
+          "p",
+          "Act this out without speaking. Agree with your group before marking Correct. Scoring is self-reported.",
+        );
+        button("Correct (+1)", () => action("mark", "correct"));
+        button("Pass", () => action("mark", "pass"));
+      } else
+        element(
+          "p",
+          `Guess what ${c.performerName} is acting. Their clue is private until this turn ends.`,
+        );
+    }
+    if (c.history) {
+      element("h3", "Turn summary");
+      const list = element("ul");
+      for (const mark of c.history)
+        element("li", `${mark.text} — ${mark.result}`, list);
+    }
+  }
   if (state.phase === "reveal" && host) button("Next", () => action("next"));
   if (state.phase === "finished") {
     element(
@@ -280,6 +332,8 @@ function render() {
       `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
       $("roster"),
     );
+  if (previousPhase !== phaseKey && $("current-clue"))
+    $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {
     const focused = $(focusedId);
     focused.focus();

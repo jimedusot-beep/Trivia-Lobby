@@ -73,5 +73,29 @@ export function projectParty(party, actor) {
     }));
     v.received = party.votes.size;
   }
+  if (
+    party.mode === "charades" &&
+    ["countdown", "acting", "reveal"].includes(party.phase)
+  ) {
+    const performerId = party.roster[party.index];
+    const turn = party.turn;
+    v.charades = {
+      performerId,
+      performerName: party.players.get(performerId).name,
+      category: party.category,
+      turnNumber: party.index + 1,
+      totalTurns: party.roster.length,
+      canMark: party.phase === "acting" && actor === performerId,
+    };
+    if (party.phase === "acting" && actor === performerId) {
+      const clue = turn.queue[turn.cursor];
+      v.charades.clue = { id: clue.id, text: clue.text };
+    }
+    if (party.phase === "reveal")
+      v.charades.history = turn.marks.map(({ text, result }) => ({
+        text,
+        result,
+      }));
+  }
   return v;
 }

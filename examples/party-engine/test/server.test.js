@@ -187,7 +187,12 @@ async function partyFixture(t, mode, clock = controlledClock()) {
   await host.wait(
     (m) =>
       m.type === "state" &&
-      m.state.phase === (mode === "quiz" ? "question" : "writing"),
+      m.state.phase ===
+        (mode === "quiz"
+          ? "question"
+          : mode === "charades"
+            ? "acting"
+            : "writing"),
   );
   async function resume(p) {
     const c = client(port);
@@ -345,5 +350,51 @@ test(
       (m) => m.type === "error" && /out of date/.test(m.message),
     );
     assert.equal(party.answers.size, 0);
+  },
+);
+
+test(
+  "Charades sockets keep clues private and resume the performer without resetting its deadline",
+  { timeout: 10000 },
+  async (t) => {
+    const f = await partyFixture(t, "charades");
+    const { party, host, players, clock } = f;
+    const first = party.view(players[0].credential.actor),
+      clue = first.charades.clue;
+    assert.ok(!party.view("host").charades.clue);
+    assert.ok(!party.view(players[1].credential.actor).charades.clue);
+    players[1].send(
+      action(party, "mark", "forged-mark", {
+        clueId: clue.id,
+        value: "correct",
+      }),
+    );
+    await players[1].wait(
+      (m) => m.type === "error" && /performer/.test(m.message),
+    );
+    const deadline = party.deadline;
+    players[0].send(
+      action(party, "mark", "first-correct", {
+        clueId: clue.id,
+        value: "correct",
+      }),
+    );
+    await players[0].wait(
+      (m) => m.type === "ack" && m.requestId === "first-correct",
+    );
+    const resumed = await f.resume(players[0]);
+    assert.equal(resumed.snapshot.phase, "acting");
+    assert.notEqual(resumed.snapshot.charades.clue.id, clue.id);
+    assert.equal(resumed.snapshot.deadline, deadline);
+    clock.advance(60000);
+    const reveal = (
+      await host.wait((m) => m.type === "state" && m.state.phase === "reveal")
+    ).state;
+    assert.equal(reveal.charades.history[0].result, "correct");
+    assert.equal(reveal.charades.history[1].result, "unanswered");
+    assert.equal(
+      reveal.players.find((p) => p.id === players[0].credential.actor).score,
+      1,
+    );
   },
 );

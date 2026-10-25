@@ -12,6 +12,7 @@ Approved match flow implemented as a separate runnable example. It does not modi
 | `scheduler.js`                      | Per-party cancellable deadlines, replacement and shutdown lifecycle                            |
 | `projections.js`                    | Explicit public host/player views and hidden-answer/author boundaries                          |
 | `engine.js`                         | Authoritative phases, deadlines, submissions, voting, scoring and player-specific views        |
+| `charades.js`                       | Original guessing packs, shuffle, mark history and exhaustion                                  |
 | `content.js`                        | Five original quiz questions and eight original creative prompts                               |
 | `public/index.html`                 | Accessible host/player page structure                                                          |
 | `public/app.js`                     | Browser connection, acknowledgment/reconnect handling and interface                            |
@@ -55,6 +56,7 @@ Replace the example domain. Forward that HTTPS origin to port 3001, including We
 
 - 3–8 connected players, nickname only. One six-character code survives successive matches.
 - Quiz: five questions, 30 seconds each, first valid answer locked; 100 points per correct answer and no speed bonus. All answers or the deadline ends a question; reveal occurs once.
+- Charades: select Actions or Animals; each participant acts once for up to 60 seconds after a three-second countdown. Only the performer sees the active clue. Correct adds one point; Pass adds none. Marks require group agreement and are self-reported. The round ends at the deadline or deck exhaustion; the turn summary reveals completed/pass/unanswered clues. No motion permission is needed.
 - Prompt Duel: one paired prompt per player, two assignments per player, 90 seconds to write. Responses lock on submission. Each matchup has 20 seconds for eligible players to vote; neither author may vote. Every valid vote gives its chosen author 100 points. Missing-response matchups skip without points. Identical response text still has distinct choice IDs.
 - The host advances after reveal and returns to the same lobby after the final result. Ties remain ties. Scores reset when the next match starts.
 - Timers continue through player disconnects. A disconnected host may resume during timed play; after the active phase closes there is a 60-second host grace period. Expiry marks the match interrupted. No automatic promotion based on nickname.
@@ -68,7 +70,7 @@ The demo caps rooms, message sizes and action/connection rates and checks browse
 
 ## Verification recorded for this delivery
 
-Standalone `npm ci --ignore-scripts --no-audit --no-fund` succeeded; `npm test` passed all 20 tests with no skips. The real-server integration uses three WebSocket players and checks HTTP serving, hidden answer keys, scoring, a forged host credential and valid reconnection. Root TypeScript checking and browser-script/server syntax checks passed. Tests use short injected timings; default match durations remain 3/30/90/20 seconds.
+Standalone `npm ci --ignore-scripts --no-audit --no-fund` succeeded; `npm test` passed all 27 tests with no skips. The real-server integration uses three WebSocket players and checks HTTP serving, hidden answer keys, scoring, a forged host credential and valid reconnection. Root TypeScript checking and browser-script/server syntax checks passed. Tests use short injected timings; default match durations remain 3/30/90/20 seconds.
 
 Chromium was unavailable, and Playwright's browser download returned an invalid/truncated archive. No rendered browser, physical-phone, manual screen-reader or load verification was completed. This implementation is provided for local review and further integration, not described as a tested live deployment.
 
@@ -80,4 +82,21 @@ The scheduler owns one pending phase/grace deadline per party. Replacing a deadl
 
 Reconnect authenticates before attaching a replacement socket and evaluates elapsed deadlines before resuming the participant. A delayed close event from the old socket cannot disconnect its replacement. Real-socket tests cover writing, voting, reveal, stale matchup votes, a late answer arriving before its timer callback, and host grace expiry. Contract tests cover timer replacement/cancellation/self-rescheduling and accidental future private fields in player records. A failed start with fewer than three connected players now retains offline participants and their reconnect access.
 
-Validation for this follow-up: 20 tests passed, no failures/skips. No new browser or physical-device verification was performed; the Chromium download limitation above remains. The changes are confined to this standalone example and do not integrate it into the existing deployed application.
+Hardening checkpoint: 20 tests passed, no failures/skips. No new browser or physical-device verification was performed; the Chromium download limitation above remains. The changes are confined to this standalone example and do not integrate it into the existing deployed application.
+
+## PDF-derived Charades and dedicated CI
+
+[Extraction and decisions](../../docs/research/REA_PDF_EXTRACTION.md) record how the 44-page uploaded vault was evaluated, what is already covered, which original feature was implemented, and what remains a future assignment. No unvalidated snippet is substituted for the current authorization/scoring logic.
+
+To run the new browser scenarios after installation:
+
+```sh
+npx playwright install chromium
+npm run test:browser
+```
+
+`npm test` continues to run the deterministic and real-socket suite without a browser. The dedicated Guest party engine workflow installs Chromium and runs the browser scenarios on GitHub; local discovery alone is not a passing browser result. The suite uses mobile-sized browser viewports and does not verify physical device sensors. Motion controls remain deferred.
+
+PDF-extraction delivery: the current standalone suite passes 27 tests with no failures or skips. All three Chromium scenarios are discoverable; local browser execution still requires the missing Chromium binary.
+
+The three browser cases were attempted locally and all were blocked at browser launch by the missing Chromium executable; they are not included in the 27 passing server/engine tests.

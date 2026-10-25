@@ -54,7 +54,7 @@ export function validateHello(message) {
 export function validateAction(message) {
   if (!object(message)) fail("Invalid message envelope.");
   if (
-    !["start", "answer", "write", "vote", "next", "lobby"].includes(
+    !["start", "answer", "write", "vote", "next", "lobby", "mark"].includes(
       message.type,
     )
   )
@@ -66,16 +66,14 @@ export function validateAction(message) {
     vote: ["value"],
     next: [],
     lobby: [],
+    mark: ["value", "clueId"],
   }[message.type];
   if (!payload) fail("Unknown action.");
-  fields(message, [
-    "v",
-    "type",
-    "requestId",
-    "matchId",
-    "revision",
-    ...payload,
-  ]);
+  fields(
+    message,
+    ["v", "type", "requestId", "matchId", "revision", ...payload],
+    message.type === "start" ? ["category"] : [],
+  );
   if (
     message.v !== 1 ||
     typeof message.requestId !== "string" ||
@@ -85,7 +83,10 @@ export function validateAction(message) {
     !(message.matchId === null || uuid(message.matchId))
   )
     fail("Invalid message envelope.");
-  if (message.type === "start" && !["quiz", "duel"].includes(message.value))
+  if (
+    message.type === "start" &&
+    !["quiz", "duel", "charades"].includes(message.value)
+  )
     fail("Unknown game mode.");
   if (
     message.type === "answer" &&
@@ -103,5 +104,17 @@ export function validateAction(message) {
   )
     fail("Invalid prompt or response.");
   if (message.type === "vote" && !uuid(message.value)) fail("Invalid vote.");
+  if (
+    message.type === "start" &&
+    Object.hasOwn(message, "category") &&
+    (message.value !== "charades" ||
+      !["actions", "animals"].includes(message.category))
+  )
+    fail("Invalid Charades pack.");
+  if (
+    message.type === "mark" &&
+    (!uuid(message.clueId) || !["correct", "pass"].includes(message.value))
+  )
+    fail("Invalid Charades mark.");
   return message;
 }
