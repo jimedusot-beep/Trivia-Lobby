@@ -169,6 +169,12 @@ $("host-quiz").addEventListener("click", () => attempt(async () => {
   target.searchParams.set("deck", record.id);
   location.assign(target.href);
 }));
+$("practice-quiz").addEventListener("click", () => attempt(async () => {
+  const record = await save();
+  const target = new URL("./practice.html", location.href);
+  target.searchParams.set("deck", record.id);
+  location.assign(target.href);
+}));
 $("backup-quiz").addEventListener("click", () => attempt(() => download(filename("json"), "application/json", backupGuestDeck(readDraft()))));
 $("csv-quiz").addEventListener("click", () => attempt(() => download(filename("csv"), "text/csv", csvGuestDeck(readDraft()))));
 $("delete-quiz").addEventListener("click", () => attempt(async () => {
