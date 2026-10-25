@@ -209,7 +209,7 @@ export default function ExamBuilder() {
   return <main className="min-h-screen bg-muted/30 p-4 md:p-8">
     <section className="max-w-5xl mx-auto space-y-6">
       <p role="status" className="text-sm text-muted-foreground">{draftStatus}</p>
-      <Button asChild variant="ghost"><Link href="/">Back to decks</Link></Button>
+      <Button asChild variant="ghost"><Link href="/decks">Back to decks</Link></Button>
       <h1 className="text-3xl font-bold">{deck?.title ?? "Deck"} — Exam Builder</h1>
       <p className="text-sm text-amber-800 bg-amber-50 p-3 rounded" role="note">
         Questions are private to your account. Add explanations and source passages for review, and choose saved diagrams from your private source library.
