@@ -184,6 +184,12 @@ test("corrupt saved progress is reported and never overwritten by fallback pract
 test("course and feedback support keyboard focus and narrow screens", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await createCourse(page, 1);
+  await page.evaluate(async () => {
+    const { listGuestDecks, saveGuestDeck } = await import("./guest-decks.js");
+    const [deck] = await listGuestDecks(); await saveGuestDeck({ ...deck, title: "A".repeat(80) });
+  });
+  await page.reload(); await expect(page.locator("#course-title")).toHaveText("A".repeat(80));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator("#daily").focus(); await page.keyboard.press("Enter");
   await expect(page.locator("#lesson-heading")).toBeFocused();
   await page.keyboard.press("Tab"); await expect(page.getByRole("button", { name: "A. Right answer" })).toBeFocused();

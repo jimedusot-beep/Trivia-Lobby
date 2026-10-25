@@ -19,9 +19,13 @@ test("main app links to personal courses and ships guest learning without access
     buffer: Buffer.from("Question,OptionA,OptionB,Correct\nWhich number is even?,Two,Three,A") });
   await expect(page.getByRole("status")).toContainText("Imported 1 questions");
   await page.getByRole("button", { name: "Save & learn", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#course-title")).toHaveText("Learning");
+  await page.screenshot({ path: test.info().outputPath("guest-course-path-phone.png"), fullPage: true });
   await page.getByRole("button", { name: "Start today’s lesson", exact: true }).click();
   await page.getByRole("button", { name: "A. Two", exact: true }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("guest-course-feedback-phone.png"), fullPage: true });
   await page.getByRole("button", { name: "Finish lesson", exact: true }).click();
   await expect(page.locator("#xp")).toHaveText("15 practice XP");
   await page.reload(); await expect(page.locator("#xp")).toHaveText("15 practice XP");

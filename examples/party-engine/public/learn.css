@@ -10,6 +10,8 @@ header > p { max-width: 650px; color: #bdc6df; }
 .eyebrow { color: #9cedcc; letter-spacing: .12em; font-size: .76rem; font-weight: 800; }
 h2 { font-size: 1.7rem; margin-bottom: 8px; }
 h3 { font-size: 1.2rem; }
+h2, h3 { overflow-wrap: anywhere; }
+.section-heading > h2 { min-width: 0; flex: 1 1 200px; }
 section > p, footer, .backup p { color: #bdc6df; }
 button { background: #a3f2d1; border: 1px solid #a3f2d1; color: #122a2b; transition: background-color .12s; overflow-wrap: anywhere; min-width: 0; }
 button:hover:enabled { background: #c7ffe7; }
