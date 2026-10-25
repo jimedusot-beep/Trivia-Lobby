@@ -85,7 +85,7 @@ test("built home styles keep the title gradient and actions visible across scree
     await expect(title).toHaveCSS("font-family", /Fredoka/);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-    for (const name of ["Join Game", "New Exam Deck", "Learning & memory", "Private source library", "Create Deck"]) {
+    for (const name of ["Join Game", "New Exam Deck", "Learning & memory", "Private source library", "Import Deck"]) {
       const action = page.getByRole("link", { name, exact: true }).first();
       await expect(action).toBeVisible();
       const bounds = await action.boundingBox();
