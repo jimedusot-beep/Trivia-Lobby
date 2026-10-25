@@ -67,6 +67,8 @@ All six game modes have [browser acceptance scenarios](docs/GAME_MODE_ACCEPTANCE
 
 ## Operations and research
 
+Follow the [feature-by-feature REA development workflow](CONTRIBUTING.md): investigate one feature, specify it, implement an original version, test it, then move to the next. Research is bounded by the current implementation decision; the catalog is a historical reference, not a preliminary phase or completion checklist.
+
 Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. See [Render deployment](docs/RENDER_DEPLOYMENT.md) for the web URL and initial hosting; provision persistent storage and **independent** database/file backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
 
 Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.
