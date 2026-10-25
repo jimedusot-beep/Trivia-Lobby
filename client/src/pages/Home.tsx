@@ -6,7 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Brain, Users, Upload, Gamepad2, PlusCircle, Trash2, ClipboardList, Search, ChartBar } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { useDeleteDeck } from "@/hooks/use-decks";
+import { useDeleteDeck, useImportDeck } from "@/hooks/use-decks";
+import { ODD_ONE_OUT_STARTER_TITLE, oddOneOutStarterCards } from "@/lib/odd-one-out-pack";
+import { useLocation } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +24,18 @@ import {
 export default function Home() {
   const { data: decks, isLoading } = useDecks();
   const deleteDeck = useDeleteDeck();
+  const importOddPack = useImportDeck();
+  const [, navigate] = useLocation();
+  const [oddError,setOddError] = useState("");
+  const launchOddPack = async () => {
+    setOddError("");
+    try {
+      const existing=decks?.find(deck=>deck.title===ODD_ONE_OUT_STARTER_TITLE);
+      const deck=existing??await importOddPack.mutateAsync({deck:{title:ODD_ONE_OUT_STARTER_TITLE,description:"20 expert-level Odd One Out questions with explanations",category:"Dinner Games"},cards:oddOneOutStarterCards});
+      sessionStorage.setItem("trivia_mode_preference","odd_one_out");
+      navigate(`/host/${deck.id}`);
+    } catch(error) {setOddError(error instanceof Error?error.message:"Could not import Odd One Out pack");}
+  };
   const [search, setSearch] = useState("");
   const matchingDecks = (decks ?? []).filter(deck =>
     [deck.title, deck.category, deck.description].some(value =>
@@ -52,10 +66,12 @@ export default function Home() {
           <Button asChild size="lg" variant="secondary" className="h-16 px-8 rounded-2xl"><Link href="/library">Private source library</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/assignments">Self-paced assignments</Link></Button>
           <Button asChild size="lg" variant="outline" className="h-16 px-8 rounded-2xl"><Link href="/reports"><ChartBar className="mr-2 h-5 w-5"/> Game reports</Link></Button>
+          <Button type="button" size="lg" variant="outline" disabled={importOddPack.isPending} onClick={()=>void launchOddPack()} className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2">🧩 {importOddPack.isPending?"Opening…":"Odd One Out · 20 Questions"}</Button>
           <Button asChild size="lg" variant="outline" className="w-full sm:w-auto h-16 px-8 text-xl font-bold rounded-2xl border-2 hover:bg-secondary/10 hover:border-secondary hover:text-secondary-foreground transition-all"><Link href="/import">
               <PlusCircle className="mr-3 h-6 w-6" /> Import Deck
             </Link></Button>
         </div>
+        {oddError&&<p role="alert" className="text-red-700 font-semibold">{oddError}</p>}
       </div>
 
       {/* Decks Grid */}
