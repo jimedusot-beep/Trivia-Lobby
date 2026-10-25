@@ -1,3 +1,5 @@
+> **Update (October 25, 2026):** Dependency and migration code described in this report are on `main` and have passed current CI. PR #26 and its obsolete branch are now closed as superseded. This does **not** establish a real encrypted offsite production backup or active branch protection; track those under [#48](https://github.com/jimedusot-beep/Trivia-Lobby/issues/48) and [#49](https://github.com/jimedusot-beep/Trivia-Lobby/issues/49). See [cleanup and release readiness](REPOSITORY_CLEANUP_2026_10_25.md).
+
 # Trivia Lobby release gate — October 24, 2026
 
 Status: **candidate only; not merged or deployed**. This document defines observable acceptance criteria. Green GitHub CI is *necessary*, but not evidence that a public production endpoint is configured.
