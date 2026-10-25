@@ -224,6 +224,6 @@ const questions = [
   ]
 ] as const;
 export const oddOneOutStarterCards: Omit<InsertCard,"deckId">[] = questions.map(([category,choices,correctOption,explanation],index)=>({
-  type:"multiple_choice",front:`Odd One Out ${index+1} — ${category}: Which ONE does not belong?`,
+  type:"multiple_choice" as const,front:`Odd One Out ${index+1} — ${category}: Which ONE does not belong?`,
   back:explanation,options:[...choices],correctOption,
 }));
