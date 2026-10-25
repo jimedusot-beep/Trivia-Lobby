@@ -1,4 +1,4 @@
-export type GameMode = "classic" | "teams" | "buzzer" | "wager" | "workshop" | "party" | "sprint";
+export type GameMode = "classic" | "teams" | "buzzer" | "wager" | "workshop" | "party" | "sprint" | "odd_one_out";
 export const UPGRADE_COST = { focus: 60, guard: 40 } as const;
 /** Game points are separate from study mastery and review schedules. */
 export function scoreRound(input: {
@@ -7,6 +7,7 @@ export function scoreRound(input: {
   responseMs?: number; timeLimitMs?: number;
 }) {
   const { mode, correct, streak, score, focus, guard, round } = input;
+  if(mode==="odd_one_out")return {awarded:correct?1:0,streak:0,coins:0,focus,guard};
   const wager = mode === "wager" ? input.wager : 0;
   if (!Number.isInteger(wager) || wager < 0 || wager > Math.min(score, 100))
     throw new Error("Wager exceeds available points (maximum 100)");
