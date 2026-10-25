@@ -30,6 +30,8 @@ type Room = {
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
   answers: Map<string, { answer: unknown; explanation:string; bonusAwarded:boolean; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
   oddReviewFinalized:boolean;
+  oddRoundCount:number;oddTimeLimitMs:number;oddShuffleQuestions:boolean;oddShuffleAnswers:boolean;
+  oddCorrectDisplayLetter?:"A"|"B"|"C"|"D";
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
 };
 
@@ -78,7 +80,7 @@ function resultFor(room: Room, playerId?: string): AnswerResult {
   } else if (answer?.kind === "true_false") correctAnswers = [answer.correct ? "True" : "False"];
   return {
     questionIndex: room.questionIndex,
-    ...(card.correctOption ? { correctLetter: card.correctOption as "A" | "B" | "C" | "D" } : {}),
+    ...(card.correctOption ? { correctLetter: (room.mode==="odd_one_out"?room.oddCorrectDisplayLetter:card.correctOption) as "A" | "B" | "C" | "D" } : {}),
     ...(correctAnswers ? { correctAnswers } : {}),
     isCorrect: record ? record.correct : playerId ? false : null,
     awarded: record?.awarded ?? 0, explanation:card.back,
@@ -148,10 +150,18 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
   const answer = card.universal?.answer;
   const kind: LiveKind = answer && ["multiple_choice","true_false","multiple_select","ordering"].includes(answer.kind)
     ? answer.kind as LiveKind : "multiple_choice";
-  const questionDuration = card.timeLimitMs ?? durationMs;
+  const questionDuration = card.timeLimitMs ?? (room.mode==="odd_one_out"?room.oddTimeLimitMs:durationMs);
   const now = Date.now();
   room.deadlineTs = now + questionDuration;
   let choices = card.options as string[];
+  room.oddCorrectDisplayLetter=undefined;
+  if(room.mode==="odd_one_out") {
+    const entries=choices.map((label,index)=>({label,index}));
+    if(room.oddShuffleAnswers)for(let i=entries.length-1;i>0;i--){const j=randomInt(i+1);[entries[i],entries[j]]=[entries[j],entries[i]];}
+    choices=entries.map(e=>e.label);
+    const originalIndex=["A","B","C","D"].indexOf(card.correctOption??"");
+    room.oddCorrectDisplayLetter=["A","B","C","D"][entries.findIndex(e=>e.index===originalIndex)] as "A"|"B"|"C"|"D";
+  }
   let optionIds: string[] | undefined;
   if (answer?.kind === "multiple_select") optionIds = answer.options.map(option => option.id);
   if (answer?.kind === "ordering") {
@@ -293,7 +303,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           });
           const hostToken = mintToken();
           room = {
-            oddReviewFinalized:false,mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
+            oddReviewFinalized:false,oddRoundCount:20,oddTimeLimitMs:options.questionMs??45_000,oddShuffleQuestions:false,oddShuffleAnswers:false,mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
             reportChain:Promise.resolve(),reportFailed:false,hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
@@ -361,6 +371,13 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         if(msg.type===WS_EVENTS.CONFIGURE_GAME){
           if(role!=="host"||room.hostWs!==ws||room.state!=="lobby"){error("Host can select the mode only in the lobby");return;}
           if(msg.payload.mode==="odd_one_out"&&!room.questions.every(eligibleOddCard)){error("Odd One Out requires four choices and an explanation for every question in this deck");return;}
+          if(msg.payload.mode!=="odd_one_out" && (msg.payload.roundCount!==undefined||msg.payload.timeLimitMs!==undefined||msg.payload.shuffleQuestions!==undefined||msg.payload.shuffleAnswers!==undefined)){error("Odd One Out options require Odd One Out mode");return;}
+          if(msg.payload.mode==="odd_one_out") {
+            room.oddRoundCount=msg.payload.roundCount??room.oddRoundCount;
+            room.oddTimeLimitMs=msg.payload.timeLimitMs??room.oddTimeLimitMs;
+            room.oddShuffleQuestions=msg.payload.shuffleQuestions??room.oddShuffleQuestions;
+            room.oddShuffleAnswers=msg.payload.shuffleAnswers??room.oddShuffleAnswers;
+          }
           room.mode=msg.payload.mode;broadcast(room,WS_EVENTS.GAME_CONFIGURED,{mode:room.mode});lobbyUpdate(room);return;
         }
         if(msg.type===WS_EVENTS.AWARD_ODD_BONUS){
@@ -399,6 +416,11 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             error("Host must start from lobby"); return;
           }
           if (!room.players.size) { error("At least one player is required"); return; }
+          if(room.mode==="odd_one_out") {
+            const selected=[...room.questions];
+            if(room.oddShuffleQuestions)for(let i=selected.length-1;i>0;i--){const j=randomInt(i+1);[selected[i],selected[j]]=[selected[j],selected[i]];}
+            room.questions=selected.slice(0,Math.min(room.oddRoundCount,selected.length));
+          }
           room.questionIndex = 0;
           broadcast(room, WS_EVENTS.GAME_STARTED, {});
           startQuestion(room, durationMs);
@@ -451,7 +473,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             if (typeof received !== "string" || !["A","B","C","D"].slice(0,(current.options as string[]).length).includes(received)) {
               error("Invalid answer choice"); return;
             }
-            correct = received === current.correctOption;
+            correct = received === (room.mode==="odd_one_out"?room.oddCorrectDisplayLetter:current.correctOption);
           }
           const scored=scoreRound({mode:room.mode,correct,streak:player.streak,score:player.score,wager:msg.payload.wager,focus:player.focus,guard:player.guard,round:room.questionIndex,pointsFactor:current.pointsFactor});
           room.answers.set(playerId, { answer:msg.payload.answer,explanation:room.mode==="odd_one_out"?(msg.payload.explanation??""):"",bonusAwarded:false,correct,responseMs:Math.max(0,now-(room.question?.serverStartTs??now)),...scored });
