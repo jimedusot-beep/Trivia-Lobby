@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
-import { quiz, prompts } from "./content.js";
+import { quiz as demoQuiz, prompts } from "./content.js";
 import { validateAction } from "./protocol.js";
 import { makeTurn, markClue, finishTurn } from "./charades.js";
 import { projectParty } from "./projections.js";
@@ -16,6 +16,7 @@ export class Party {
       voteMs = 20000,
       countdownMs = 3000,
       charadesMs = 60000,
+      customQuiz,
     } = {},
   ) {
     Object.assign(this, {
@@ -27,6 +28,9 @@ export class Party {
       countdownMs,
       charadesMs,
     });
+    // The host can supply a bounded original guest quiz at room creation.
+    this.quiz = customQuiz?.questions ?? demoQuiz;
+    this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.players = new Map();
     this.hostConnected = true;
     this.phase = "lobby";
@@ -136,7 +140,7 @@ export class Party {
   closeRound() {
     if (this.mode === "quiz") {
       for (const [id, answer] of this.answers)
-        if (answer === quiz[this.index].correct) {
+        if (answer === this.quiz[this.index].correct) {
           const p = this.players.get(id);
           p.score += 100;
           p.correct++;
@@ -253,7 +257,7 @@ export class Party {
         fail("Only the host can advance after reveal.");
       const total =
         this.mode === "quiz"
-          ? quiz.length
+          ? this.quiz.length
           : this.mode === "charades"
             ? this.roster.length
             : this.pairs.length;
