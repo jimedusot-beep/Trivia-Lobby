@@ -67,6 +67,12 @@ export default function Host() {
     }
   }, [connected, deckId, gameState.roomCode, restoring, emit]);
 
+  useEffect(() => {
+    if(!connected||!gameState.roomCode||gameState.phase!=="lobby"||sessionStorage.getItem("trivia_mode_preference")!=="odd_one_out")return;
+    sessionStorage.removeItem("trivia_mode_preference");
+    emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out"});
+  },[connected,gameState.roomCode,gameState.phase,emit]);
+
   const copyCode = () => {
     if (gameState.roomCode) {
       navigator.clipboard.writeText(gameState.roomCode);
@@ -137,9 +143,9 @@ export default function Host() {
             <div className="space-y-3"><label htmlFor="game-mode" className="block">Game mode</label>
               <select id="game-mode" className="p-3 rounded bg-slate-800 text-white border" value={gameState.mode??"classic"} disabled={!gameState.roomCode}
                 onChange={e=>emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:e.target.value})}>
-                {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
+                {[["classic","Classic quiz"],["teams","Team competition"],["buzzer","Buzzer race"],["wager","Confidence wager"],["workshop","Workshop upgrades"],["party","Party rounds"],["odd_one_out","Odd One Out"]].map(([value,label])=><option key={value} value={value}>{label}</option>)}
               </select>
-              <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round.</p>
+              <p className="text-sm text-slate-300">Teams are balanced automatically. Buzzer gives one player five seconds to answer. Wagers use earned game points. Workshop coins buy original upgrades between rounds. Party doubles every third round. Odd One Out awards 1 point for the impostor and 1 host-reviewed explanation bonus. It requires a deck of four-choice questions with explanations.</p>
             </div>
             <div className="space-y-4">
               <h2 className="text-2xl text-slate-400 font-medium">Join at <span className="text-white font-bold underline">{window.location.host}/join</span> with code:</h2>
@@ -248,6 +254,19 @@ export default function Host() {
                    </div>
                  </div>
 
+                 {gameState.lastAnswerResult.explanation&&<p className="max-w-2xl mx-auto text-lg text-white">{gameState.lastAnswerResult.explanation}</p>}
+                 {gameState.mode==="odd_one_out"&&gameState.phase==="reveal"&&gameState.oddReview&&(
+                   <section aria-label="Explanation bonus review" className="bg-white/10 rounded-2xl p-6 max-w-2xl mx-auto text-left space-y-4">
+                     <h3 className="text-xl font-bold">Explanation bonuses · +1 per approved answer</h3>
+                     {gameState.oddReview.entries.length===0&&<p>No explanations submitted.</p>}
+                     {gameState.oddReview.entries.map(entry=><div key={entry.playerId} className="border-b border-white/20 pb-3 space-y-2">
+                       <p className="font-bold">{entry.name} · {entry.correct?"Correct choice":"Wrong choice"}</p>
+                       <p className="break-words">{entry.explanation||"No explanation"}</p>
+                       <Button size="sm" disabled={!entry.correct||!entry.explanation.trim()||entry.bonusAwarded||gameState.oddReview?.finalized} onClick={()=>emit(WS_EVENTS.AWARD_ODD_BONUS,{roomCode:gameState.roomCode,questionIndex:gameState.oddReview?.questionIndex,playerId:entry.playerId})}>{entry.bonusAwarded?"Bonus approved ✓":"Approve +1"}</Button>
+                     </div>)}
+                     <Button className="w-full" disabled={gameState.oddReview.finalized} onClick={()=>emit(WS_EVENTS.FINALIZE_ODD_REVIEW,{roomCode:gameState.roomCode,questionIndex:gameState.oddReview?.questionIndex})}>{gameState.oddReview.finalized?"Review finalized":"Finish bonus review"}</Button>
+                   </section>
+                 )}
                  <div className="bg-white/10 rounded-3xl p-8 max-w-2xl mx-auto backdrop-blur-md">
                    <h3 className="text-2xl font-bold mb-6 flex items-center justify-center">
                      <Trophy className="mr-2 text-yellow-400" /> Leaderboard
@@ -277,6 +296,7 @@ export default function Host() {
                    size="lg" 
                    className="h-16 px-12 text-xl font-bold bg-primary hover:bg-primary/90 btn-bouncy"
                    onClick={nextQuestion}
+                   disabled={gameState.mode==="odd_one_out"&&gameState.phase==="reveal"&&!gameState.oddReview?.finalized}
                  >
                    {gameState.phase === "reveal" ? "Show leaderboard" : "Next / Finish"} <Play className="ml-2 w-5 h-5" />
                  </Button>
