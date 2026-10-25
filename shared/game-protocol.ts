@@ -26,7 +26,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }).strict()),
   envelope(WS_EVENTS.START_GAME, action),
   envelope(WS_EVENTS.NEXT_QUESTION, action),
-  envelope(WS_EVENTS.CONFIGURE_GAME,z.object({roomCode:roomCodeSchema,mode:gameModeSchema}).strict()),
+  envelope(WS_EVENTS.CONFIGURE_GAME,z.object({roomCode:roomCodeSchema,mode:gameModeSchema,roundCount:z.number().int().min(1).max(500).optional(),timeLimitMs:z.number().int().min(5000).max(120000).optional(),shuffleQuestions:z.boolean().optional(),shuffleAnswers:z.boolean().optional()}).strict()),
   envelope(WS_EVENTS.BUZZ,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative()}).strict()),
   envelope(WS_EVENTS.BUY_UPGRADE,z.object({roomCode:roomCodeSchema,upgrade:z.enum(["focus","guard"])}).strict()),
   envelope(WS_EVENTS.AWARD_ODD_BONUS,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative(),playerId:z.string().uuid()}).strict()),
