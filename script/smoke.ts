@@ -57,6 +57,20 @@ await new Promise<void>((resolve, reject) => {
     reject(error);
   });
 });
+// Anonymous clients cannot create a host-owned game room on the public server.
+await new Promise<void>((resolve, reject) => {
+  const ws = new WebSocket(socketUrl, { origin: origin.origin });
+  const timer = setTimeout(() => { ws.terminate(); reject(new Error("Anonymous host check timed out")); }, 15_000);
+  ws.once("open", () => ws.send(JSON.stringify({ v: 1, type: "create_room", payload: { deckId: 1 } })));
+  ws.once("message", raw => {
+    try {
+      const result = JSON.parse(raw.toString());
+      if (result.type !== "error" || !/sign in required/i.test(result.payload?.message ?? "")) throw new Error("Anonymous host creation was not rejected");
+      clearTimeout(timer); ws.close(); resolve();
+    } catch (err) { clearTimeout(timer); ws.terminate(); reject(err); }
+  });
+  ws.once("error", err => { clearTimeout(timer); reject(err); });
+});
 // Production-safe checks: these requests do not create accounts, quizzes or rooms.
 const publicPage = await fetch(new URL("/", origin), { signal: AbortSignal.timeout(15_000) });
 if (publicPage.status !== 200 || !(publicPage.headers.get("content-type") ?? "").includes("text/html")) throw new Error("Public frontend is not serving HTML");
