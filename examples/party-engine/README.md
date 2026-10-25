@@ -100,3 +100,5 @@ npm run test:browser
 PDF-extraction delivery: the current standalone suite passes 27 tests with no failures or skips. All three Chromium scenarios are discoverable; local browser execution still requires the missing Chromium binary.
 
 The three browser cases were attempted locally and all were blocked at browser launch by the missing Chromium executable; they are not included in the 27 passing server/engine tests.
+
+Hosted CI resolved the browser gate for implementation commit `b9dc1c`: [Guest party engine run](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/40193016168) passed all **27 engine/server tests and 3 Chromium scenarios** (28.0 seconds for browser scenarios). This covers rendered Quiz, Prompt Duel and a complete three-player Charades rotation, including mobile-sized viewports. It does not certify physical devices, motion sensors or manual screen-reader behavior.
