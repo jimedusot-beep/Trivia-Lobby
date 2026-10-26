@@ -6,6 +6,7 @@ import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
 import { validateShow } from "./open-pack/feud.js";
 import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
+import { acceptTapInput, tapFrame } from "./open-pack/tap.js";
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -95,6 +96,7 @@ export function attachPartySocket(server, {
       windowStart = Date.now(),
       count = 0;
     let raceWindowStart = 0, raceCount = 0;
+    let tapWindowStart = 0, tapCount = 0;
     ws.alive = true;
     ws.on("pong", () => {
       ws.alive = true;
@@ -110,11 +112,17 @@ export function attachPartySocket(server, {
         const m = JSON.parse(raw.toString());
         if (!m || typeof m !== "object" || Array.isArray(m))
           throw new Error("Invalid message.");
-        fastInput = !!record && record.party.mode === "race" && record.party.phase === "playing" && m.type === "race_input";
-        if (fastInput) {
+        const raceInput = !!record && record.party.mode === "race" && record.party.phase === "playing" && m.type === "race_input";
+        const tapInput = !!record && record.party.mode === "tap" && record.party.phase === "playing" && m.type === "tap_input";
+        fastInput = raceInput || tapInput;
+        if (raceInput) {
           if (Date.now() - raceWindowStart >= 1000) { raceWindowStart = Date.now(); raceCount = 0; }
           if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
           if (raw.length > 512) throw new Error("Racing controls are too large.");
+        } else if (tapInput) {
+          if (Date.now() - tapWindowStart >= 1000) { tapWindowStart = Date.now(); tapCount = 0; }
+          if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
+          if (raw.length > 256) throw new Error("Tap controls are too large.");
         } else if (++count > 60) throw new Error("Too many messages; wait a moment.");
         if (!record) {
           validateHello(m);
@@ -169,7 +177,12 @@ export function attachPartySocket(server, {
           )
             throw new Error("Connection replaced or room expired.");
           if (fastInput) {
-            acceptRaceInput(record.party, actor, m);
+            if (tapInput) {
+              const previousRevision = record.party.revision;
+              record.party.tick();
+              if (record.party.revision !== previousRevision) publish(record);
+              acceptTapInput(record.party, actor, m);
+            } else acceptRaceInput(record.party, actor, m);
             return;
           }
           if (m.type === "start" && m.value === "race" && [...rooms.values()].filter(r => r !== record && r.party.mode === "race" && !["lobby", "finished"].includes(r.party.phase)).length >= 4)
@@ -214,20 +227,21 @@ export function attachPartySocket(server, {
       ws.ping();
     }
   }, 15000);
-  // One bounded simulation loop for all admitted race rooms. Controllers receive
-  // their own small status frame; the TV alone receives the full track snapshot.
+  // One bounded update loop for admitted live-action rooms. The TV receives
+  // public rankings; each phone receives only its own status, never identity tokens.
   const raceTimer = setInterval(() => {
     const now = Date.now();
     for (const record of rooms.values()) {
       const p = record.party;
-      if (p.mode !== "race" || p.phase !== "playing") continue;
+      if (!["race", "tap"].includes(p.mode) || p.phase !== "playing") continue;
       const revision = p.revision;
       p.tick();
       if (p.revision !== revision) { publish(record); continue; }
       if (now - (record.raceFrameAt || 0) < 100) continue;
       record.raceFrameAt = now;
       for (const [id, ws] of record.sessions.connections())
-        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384) send(ws, raceFrame(p, id));
+        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
+          send(ws, p.mode === "tap" ? tapFrame(p, id) : raceFrame(p, id));
     }
   }, 50);
   function cleanup() {
