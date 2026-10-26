@@ -39,7 +39,9 @@ function connect(hello) {
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(socketUrl);
+  const socket = ws;
   ws.onopen = () => {
+    if (socket !== ws) { socket.close(); return; }
     status("Connected.");
     if (credential) ws.send(JSON.stringify({ type: "resume", ...credential }));
     else if (hello) ws.send(JSON.stringify(hello));
@@ -85,13 +87,22 @@ function connect(hello) {
     }
   };
   ws.onclose = () => {
+    // Before the first game, no credential exists. Reconnect the *public*
+    // socket too, otherwise a transient disconnect permanently traps guests.
+    if (socket !== ws) return;
     status("Disconnected. Reconnecting…");
-    if (credential) retryTimer = setTimeout(() => connect(), 2000);
+    retryTimer = setTimeout(() => connect(), 1100);
   };
 }
 function hello(message) {
-  if (ws?.readyState === 1) ws.send(JSON.stringify(message));
-  else connect(message);
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+  else if (ws?.readyState === WebSocket.CONNECTING) {
+    // Avoid opening a second socket on a fast tap before the initial connect.
+    const socket = ws;
+    socket.addEventListener("open", () => {
+      if (socket === ws && !credential) socket.send(JSON.stringify(message));
+    }, { once: true });
+  } else connect(message);
 }
 $("create").onclick = async () => {
   const localId = new URLSearchParams(location.search).get("deck");
