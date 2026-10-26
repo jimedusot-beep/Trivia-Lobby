@@ -78,7 +78,7 @@ export default function GuestLearn() {
   }
 
   return (
-    <main className="sample-learning min-h-screen bg-background p-4 sm:p-8">
+    <main className="sample-learning sakura-learning min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <LobbyBrand />

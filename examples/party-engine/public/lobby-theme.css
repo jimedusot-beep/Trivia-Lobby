@@ -3,17 +3,26 @@
 @font-face { font-family: "Nunito Variable"; font-style: normal; font-weight: 200 1000; font-display: swap; src: url("./fonts/nunito-latin.woff2") format("woff2"); }
 :root {
   color-scheme: light;
-  --lobby-paper: #fffaf0;
-  --lobby-ink: #20264b;
-  --lobby-muted: #535875;
-  --lobby-violet: #6146df;
-  --lobby-violet-soft: #eee9ff;
-  --lobby-coral: #ff8a80;
-  --lobby-sky: #85d9f8;
-  --lobby-mint: #91e5ba;
-  --lobby-gold: #ffda59;
+  /* Sakura Arcade: original spring color system with accessible dark ink. */
+  --lobby-paper: #fff5e9;
+  --lobby-ink: #241c44;
+  --lobby-muted: #57506d;
+  --lobby-violet: #5142a1;
+  --lobby-violet-soft: #ebe6fb;
+  --lobby-coral: #f5a9c4;
+  --lobby-sky: #c9e1ff;
+  --lobby-mint: #86cfb2;
+  --lobby-gold: #ffdb88;
   --lobby-white: #ffffff;
-  --lobby-line: #d9d8e5;
+  --lobby-line: #d8cddd;
+  --sakura-pink: #f5a9c4;
+  --sakura-indigo: #5142a1;
+  --sakura-cream: #fff5e9;
+  --sakura-jade: #86cfb2;
+  --sakura-plum: #241c44;
+  --sakura-deep: #211a43;
+  --sakura-panel: #fffaf5;
+  --sakura-border: #554176;
   --font-display: "Fredoka Variable", ui-rounded, sans-serif;
   --font-body: "Nunito Variable", system-ui, sans-serif;
 }
@@ -46,3 +55,16 @@
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .lobby-confetti { display: none; }
 }
+
+/* Shared, legible console controls. Decorative blossoms are never pointer targets. */
+.sakura-eyebrow { font: 900 .75rem/1.5 var(--font-body); letter-spacing: .16em; text-transform: uppercase; }
+.sakura-prompt-strip { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; font: 800 .75rem/1.4 var(--font-body); letter-spacing:.07em; }
+.sakura-prompt-strip span { display:inline-flex; gap:7px; align-items:center; }
+.sakura-button-glyph { display:inline-grid; place-items:center; min-width:24px; min-height:24px; padding:2px 5px; border:2px solid currentColor; border-radius:50%; font: 800 .7rem/1 var(--font-body); }
+.sakura-petal { display:block; position:absolute; width:14px; height:19px; background:var(--sakura-pink); border-radius:85% 0 75% 0; transform:rotate(28deg); opacity:.65; pointer-events:none; }
+.lobby-confetti > i { width:15px; height:18px; border-radius:85% 0 75% 0; border-color:#d976a8; background:var(--sakura-pink); }
+.lobby-confetti > i:nth-child(2n) { background:#ffd5e5; }
+.lobby-confetti > i:nth-child(3n) { background:var(--sakura-jade); }
+.sakura-arcade-banner { display:flex; align-items:center; gap:11px; font:900 .75rem/1.5 var(--font-body); letter-spacing:.12em; text-transform:uppercase; }
+.sakura-arcade-banner::before { content:"✿"; font-size:1.5rem; color:#cc6f9c; line-height:1; }
+@media (prefers-reduced-motion: reduce) { .sakura-petal { animation:none !important; } }

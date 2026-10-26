@@ -41,8 +41,8 @@ export default function Join() {
   };
 
   return (
-    <div className="min-h-screen bg-primary flex items-center justify-center p-4">
-      <Card className="w-full max-w-md rounded-3xl shadow-2xl border-none">
+    <div className="min-h-screen sakura-join-screen flex items-center justify-center p-4">
+      <Card className="sakura-join-panel w-full max-w-md rounded-3xl shadow-2xl border-none">
         <CardHeader className="text-center pt-8">
           <CardTitle className="text-4xl font-display font-black text-primary">Join Game</CardTitle>
         </CardHeader>

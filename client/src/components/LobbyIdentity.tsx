@@ -21,7 +21,12 @@ export function LobbyCelebration() {
 export function LobbyPartyScene() {
   return <div className="lobby-party-scene" aria-hidden="true">
     <svg viewBox="0 0 560 460" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="286" cy="383" rx="231" ry="34" fill="#20264b" opacity=".1" />
+      <ellipse cx="286" cy="383" rx="231" ry="34" fill="#241c44" opacity=".1" />
+      {/* Original cherry blossoms surrounding the game-board character. */}
+      <g stroke="#d772a3" strokeWidth="2" fill="#f5a9c4" opacity=".96">
+        <g transform="translate(85 88) rotate(-13)"><ellipse cy="-14" rx="9" ry="15"/><ellipse cx="14" cy="-3" rx="9" ry="15" transform="rotate(72 14 -3)"/><ellipse cx="9" cy="13" rx="9" ry="15" transform="rotate(144 9 13)"/><ellipse cx="-9" cy="13" rx="9" ry="15" transform="rotate(216 -9 13)"/><ellipse cx="-14" cy="-3" rx="9" ry="15" transform="rotate(288 -14 -3)"/><circle r="6" fill="#fff0ab" stroke="none"/></g>
+        <g transform="translate(498 160) scale(.7)"><ellipse cy="-14" rx="9" ry="15"/><ellipse cx="14" cy="-3" rx="9" ry="15" transform="rotate(72 14 -3)"/><ellipse cx="9" cy="13" rx="9" ry="15" transform="rotate(144 9 13)"/><ellipse cx="-9" cy="13" rx="9" ry="15" transform="rotate(216 -9 13)"/><ellipse cx="-14" cy="-3" rx="9" ry="15" transform="rotate(288 -14 -3)"/><circle r="6" fill="#fff0ab" stroke="none"/></g>
+      </g>
       <path d="M53 118C95 27 236 19 299 55C378 10 504 77 515 186C564 278 481 390 371 379C270 422 124 388 89 321C20 285 18 193 53 118Z" fill="#e6e0ff" />
       <g transform="rotate(-9 284 245)">
         <rect x="104" y="137" width="344" height="235" rx="29" fill="#20264b" />
@@ -48,6 +53,6 @@ export function LobbyPartyScene() {
       <circle cx="303" cy="29" r="7" fill="#ff8a80" stroke="#20264b" strokeWidth="3" />
       <circle cx="77" cy="353" r="9" fill="#85d9f8" stroke="#20264b" strokeWidth="3" />
     </svg>
-    <span className="scene-sticker">YOUR TABLE. YOUR RULES.</span>
+    <span className="scene-sticker">✿ YOUR ARCADE. YOUR RULES.</span>
   </div>;
 }
