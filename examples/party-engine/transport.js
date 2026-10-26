@@ -5,6 +5,7 @@ import { DeadlineScheduler } from "./scheduler.js";
 import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
 import { validateShow } from "./open-pack/feud.js";
+import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -93,21 +94,28 @@ export function attachPartySocket(server, {
       actor,
       windowStart = Date.now(),
       count = 0;
+    let raceWindowStart = 0, raceCount = 0;
     ws.alive = true;
     ws.on("pong", () => {
       ws.alive = true;
     });
     ws.on("error", () => {});
     ws.on("message", (raw) => {
+      let fastInput = false;
       try {
         if (Date.now() - windowStart > 10000) {
           windowStart = Date.now();
           count = 0;
         }
-        if (++count > 60) throw new Error("Too many messages; wait a moment.");
         const m = JSON.parse(raw.toString());
         if (!m || typeof m !== "object" || Array.isArray(m))
           throw new Error("Invalid message.");
+        fastInput = !!record && record.party.mode === "race" && record.party.phase === "playing" && m.type === "race_input";
+        if (fastInput) {
+          if (Date.now() - raceWindowStart >= 1000) { raceWindowStart = Date.now(); raceCount = 0; }
+          if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
+          if (raw.length > 512) throw new Error("Racing controls are too large.");
+        } else if (++count > 60) throw new Error("Too many messages; wait a moment.");
         if (!record) {
           validateHello(m);
           let candidate, id;
@@ -160,6 +168,12 @@ export function attachPartySocket(server, {
             !record.sessions.owns(actor, ws)
           )
             throw new Error("Connection replaced or room expired.");
+          if (fastInput) {
+            acceptRaceInput(record.party, actor, m);
+            return;
+          }
+          if (m.type === "start" && m.value === "race" && [...rooms.values()].filter(r => r !== record && r.party.mode === "race" && !["lobby", "finished"].includes(r.party.phase)).length >= 4)
+            throw new Error("Four races are already running. Try again after a race finishes.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
           publish(record);
@@ -169,7 +183,7 @@ export function attachPartySocket(server, {
           type: "error",
           message: e instanceof SyntaxError ? "Invalid JSON." : e.message,
         });
-        if (record && record.sessions.owns(actor, ws)) publish(record);
+        if (!fastInput && record && record.sessions.owns(actor, ws)) publish(record);
       }
     });
     ws.on("close", () => {
@@ -200,10 +214,27 @@ export function attachPartySocket(server, {
       ws.ping();
     }
   }, 15000);
+  // One bounded simulation loop for all admitted race rooms. Controllers receive
+  // their own small status frame; the TV alone receives the full track snapshot.
+  const raceTimer = setInterval(() => {
+    const now = Date.now();
+    for (const record of rooms.values()) {
+      const p = record.party;
+      if (p.mode !== "race" || p.phase !== "playing") continue;
+      const revision = p.revision;
+      p.tick();
+      if (p.revision !== revision) { publish(record); continue; }
+      if (now - (record.raceFrameAt || 0) < 100) continue;
+      record.raceFrameAt = now;
+      for (const [id, ws] of record.sessions.connections())
+        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384) send(ws, raceFrame(p, id));
+    }
+  }, 50);
   function cleanup() {
     scheduler.close();
     clearInterval(timer);
     clearInterval(heartbeat);
+    clearInterval(raceTimer);
     server.off("upgrade", upgrade);
     server.off("close", cleanup);
     for (const ws of wss.clients) ws.terminate();

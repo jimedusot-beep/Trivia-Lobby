@@ -7,6 +7,7 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
+import { advanceRace, raceReconnected } from "./open-pack/race.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -22,6 +23,8 @@ export class Party {
       charadesMs = 60000,
       customQuiz,
       customShow,
+      raceMs = 60000,
+      raceLaps = 3,
     } = {},
   ) {
     Object.assign(this, {
@@ -32,6 +35,8 @@ export class Party {
       voteMs,
       countdownMs,
       charadesMs,
+      raceMs,
+      raceLaps,
     });
     // The host can supply a bounded original guest quiz at room creation.
     this.quiz = customQuiz?.questions ?? demoQuiz;
@@ -79,6 +84,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
+    if (connected && id !== "host") raceReconnected(this, id);
     this.updateHostWait();
   }
   updateHostWait() {
@@ -99,6 +105,7 @@ export class Party {
     this.updateHostWait();
   }
   tick() {
+    advanceRace(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
       if (this.phase === "playing" && packIds.includes(this.mode)) tickPack(this);
       else if (this.phase === "countdown") this.open();

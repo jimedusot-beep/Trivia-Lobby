@@ -1,5 +1,19 @@
 [
   {
+    "id": "race",
+    "repository": "https://github.com/bridge-mind/turbo-kart-rush",
+    "commit": "6c0456c7642447eae29e0832e7e542fec07ec07d",
+    "license": "MIT",
+    "reuse": "Adapted selected clamp/lerp/damping/angle/track-wrap helpers from src/core/math.ts and three-tier drift/boost tuning from src/kart/Kart.ts. Original authoritative overhead simulation, track, phone UI and four item designs; no upstream art, music, 3D runtime or commercial character assets."
+  },
+  {
+    "id": "phone-controllers",
+    "repository": "https://github.com/greggman/HappyFunTimes",
+    "commit": "da2ba35511cfc657de9dfbbc7fca0d3aa7d89ef0",
+    "license": "BSD-3-Clause",
+    "reuse": "Documented one shared display plus browser-phone controller architecture only. Reference only: no deprecated HappyFunTimes code or network dependency is installed; the existing Trivia Lobby QR and authenticated guest sockets supply transport."
+  },
+  {
     "id": "feud",
     "repository": "https://github.com/joshzcold/Friendly-Feud",
     "commit": "eae4b1bf7a55303b3b48c49788e0b87f4870ecef",
