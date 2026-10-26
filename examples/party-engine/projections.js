@@ -1,5 +1,6 @@
 import { projectBonus } from "./bonus-games.js";
 import { projectSocial } from "./social-games.js";
+import { projectPack } from "./open-pack/index.js";
 
 // Explicit public fields only: never serialize the complete match or a session record.
 export function projectParty(party, actor) {
@@ -15,6 +16,7 @@ export function projectParty(party, actor) {
     hostConnected: party.hostConnected,
     hostWaitAt: party.hostWaitAt,
     interrupted: party.interrupted,
+    endedByHost: !!party.endedByHost,
     index: party.index,
     role: actor === "host" ? "host" : "player",
     quizTitle: party.quizTitle,
@@ -31,7 +33,7 @@ export function projectParty(party, actor) {
   };
   if (party.mode === "quiz" && ["question", "reveal"].includes(party.phase)) {
     const q = party.quiz[party.index];
-    v.question = { prompt: q.prompt, choices: [...q.choices] };
+    v.question = { prompt: q.prompt, choices: [...q.choices], seconds: q.seconds ?? 30, points: q.points ?? 100, penalty: q.penalty ?? 0 };
     v.locked = party.answers.has(actor);
     v.received = party.answers.size;
     v.total = party.quiz.length;
@@ -104,5 +106,7 @@ export function projectParty(party, actor) {
   if(social)v.social=social;
   const bonus = projectBonus(party,actor);
   if(bonus)v.bonus=bonus;
+  const pack = projectPack(party, actor);
+  if(pack)v.pack=pack;
   return v;
 }

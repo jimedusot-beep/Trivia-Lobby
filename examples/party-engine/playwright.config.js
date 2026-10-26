@@ -10,9 +10,13 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], ...(process.env.CHROMIUM_EXECUTABLE_PATH ? {
-    launchOptions: { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] },
-  } : {}) } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"], ...(process.env.CHROMIUM_EXECUTABLE_PATH ? {launchOptions:{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:["--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}} : {}) } },
+    ...(process.env.PARTY_CROSS_BROWSER ? [
+      { name:"firefox", use:{...devices["Desktop Firefox"]} },
+      { name:"webkit", use:{...devices["Desktop Safari"]} },
+    ] : []),
+  ],
   webServer: {
     command: "node server.js",
     url: "http://127.0.0.1:4317/health",

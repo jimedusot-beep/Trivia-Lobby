@@ -7,12 +7,20 @@ import { pipeline } from "node:stream/promises";
 import { once } from "node:events";
 import { createHash } from "node:crypto";
 import pg from "pg";
-import { S3Client,PutObjectCommand } from "@aws-sdk/client-s3";
 import { backupCipher,backupDecipher,HEADER_BYTES } from "../server/backup-crypto";
 import { getPrivateObject,putPrivateObject,deletePrivateObject } from "../server/object-storage";
+import { offsiteConfig,uploadEncryptedBackup } from "../server/backup-offsite";
+import { isolatedRestoreEnvironment } from "../server/restore-storage";
 
 const [action,output]=process.argv.slice(2),secret=process.env.BACKUP_PASSPHRASE??"";
 if(!output || !["create","restore"].includes(action))throw new Error("Usage: backup.ts create|restore /absolute/backup.enc");
+if(secret.length<32)throw new Error("BACKUP_PASSPHRASE must contain at least 32 characters");
+const offsite=action==="create"?offsiteConfig():undefined;
+if(action==="restore"){
+  const isolated=await isolatedRestoreEnvironment();
+  for(const key of Object.keys(process.env))if(!(key in isolated))delete process.env[key];
+  for(const [key,value]of Object.entries(isolated))if(value!==undefined)process.env[key]=value;
+}
 const dir=await mkdtemp(join(tmpdir(),"trivia-backup-"));
 type FileRow={object_key:string;size_bytes:number;sha256:string};
 function pgEnv(url:string){const u=new URL(url);return {...process.env,PGHOST:u.hostname,PGPORT:u.port||"5432",PGDATABASE:decodeURIComponent(u.pathname.slice(1)),PGUSER:decodeURIComponent(u.username),PGPASSWORD:decodeURIComponent(u.password),...(u.searchParams.has("sslmode")?{PGSSLMODE:u.searchParams.get("sslmode")!}:{})};}
@@ -42,9 +50,7 @@ try {
       await pipeline(tar.stdout,cipher,createWriteStream(dest,{flags:"a",mode:0o600}));
       if((await done)[0]!==0)throw new Error("Backup archive failed");
       await appendFile(dest,cipher.getAuthTag());
-      if(process.env.BACKUP_S3_BUCKET){const s3=new S3Client({region:process.env.AWS_REGION??"us-east-1"});try{
-        await s3.send(new PutObjectCommand({Bucket:process.env.BACKUP_S3_BUCKET,Key:"trivia-backups/"+new Date().toISOString().replace(/:/g,"-")+".enc",Body:createReadStream(dest),ContentLength:(await stat(dest)).size,ServerSideEncryption:"AES256",IfNoneMatch:"*"}));
-      }finally{s3.destroy();}}
+      if(offsite)console.log("Offsite encrypted archive verified: "+JSON.stringify(await uploadEncryptedBackup(dest,offsite)));
       console.log("Encrypted database and retained-source backup created");
     }catch(e){await rm(dest,{force:true});throw e;}
   }else {

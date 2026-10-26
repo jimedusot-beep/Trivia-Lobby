@@ -5,6 +5,9 @@ import { makeTurn, markClue, finishTurn } from "./charades.js";
 import { projectParty } from "./projections.js";
 import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSocial, scoreSocial } from "./social-games.js";
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
+import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
+import { defaultShow } from "./open-pack/feud.js";
+import { advanceRace, raceReconnected } from "./open-pack/race.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -19,6 +22,9 @@ export class Party {
       countdownMs = 3000,
       charadesMs = 60000,
       customQuiz,
+      customShow,
+      raceMs = 60000,
+      raceLaps = 3,
     } = {},
   ) {
     Object.assign(this, {
@@ -29,10 +35,13 @@ export class Party {
       voteMs,
       countdownMs,
       charadesMs,
+      raceMs,
+      raceLaps,
     });
     // The host can supply a bounded original guest quiz at room creation.
     this.quiz = customQuiz?.questions ?? demoQuiz;
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
+    this.show = customShow ?? defaultShow;
     this.players = new Map();
     this.hostConnected = true;
     this.phase = "lobby";
@@ -75,6 +84,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
+    if (connected && id !== "host") raceReconnected(this, id);
     this.updateHostWait();
   }
   updateHostWait() {
@@ -95,8 +105,10 @@ export class Party {
     this.updateHostWait();
   }
   tick() {
+    advanceRace(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
-      if (this.phase === "countdown") this.open();
+      if (this.phase === "playing" && packIds.includes(this.mode)) tickPack(this);
+      else if (this.phase === "countdown") this.open();
       else if (this.phase === "clue") openSocialVoting(this);
       else if (this.phase === "writing") {
         if (bonusModes.includes(this.mode)) openBonusVoting(this);
@@ -110,6 +122,7 @@ export class Party {
     }
   }
   open() {
+    if (packIds.includes(this.mode)) { openPack(this); return; }
     if (this.mode === "charades") {
       this.turn = makeTurn(this.roster[this.index], this.category);
       this.enter("acting", this.charadesMs);
@@ -121,7 +134,7 @@ export class Party {
       openBonus(this);
     } else if (this.mode === "quiz") {
       this.answers = new Map();
-      this.enter("question", this.quizMs);
+      this.enter("question", this.quiz[this.index].seconds !== undefined ? this.quiz[this.index].seconds * 1000 : this.quizMs);
     } else {
       this.responses = new Map();
       this.enter("writing", this.writeMs);
@@ -149,8 +162,11 @@ export class Party {
       for (const [id, answer] of this.answers)
         if (answer === this.quiz[this.index].correct) {
           const p = this.players.get(id);
-          p.score += 100;
+          p.score += this.quiz[this.index].points ?? 100;
           p.correct++;
+        } else {
+          const p = this.players.get(id);
+          p.score = Math.max(0, p.score - (this.quiz[this.index].penalty ?? 0));
         }
     } else if (this.mode === "duel") {
       for (const optionId of this.votes.values()) {
@@ -180,18 +196,25 @@ export class Party {
     if (msg.type === "start") {
       if (actor !== "host" || this.phase !== "lobby")
         fail("Only the host can start from the lobby.");
-      if (!["quiz", "duel", "charades", ...socialModes, ...bonusModes].includes(msg.value))
+      if (!["quiz", "duel", "charades", ...socialModes, ...bonusModes, ...packIds].includes(msg.value))
         fail("Unknown game mode.");
       // Validate before pruning: a rejected start must not revoke a disconnected
       // participant's reconnect access while the party is still in the lobby.
       const activePlayers = [...this.players.values()].filter(
         (p) => p.connected,
       );
-      if (activePlayers.length < 3 || activePlayers.length > 20)
-        fail("Start with 3–20 connected players.");
+      const minimum = packMin(msg.value);
+      if (activePlayers.length < minimum || activePlayers.length > 20)
+        fail(`Start with ${minimum}–20 connected players.`);
+      const settings = validatePackSettings(msg.value, msg.settings);
+      if (msg.value === "table" && settings.preset === "whist" && activePlayers.length < 4)
+        fail("Whist needs four connected players.");
       for (const [id, p] of this.players)
         if (!p.connected) this.players.delete(id);
       this.mode = msg.value;
+      this.packSettings = settings;
+      this.pack = null;
+      this.endedByHost = false;
       this.category = msg.category ?? "actions";
       this.matchId = randomUUID();
       this.index = 0;
@@ -208,6 +231,8 @@ export class Party {
         authors: [id, this.roster[(i + 1) % this.roster.length]],
       }));
       this.enter("countdown", this.countdownMs);
+    } else if (msg.type === "play") {
+      acceptPack(this, actor, msg.value);
     } else if (msg.type === "respond") {
       if (bonusModes.includes(this.mode)) acceptBonus(this,actor,msg);
       else acceptSocial(this,actor,msg);
@@ -219,7 +244,7 @@ export class Party {
         this.answers.has(actor)
       )
         fail("Cannot submit another answer now.");
-      if (!Number.isInteger(msg.value) || msg.value < 0 || msg.value > 3)
+      if (!Number.isInteger(msg.value) || msg.value < 0 || msg.value >= this.quiz[this.index].choices.length)
         fail("Invalid choice.");
       this.answers.set(actor, msg.value);
       if (this.answers.size === this.roster.length) this.closeRound();
@@ -271,6 +296,8 @@ export class Party {
     } else if (msg.type === "next") {
       if (actor !== "host" || this.phase !== "reveal")
         fail("Only the host can advance after reveal.");
+      if (packIds.includes(this.mode)) { nextPack(this); }
+      else {
       const total =
         bonusModes.includes(this.mode) ? bonusRoundCount[this.mode] :
         socialModes.includes(this.mode) ? socialPackLength :
@@ -284,6 +311,7 @@ export class Party {
         this.enter("countdown", this.countdownMs);
       else if (this.mode === "quiz" || socialModes.includes(this.mode) || bonusModes.includes(this.mode)) this.open();
       else this.openVote();
+      }
     } else if (msg.type === "lobby") {
       if (actor !== "host" || this.phase !== "finished")
         fail("Finish before returning to the lobby.");

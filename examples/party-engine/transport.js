@@ -4,6 +4,8 @@ import { ParticipantSessions } from "./sessions.js";
 import { DeadlineScheduler } from "./scheduler.js";
 import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
+import { validateShow } from "./open-pack/feud.js";
+import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
 import { snapshotParty, restoreParty } from "./party-checkpoint.js";
 import { deliver, withDeferredDelivery } from "./durable-delivery.js";
 class RecoveryStorageError extends Error {}
@@ -157,13 +159,33 @@ export function attachPartySocket(server, {
       actor,
       windowStart = Date.now(),
       count = 0;
+    let raceWindowStart = 0, raceCount = 0;
     ws.alive = true;
     ws.on("pong", () => {
       ws.alive = true;
     });
     ws.on("error", () => {});
     let connectionQueue = Promise.resolve();
-    ws.on("message", (raw) => { connectionQueue = connectionQueue.then(async () => {
+    ws.on("message", (raw) => {
+      // Steering is transient intent rather than one database write per phone frame.
+      // Server-owned simulation, accepted actions and scores are checkpointed in transact().
+      if (record && record.party.mode === "race" && record.party.phase === "playing") {
+        let frame;
+        try { frame = JSON.parse(raw.toString()); } catch { frame = null; }
+        if (frame?.type === "race_input") {
+          try {
+            if (rooms.get(record.party.code) !== record || !record.sessions.owns(actor, ws))
+              throw new Error("Connection replaced or room expired.");
+            const now = Date.now();
+            if (now - raceWindowStart >= 1000) { raceWindowStart = now; raceCount = 0; }
+            if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
+            if (raw.length > 512) throw new Error("Racing controls are too large.");
+            acceptRaceInput(record.party, actor, frame);
+          } catch (error) { send(ws, { type: "error", message: error.message }); }
+          return;
+        }
+      }
+      connectionQueue = connectionQueue.then(async () => {
       try {
         if (Date.now() - windowStart > 10000) {
           windowStart = Date.now();
@@ -186,6 +208,7 @@ export function attachPartySocket(server, {
             candidate = recordFor(new Party(code, {
                 ...partyOptions,
                 ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
+                ...(Object.hasOwn(m, "show") ? { customShow: validateShow(m.show) } : {}),
               }), new ParticipantSessions());
             rooms.set(code, candidate);
             id = "host";
@@ -237,6 +260,8 @@ export function attachPartySocket(server, {
             !record.sessions.owns(actor, ws)
           )
             throw new Error("Connection replaced or room expired.");
+          if (m.type === "start" && m.value === "race" && [...rooms.values()].filter(r => r !== record && r.party.mode === "race" && !["lobby", "finished"].includes(r.party.phase)).length >= 4)
+            throw new Error("Four races are already running. Try again after a race finishes.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
           publish(record); }, ws);
@@ -282,12 +307,32 @@ export function attachPartySocket(server, {
       ws.ping();
     }
   }, 15000);
+  // One persisted simulation transaction per active room per 100 ms, rather
+  // than per 20 Hz controller. Frames are delivered only after durable commit.
+  // A slow database delays frames rather than creating an unbounded write queue.
+  const raceTimer = setInterval(() => {
+    for (const record of rooms.values()) {
+      if (record.raceBusy || record.party.mode !== "race" || record.party.phase !== "playing") continue;
+      record.raceBusy = true;
+      void transact(record, () => {
+        const party = record.party;
+        if (party.mode !== "race" || party.phase !== "playing") return;
+        const revision = party.revision;
+        party.tick();
+        if (party.revision !== revision) { publish(record); return; }
+        for (const [id, ws] of record.sessions.connections())
+          if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
+            send(ws, raceFrame(party, id));
+      }).finally(() => { record.raceBusy = false; });
+    }
+  }, 100);
   function cleanup() {
     if (closing) return;
     closing = true;
     scheduler.close();
     clearInterval(timer);
     clearInterval(heartbeat);
+    clearInterval(raceTimer);
     server.off("upgrade", upgrade);
     server.off("close", cleanup);
     for (const ws of wss.clients) ws.terminate();

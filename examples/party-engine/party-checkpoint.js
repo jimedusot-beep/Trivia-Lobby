@@ -1,9 +1,9 @@
 import { Party } from "./engine.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
-const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "quiz", "quizTitle",
+const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
   "players", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
-  "requests", "interrupted", "hostWaitAt", "roster", "category", "pairs", "turn", "answers", "responses",
+  "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "pack", "category", "pairs", "turn", "answers", "responses",
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
 function encode(value) {
@@ -31,8 +31,14 @@ export function restoreParty(code, state, options, savedAt) {
   for (const key of fields) if (Object.hasOwn(state, key)) party[key] = decode(state[key]);
   if (!(party.players instanceof Map) || party.players.size > 20 || !(party.requests instanceof Map)
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
-    || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "reveal", "finished"].includes(party.phase))
+    || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
+  // Never discard an active open-pack game or reset its score on recovery.
+  if (["playing", "reveal"].includes(party.phase) && ["race", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
+    && (!party.pack || typeof party.pack !== "object" || Array.isArray(party.pack)))
+    throw new Error("Unsupported room recovery state.");
+  if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
+    throw new Error("Unsupported racing recovery state.");
   const hostWasConnected = party.hostConnected;
   party.hostConnected = false;
   for (const player of party.players.values()) player.connected = false;

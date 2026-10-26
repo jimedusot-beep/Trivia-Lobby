@@ -2,9 +2,17 @@
 
 **Live $0 preview:** [Open Trivia Lobby](https://trivia-lobby.onrender.com) · [Render Free service](https://dashboard.render.com/web/srv-dbecn2nb9u1s7398u8j0) · [Neon dashboard](https://console.neon.tech).
 
-The public preview was originally launched October 24, 2026. This new family pack is **source-code functionality**, not a confirmed Render deployment until manually released. This guest-first app provides an account-free homepage, **Pick a Game** (14 original guest modes: Quiz, Prompt Duel, Charades, five social games and six more family party games, each with rules and a Host button for 3–20 players; secure QR invitations and reconnects), **Make a Quiz** (create/import a quiz, save it in IndexedDB, download a backup, practice solo or host it as a guest), and **Try a Lesson** (three browser-local sample lessons). A separate **Private library** option still requires an account for saved server-backed decks and documents. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
+The public preview was originally launched October 24, 2026. This new family pack is **source-code functionality**, not a confirmed Render deployment until manually released. This guest-first app provides an account-free homepage, **Pick a Game** (24 guest modes: the original 14 plus a team showdown, drawing race, color cards, five paired board games, a manual card/dice table and backgammon; rules, player counts, Host buttons, QR invitations and verified reconnects; 2–20 guests for new modes with explicit active-seat limits), **Make a Quiz** (create/import a quiz, save it in IndexedDB, download a backup, practice solo or host it as a guest), and **Try a Lesson** (three browser-local sample lessons). A separate **Private library** option still requires an account for saved server-backed decks and documents. Render Free can sleep or restart and interrupt active games. This is a **preview**, not a guaranteed classroom service or an independent backup.
 
 **[First game on an iPhone — simple steps](docs/FIRST_GAME.md):** start a guest party or [make a quiz without signing in](docs/FIRST_GAME.md#make-and-host-your-own-quiz-without-signing-in), then share a room code and join by nickname. Cloud-backed *private* decks and documents still require optional sign-in.
+
+**Party Grand Prix (new feature):** a 25th guest mode turns 2–20 phones into
+controllers for one overhead race on the host's computer/TV. Three heats use
+automatic acceleration, optional steering assistance, hold/release drift boosts
+and four original items. Selected MIT Turbo Kart Rush helpers/tuning and the
+HappyFunTimes shared-display/controller pattern are recorded in the source
+credits. See [the feature contract and verification](docs/PARTY_GRAND_PRIX.md).
+Physical 20-phone/Wi-Fi acceptance and production deployment are separate steps.
 
 **Learn from your own quizzes:** open **My courses** or choose **Save & learn** in the quiz maker. `/party/learn.html` turns each saved quiz into ordered lessons of up to five questions, with explanations, one retry per missed question, a daily goal, practice XP, levels and achievements. Refresh can resume an unfinished lesson. Replays improve your best first-try score without extra XP. Use **Download learning backup** to move quizzes and completed progress to another device. This is browser-local practice, not automatic sync. See the [guest learning contract and limits](docs/GUEST_LEARNING_PATH.md).
 
@@ -78,3 +86,7 @@ Follow the [feature-by-feature REA development workflow](CONTRIBUTING.md): inves
 Use one long-running app process behind HTTPS. Rooms and WebSocket throttles are process-local. See [Render deployment](docs/RENDER_DEPLOYMENT.md) for the web URL and initial hosting; provision persistent storage and **independent** database/file backups before using valuable materials. Backup/restore tools are included; actual production scheduling, encrypted offsite retention, S3 configuration and provider PITR remain operator configuration.
 
 Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHASE1_SECURITY_PROTOCOL.md), [storage report](docs/PHASE3_SECURITY_AND_OPERATIONS.md), [adaptive study research](docs/PHASE4_ADAPTIVE_STUDY.md), [research catalog](docs/LEARNING_PLATFORM_RESEARCH.md) and [dependency license inventory](docs/DEPENDENCY_LICENSES.json). Third-party projects are references; their application code has not been copied.
+
+## Open game pack
+
+The [open game pack](docs/OPEN_GAME_PACK.md) adapts selected formats and licensed rules from six [pinned upstream sources](docs/OPEN_GAME_SOURCES.json) into the shared guest runtime. These are playable adaptations, not six complete application forks. Pair boards support up to ten simultaneous two-player tables. Color cards and manual tables advertise their smaller active-seat limits and allow spectators. The showdown has an account-free local question editor; single-answer Razzia quiz files import with timers and scoring. New game code and copied component licenses are documented in the in-app Credits & Source page, which offers the exact guest source used by each build.

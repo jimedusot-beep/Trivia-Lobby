@@ -1,5 +1,7 @@
 // Original transport contracts. Identity always comes from the authenticated socket.
 import { validateGuestQuiz } from "./custom-quiz.js";
+import { packIds } from "./public/pack-config.js";
+import { validateShow } from "./open-pack/feud.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -29,7 +31,7 @@ export function validateHello(message) {
     resume: ["type", "code", "actor", "token"],
   }[message.type];
   if (!required) fail("Create or join a room first.");
-  fields(message, required, message.type === "create" ? ["quiz"] : []);
+  fields(message, required, message.type === "create" ? ["quiz", "show"] : []);
   if (
     message.type !== "create" &&
     (typeof message.code !== "string" ||
@@ -52,18 +54,20 @@ export function validateHello(message) {
     fail("Invalid reconnect credential.");
   if (message.type === "create" && Object.hasOwn(message, "quiz"))
     validateGuestQuiz(message.quiz);
+  if (message.type === "create" && Object.hasOwn(message, "show")) validateShow(message.show);
   return message;
 }
 export function validateAction(message) {
   if (!object(message)) fail("Invalid message envelope.");
   if (
-    !["start", "answer", "write", "vote", "respond", "next", "lobby", "mark"].includes(
+    !["start", "answer", "write", "vote", "respond", "next", "lobby", "mark", "play"].includes(
       message.type,
     )
   )
     fail("Unknown action.");
   const payload = {
     start: ["value"],
+    play: ["value"],
     answer: ["value"],
     respond: ["value"],
     write: ["value", "promptIndex"],
@@ -76,7 +80,7 @@ export function validateAction(message) {
   fields(
     message,
     ["v", "type", "requestId", "matchId", "revision", ...payload],
-    message.type === "start" ? ["category"] : [],
+    message.type === "start" ? ["category", "settings"] : [],
   );
   if (
     message.v !== 1 ||
@@ -89,9 +93,10 @@ export function validateAction(message) {
     fail("Invalid message envelope.");
   if (
     message.type === "start" &&
-    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket"].includes(message.value)
+    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket", ...packIds].includes(message.value)
   )
     fail("Unknown game mode.");
+  if (message.type === "play" && (!object(message.value) || typeof message.value.action !== "string" || message.value.action.length > 24 || Object.keys(message.value).length > 8)) fail("Invalid game move.");
   if (
     message.type === "answer" &&
     (!Number.isInteger(message.value) || message.value < 0 || message.value > 3)

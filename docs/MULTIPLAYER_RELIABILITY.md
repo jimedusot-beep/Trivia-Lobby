@@ -56,3 +56,23 @@ The local twenty-player scenario uses real WebSocket connections from one source
 - [Impostor: validate before routing game messages](https://github.com/Impostor/Impostor/blob/703915f06fcfd17bc8804d36dd67655671a66cf2/src/Impostor.Server/Net/Client.cs)
 - [Johnbox: correlated responses and object versions](https://github.com/InvoxiPlayGames/johnbox/blob/69ec98e92226168d8fd11c4dbbe4de21fae6b2e1/johnbox.js)
 - [Spyfall: separate private role delivery](https://github.com/VeryBadFrags/spyfall-server/blob/536d3170e53604f87a539fe14e6b3cd22b4f0cd1/src/spy.ts)
+
+## Current-main open game pack and Grand Prix integration
+
+The October 26 main integration keeps all published game modes, guest QR entry
+and the Grand Prix UI. The existing version-1 checkpoint now preserves the
+authoritative active-game `pack` (kart order, laps, heat results, items,
+private board/role state), `show`, racing settings and host-ended marker.
+A missing active-game snapshot is rejected rather than silently resetting it.
+
+Fast `race_input` packets are validated and rate limited without performing
+one database write per controller message. The authoritative race simulation
+checkpoints at most once every 100 ms per active room, and sends frames after
+the checkpoint commits. A pending checkpoint blocks another race tick to
+bound write backlog. Match results, credentials and scores remain committed
+before acknowledgement or reveal. Checkpoint persistence is still not a
+production-level backup or a physical 20-phone test.
+
+The new `test/party-checkpoint-open-pack.test.js` covers playing-state
+roundtrips, mid-race reconnect, 20 kart recovery, stale controls and once-only
+heat scoring. Automated CI must pass on the integrated branch before review.

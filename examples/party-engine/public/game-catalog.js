@@ -2,8 +2,9 @@
  * One original, no-account catalog for the guest home page and host lobby.
  * These labels describe existing server-side modes; game logic stays authoritative.
  */
+import { packGames } from "./pack-config.js";
 export const guestGames = Object.freeze([
-  { id:"quiz", name:"Trivia Quiz", icon:"❓", color:"violet", players:"3–20", min:3, max:20, rounds:"5 demo questions or up to 20 of your own", rules:"Choose the correct answer before the 30-second clock ends. Earn 100 points for each correct answer.", tag:"Classic" },
+  { id:"quiz", name:"Trivia Quiz", icon:"❓", color:"violet", players:"3–20", min:3, max:20, rounds:"5 demo questions or up to 20 of your own", rules:"Choose the correct answer before the clock ends. Sample rounds allow 30 seconds and award 100 points; imported quizzes can set their own timers and scoring.", tag:"Classic" },
   { id:"duel", name:"Prompt Duel", icon:"💬", color:"pink", players:"3–20", min:3, max:20, rounds:"One matchup per player", rules:"Write two funny responses, then vote on other players' answers. Each vote earns its author 100 points.", tag:"Creative" },
   { id:"charades", name:"Charades", icon:"🎭", color:"orange", players:"3–20", min:3, max:20, rounds:"One acting turn per player", rules:"Act out the private clue, let family guess, then mark Correct or Pass before the 60-second timer ends.", tag:"Act it out" },
   { id:"majority", name:"Majority Rules", icon:"🗳️", color:"blue", players:"3–20", min:3, max:20, rounds:"5 votes", rules:"Pick one of two choices. The most popular choice wins 100 points for its voters; a tie rewards both sides.", tag:"Quick votes" },
@@ -17,10 +18,39 @@ export const guestGames = Object.freeze([
   { id:"caption", name:"Caption Chaos", icon:"📸", color:"pink", players:"3–20", min:3, max:20, rounds:"4 scenes", rules:"Write a caption for a silly scene, then vote for someone else's caption. Each vote gives 100 points.", tag:"Laugh out loud" },
   { id:"timeline", name:"Timeline Tangle", icon:"🕰️", color:"blue", players:"3–20", min:3, max:20, rounds:"5 timelines", rules:"Place four shuffled events in chronological order. Earn 25 points for each correct position.", tag:"Put in order" },
   { id:"bracket", name:"Bracket Battle", icon:"🏆", color:"yellow", players:"3–20", min:3, max:20, rounds:"15 matchups", rules:"Vote for the winner of each showdown. Correct votes earn points as contenders advance.", tag:"Tournament" },
+  ...packGames,
 ]);
 export const gameById = id => guestGames.find(g=>g.id===id);
 export function mountGamePicker(container, { onHost, onChoose, selected = "quiz", asHost = false } = {}) {
   container.replaceChildren();
+  const filters = document.createElement("div");
+  filters.className = "pick-game-filters";
+  filters.setAttribute("role", "group");
+  filters.setAttribute("aria-label", "Game categories");
+  const status = document.createElement("p");
+  status.setAttribute("aria-live", "polite");
+  const cardModes = ["colors", "table"], boardModes = ["four", "chess", "checkers", "reversi", "mancala", "backgammon"];
+  const choices = [
+    ["all", "All games"], ["party", "Party & trivia"],
+    ["cards", "Cards & dice"], ["boards", "Board games"],
+  ];
+  const chooseCategory = category => {
+    let visible = 0;
+    for (const card of grid.children) {
+      const id = card.dataset.game;
+      const group = cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : "party";
+      card.hidden = category !== "all" && category !== group;
+      if (!card.hidden) visible++;
+    }
+    for (const filter of filters.children) filter.setAttribute("aria-pressed", String(filter.dataset.category === category));
+    status.textContent = `${visible} games to choose from.`;
+  };
+  for (const [category, label] of choices) {
+    const filter = document.createElement("button");
+    filter.type = "button"; filter.textContent = label; filter.dataset.category = category;
+    filter.addEventListener("click", () => chooseCategory(category));
+    filters.append(filter);
+  }
   const grid = document.createElement("div");
   grid.className = "pick-game-grid";
   for (const game of guestGames) {
@@ -52,5 +82,6 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     card.append(marker, title, people, rules, host);
     grid.append(card);
   }
-  container.append(grid);
+  container.append(filters, status, grid);
+  chooseCategory("all");
 }
