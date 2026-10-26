@@ -307,12 +307,12 @@ test("Razzia import: save locally and preserve timer and scoring while editing",
   await expect(page.locator("#status")).toContainText("Saved");
 });
 
-test("Credits offer exact guest source, six pinned upstream records and license notices", async ({
+test("Credits offer exact guest source, eight pinned upstream records and license notices", async ({
   page,
   request,
 }) => {
   await page.goto(base + "/sources.html");
-  await expect(page.locator("#source-list article")).toHaveCount(7);
+  await expect(page.locator("#source-list article")).toHaveCount(9);
   const response = await request.get(base + "/open-source/source.json");
   expect(response.ok()).toBe(true);
   const source = await response.json();
@@ -320,22 +320,27 @@ test("Credits offer exact guest source, six pinned upstream records and license 
     source.files.some((f) => f.path.endsWith("open-pack/board-rules.js")),
   ).toBe(true);
   expect(source.files.some((f) => /\.env/.test(f.path))).toBe(false);
+  expect(source.files.some((f) => f.path.endsWith("public/race-math.js"))).toBe(true);
+  expect(source.files.some((f) => f.path.endsWith("public/race-ui.js"))).toBe(true);
   expect((await request.get(base + "/open-source/boards.txt")).ok()).toBe(true);
+  expect((await request.get(base + "/open-source/race.txt")).ok()).toBe(true);
+  expect((await request.get(base + "/open-source/phone-controllers.txt")).ok()).toBe(true);
 });
 
 
-test("Game categories keep all 24 modes easy to browse", async ({page}) => {
+test("Game categories keep all 25 modes easy to browse", async ({page}) => {
   await page.goto(base);
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(24);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(25);
   await page.getByRole("button",{name:"Cards & dice",exact:true}).click();
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(2);
   await expect(page.locator('[data-game="colors"]')).toBeVisible();
   await page.getByRole("button",{name:"Board games",exact:true}).click();
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(6);
   await page.getByRole("button",{name:"Party & trivia",exact:true}).click();
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(16);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(17);
+  await expect(page.locator('[data-game="race"]')).toBeVisible();
   await page.getByRole("button",{name:"All games",exact:true}).click();
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(24);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(25);
 });
 
 test("Drawing waits for a slow submission instead of showing a stroke that was never sent", async ({browser}) => {
