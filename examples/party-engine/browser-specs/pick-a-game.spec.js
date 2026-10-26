@@ -16,6 +16,8 @@ for (const game of guestGames) {
       await hostButton.click();
       await expect(host.locator("#heading")).toContainText("lobby");
       await expect(host.getByLabel("Game mode")).toHaveValue(game.id);
+      if (game.id === "charades")
+        await host.getByLabel("Charades pack").selectOption("animals");
       const code=(await host.locator("#heading").innerText()).split(" · ")[0];
       expect(code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
       const svg=host.locator("#party-invitation svg[role='img']");
@@ -37,6 +39,30 @@ for (const game of guestGames) {
       await expect(guest.locator("#roster")).toContainText("Family Guest");
       expect((await guest.locator("#roster").innerText())).toBe(before);
       await expect(guest.getByLabel("Email")).toHaveCount(0);
+
+      // Recover the host's setup as well as its identity. A reload must not
+      // silently replace a tile-selected game with the default Trivia Quiz.
+      await host.reload();
+      await expect(host.locator("#heading")).toHaveText(`${code} · lobby`);
+      await expect(host.getByLabel("Game mode")).toHaveValue(game.id);
+      await expect(host.locator(".pick-game-selection")).toContainText(game.name);
+      await expect(host.locator("#invite-link")).toHaveValue(url);
+      await expect(host.locator("#roster")).toContainText("Family Guest");
+      if (game.id === "charades")
+        await expect(host.getByLabel("Charades pack")).toHaveValue("animals");
+
+      if (game.id === "quiz") {
+        await host.getByLabel("Game mode").selectOption("bingo");
+        await expect(host.locator(".pick-game-selection")).toContainText("Family Bingo");
+        await host.reload();
+        await expect(host.locator("#heading")).toHaveText(`${code} · lobby`);
+        await expect(host.getByLabel("Game mode")).toHaveValue("bingo");
+        await host.getByRole("button", { name: "Leave this device" }).click();
+        await host.getByRole("button", { name: "Host Trivia Quiz, 3–20 players", exact: true }).click();
+        await expect(host.locator("#heading")).toContainText("lobby");
+        await expect(host.getByLabel("Game mode")).toHaveValue("quiz");
+        expect((await host.locator("#heading").innerText()).split(" · ")[0]).not.toBe(code);
+      }
     } finally {
       await guestContext.close();
       await hostContext.close();

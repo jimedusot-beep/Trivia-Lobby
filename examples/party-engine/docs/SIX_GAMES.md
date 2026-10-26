@@ -24,6 +24,12 @@ These six modes are integrated in the combined PR #59 alongside five social mode
 
 ## Review gates
 
+### Host setup recovery
+
+Production verification found that reloading the host recovered its room but reset a menu-selected game to Trivia Quiz. Preserve the host's selected game and Charades pack in tab-local session storage, bound to that host credential's room code and party path. A new room starts from its own menu choice. Malformed or unavailable storage must fall back safely without blocking guest play. This changes no server message, role, scoring or account requirement.
+
+Acceptance: every game's Host tile retains its selected mode after host reload, while the same QR link and joined nickname remain valid; changing the lobby selector updates the ready-to-host label immediately and survives another reload. Charades retains its selected pack. Explicitly leaving clears that tab's setup choice.
+
 - [ ] `cd examples/party-engine && npm test` including original and new scoring/privacy tests.
 - [ ] `npm run test:browser` including six new browser scenarios and the original five social games.
 - [ ] Root `npm run check`, unit test, production build, WebSocket load, native Postgres, and Chromium/Firefox/WebKit acceptance.
