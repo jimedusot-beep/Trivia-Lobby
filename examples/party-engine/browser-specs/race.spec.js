@@ -58,6 +58,18 @@ test("Grand Prix: decoded QR opens a no-login 320px controller; all four control
       expect(b.x).toBeGreaterThanOrEqual(0); expect(b.x + b.width).toBeLessThanOrEqual(320);
       expect(b.y + b.height).toBeLessThanOrEqual(568);
     }
+    await cleanPage(p);
+    await p.setViewportSize({ width: 844, height: 390 });
+    for (const [name, half] of [["Steer left", "left"], ["Steer right", "left"], ["Hold drift, release for boost", "right"], ["Use racing item", "right"]]) {
+      const box = await p.getByRole("button", { name, exact: true }).boundingBox();
+      expect(box.y + box.height).toBeLessThanOrEqual(390);
+      if (half === "left") expect(box.x + box.width / 2).toBeLessThan(422);
+      else expect(box.x + box.width / 2).toBeGreaterThan(422);
+    }
+    if (process.env.RACE_SCREENSHOT_DIR && test.info().project.name === "chromium") {
+      await mkdir(process.env.RACE_SCREENSHOT_DIR, { recursive: true });
+      await p.screenshot({ path: path.join(process.env.RACE_SCREENSHOT_DIR, "party-grand-prix-phone-landscape.png"), fullPage: true });
+    }
     await cleanPage(p); expect(f.errors).toEqual([]);
   } finally { await f.close(); }
 });
