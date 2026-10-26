@@ -102,8 +102,10 @@ export default function Host() {
   };
 
   if (!connected) return (
-    <div className="h-screen flex items-center justify-center bg-background">
-      <div className="animate-pulse text-2xl font-bold text-primary">Connecting to server...</div>
+    <div className="min-h-screen flex flex-col gap-4 items-center justify-center p-6 bg-background">
+      <p role="status" className="text-2xl font-bold text-primary">Connecting to your room…</p>
+      {lastError && <p role="alert" className="max-w-md text-center">{lastError}</p>}
+      <Link href="/" className="underline">Return to decks</Link>
     </div>
   );
 

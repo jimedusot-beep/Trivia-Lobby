@@ -11,7 +11,10 @@ const letter = z.enum(["A", "B", "C", "D"]);
 export const liveKindSchema = z.enum(["multiple_choice","true_false","multiple_select","ordering"]);
 const responseSchema = z.union([letter, z.object({ value: z.boolean() }).strict(), z.object({ selectedIds: z.array(z.string().min(1).max(80)).min(1).max(8) }).strict(), z.object({ orderIds: z.array(z.string().min(1).max(80)).min(2).max(8) }).strict()]);
 const envelope = <K extends string, T extends z.ZodTypeAny>(type: K, payload: T) =>
-  z.object({ v: z.literal(PROTOCOL_VERSION), type: z.literal(type), payload }).strict();
+  z.object({ v: z.literal(PROTOCOL_VERSION), type: z.literal(type), payload,
+    requestId: z.string().regex(/^[\w-]{8,80}$/).optional(),
+    matchId: z.string().uuid().optional(), revision: z.number().int().nonnegative().optional(),
+  }).strict();
 
 export const clientMessageSchema = z.discriminatedUnion("type", [
   envelope(WS_EVENTS.CREATE_ROOM, z.object({ deckId: z.number().int().positive() }).strict()),
@@ -25,6 +28,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     roomCode: roomCodeSchema, hostToken: z.string().min(32).max(128),
   }).strict()),
   envelope(WS_EVENTS.START_GAME, action),
+  envelope(WS_EVENTS.CONFIRM_SESSION, action),
   envelope(WS_EVENTS.NEXT_QUESTION, action),
   envelope(WS_EVENTS.CONFIGURE_GAME,z.object({roomCode:roomCodeSchema,mode:gameModeSchema,roundCount:z.number().int().min(1).max(500).optional(),timeLimitMs:z.number().int().min(5000).max(120000).optional(),shuffleQuestions:z.boolean().optional(),shuffleAnswers:z.boolean().optional()}).strict()),
   envelope(WS_EVENTS.BUZZ,z.object({roomCode:roomCodeSchema,questionIndex:z.number().int().nonnegative()}).strict()),
@@ -73,6 +77,7 @@ export const snapshotSchema = z.object({
 }).strict();
 
 export const serverMessageSchema = z.discriminatedUnion("type", [
+  envelope(WS_EVENTS.ACTION_ACK, z.object({ requestId: z.string(), accepted: z.literal(true) }).strict()),
   envelope(WS_EVENTS.ROOM_CREATED, z.object({ roomCode: roomCodeSchema, hostToken: z.string() }).strict()),
   envelope(WS_EVENTS.HOST_RESUMED, z.object({ roomCode: roomCodeSchema, hostToken: z.string() }).strict()),
   envelope(WS_EVENTS.ROOM_JOINED, z.object({

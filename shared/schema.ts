@@ -1,7 +1,15 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, bigint, boolean, timestamp, jsonb, uuid, index, uniqueIndex, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+
+// Server-private recovery records. The startup SQL migration also installs atomic budget/fencing logic.
+export const liveRoomCheckpoints = pgTable("live_room_checkpoints", {
+  kind: text("kind").notNull(), code: text("code").notNull(), version: bigint("version", { mode: "number" }).notNull(),
+  state: jsonb("state").notNull(), payloadBytes: integer("payload_bytes").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.kind, table.code] }), index("live_room_checkpoints_expiry").on(table.expiresAt)]);
 
 // Phase 3: keep legacy decks with NULL owner unclaimed and inaccessible.
 // Operators must verify ownership before assigning any pre-account data.
@@ -114,7 +122,7 @@ export const WS_EVENTS = {
   ERROR: 'error',
   SYNC_SNAPSHOT: 'sync_snapshot', // Added for reliability
   CONFIGURE_GAME:'configure_game', GAME_CONFIGURED:'game_configured',
-  BUZZ:'buzz', BUZZ_STATE:'buzz_state', BUY_UPGRADE:'buy_upgrade', PLAYER_STATUS:'player_status', ANSWER_ACCEPTED:'answer_accepted',
+  BUZZ:'buzz', BUZZ_STATE:'buzz_state', BUY_UPGRADE:'buy_upgrade', PLAYER_STATUS:'player_status', ANSWER_ACCEPTED:'answer_accepted', ACTION_ACK:'action_ack', CONFIRM_SESSION:'confirm_session',
   ODD_REVIEW_STATE:'odd_review_state', AWARD_ODD_BONUS:'award_odd_bonus', FINALIZE_ODD_REVIEW:'finalize_odd_review',
 } as const;
 

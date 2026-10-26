@@ -4,6 +4,9 @@ import { ParticipantSessions } from "./sessions.js";
 import { DeadlineScheduler } from "./scheduler.js";
 import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
+import { snapshotParty, restoreParty } from "./party-checkpoint.js";
+import { deliver, withDeferredDelivery } from "./durable-delivery.js";
+class RecoveryStorageError extends Error {}
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -11,16 +14,78 @@ export function attachPartySocket(server, {
   expectedOrigin = process.env.PUBLIC_ORIGIN,
   partyOptions = {},
   schedulerOptions = {},
+  checkpointStore,
 } = {}) {
   const scheduler = new DeadlineScheduler({ clock: partyOptions.clock, ...schedulerOptions });
-  const rooms = new Map(), limits = new Map();
+  const rooms = new Map(), limits = new Map(), loading = new Map();
+  let closing = false;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 32768, perMessageDeflate: false });
   const send = (ws, data) => {
-    if (ws.readyState === WebSocket.OPEN) {
+    const frame = JSON.stringify(data);
+    deliver(() => { if (ws.readyState === WebSocket.OPEN) {
       if (ws.bufferedAmount > 65536) ws.close(1013, "Slow connection");
-      else ws.send(JSON.stringify(data));
-    }
+      else ws.send(frame);
+    } });
   };
+  function recordFor(party, sessions, version = null) {
+    return { party, sessions, version, queue: Promise.resolve(), saved: null };
+  }
+  async function recover(code) {
+    if (rooms.has(code)) return rooms.get(code);
+    if (!checkpointStore) return undefined;
+    if (!loading.has(code)) {
+      const pending = (async () => {
+        const saved = await checkpointStore.load("party", code).catch(() => { throw new RecoveryStorageError(); });
+        if (!saved) return undefined;
+        if (saved.state?.v !== 1) throw new Error("Unsupported room recovery state.");
+        const record = recordFor(restoreParty(code, saved.state.party, partyOptions, saved.savedAt), ParticipantSessions.restore(saved.state.sessions), saved.version);
+        if (closing) return undefined;
+        if (rooms.size >= 200) throw new Error("Server is full.");
+        rooms.set(code, record);
+        return record;
+      })();
+      loading.set(code, pending);
+      pending.finally(() => loading.delete(code)).catch(() => {});
+    }
+    return loading.get(code);
+  }
+  function failRecovery(record, ws) {
+    if (record && rooms.get(record.party.code) === record) {
+      rooms.delete(record.party.code);
+      scheduler.cancel(record.party.code);
+      const peers = [...record.sessions.connections()].map(([, socket]) => socket);
+      for (const socket of new Set([...peers, ws].filter(Boolean))) {
+        send(socket, { type: "error", message: "Room recovery could not be saved. Please reconnect." });
+        socket.close(1013, "Recovery storage unavailable");
+      }
+    } else if (ws) {
+      send(ws, { type: "error", message: "Room recovery is temporarily unavailable. Please reconnect." });
+      ws.close(1013, "Recovery storage unavailable");
+    }
+  }
+  function transact(record, operation, ws) {
+    const result = record.queue.then(async () => {
+      if (closing || rooms.get(record.party.code) !== record) return;
+      await withDeferredDelivery(async () => {
+        try { await operation(); }
+        catch (error) {
+          if (!ws) throw error;
+          send(ws, { type: "error", message: error instanceof SyntaxError ? "Invalid JSON." : error.message });
+          if (record.sessions.owns("host", ws) || [...record.sessions.connections()].some(([, socket]) => socket === ws)) publish(record);
+        }
+      }, async () => {
+        if (!checkpointStore) return;
+        const state = { v: 1, party: snapshotParty(record.party), sessions: record.sessions.snapshot() };
+        const serialized = JSON.stringify(state);
+        if (serialized === record.saved) return;
+        const remaining = 600000 - (record.party.clock() - record.party.touched);
+        record.version = await checkpointStore.save("party", record.party.code, state, Date.now() + remaining, record.version);
+        record.saved = serialized;
+      });
+    });
+    record.queue = result.catch(() => { failRecovery(record, ws); });
+    return record.queue;
+  }
   function publish(record) {
     if (rooms.get(record.party.code) !== record) return;
     record.sessions.prune(record.party.players);
@@ -37,8 +102,7 @@ export function attachPartySocket(server, {
       deadline,
       () => {
         if (rooms.get(party.code) !== record) return;
-        party.tick();
-        publish(record);
+        void transact(record, () => { party.tick(); publish(record); });
       },
     );
   }
@@ -97,7 +161,8 @@ export function attachPartySocket(server, {
       ws.alive = true;
     });
     ws.on("error", () => {});
-    ws.on("message", (raw) => {
+    let connectionQueue = Promise.resolve();
+    ws.on("message", (raw) => { connectionQueue = connectionQueue.then(async () => {
       try {
         if (Date.now() - windowStart > 10000) {
           windowStart = Date.now();
@@ -105,6 +170,9 @@ export function attachPartySocket(server, {
         }
         if (++count > 60) throw new Error("Too many messages; wait a moment.");
         const m = JSON.parse(raw.toString());
+        if (m?.type === "ping" && Object.keys(m).length === 1) {
+          send(ws, { type: "pong", serverNow: Date.now() }); return;
+        }
         if (!m || typeof m !== "object" || Array.isArray(m))
           throw new Error("Invalid message.");
         if (!record) {
@@ -113,46 +181,53 @@ export function attachPartySocket(server, {
           if (m.type === "create") {
             if (rooms.size >= 200) throw new Error("Server is full.");
             const code = roomCode(rooms);
-            candidate = {
-              party: new Party(code, {
+            if (checkpointStore && await checkpointStore.load("party", code).catch(() => { throw new RecoveryStorageError(); })) throw new Error("Room code is occupied. Please try again.");
+            candidate = recordFor(new Party(code, {
                 ...partyOptions,
                 ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
-              }),
-              sessions: new ParticipantSessions(),
-            };
+              }), new ParticipantSessions());
             rooms.set(code, candidate);
             id = "host";
           } else {
-            candidate = rooms.get(m.code.toUpperCase());
+            candidate = await recover(m.code.toUpperCase());
             if (!candidate) throw new Error("Room expired or not found.");
             if (m.type === "join") {
-              candidate.party.tick();
-              publish(candidate);
-              id = candidate.party.join(m.name);
+              await transact(candidate, () => {
+                candidate.party.tick();
+                id = candidate.party.join(m.name);
+                record = candidate; actor = id;
+                const token = record.sessions.issue(actor, ws);
+                send(ws, { type: "credential", code: record.party.code, actor, token });
+                publish(record);
+              }, ws);
+              return;
             } else {
-              candidate.sessions.resume(m.actor, m.token, ws);
-              record = candidate;
-              actor = m.actor;
+              await transact(candidate, () => {
+                candidate.sessions.resume(m.actor, m.token, ws);
+                record = candidate;
+                actor = m.actor;
               // Apply any deadline that elapsed before reconnect. A resumed phone
               // cannot rewind a round or suppress an expired host grace period.
               record.party.tick();
               record.party.connected(actor, true);
               send(ws, { type: "ready", actor });
               publish(record);
+              }, ws);
               return;
             }
           }
           record = candidate;
           actor = id;
-          const token = record.sessions.issue(actor, ws);
+          await transact(record, () => { const token = record.sessions.issue(actor, ws);
           send(ws, {
             type: "credential",
             code: record.party.code,
             actor,
             token,
           });
-          publish(record);
+          publish(record); }, ws);
         } else {
+          await transact(record, () => {
           if (
             rooms.get(record.party.code) !== record ||
             !record.sessions.owns(actor, ws)
@@ -160,21 +235,23 @@ export function attachPartySocket(server, {
             throw new Error("Connection replaced or room expired.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
-          publish(record);
+          publish(record); }, ws);
         }
       } catch (e) {
+        if (e instanceof RecoveryStorageError) { failRecovery(record, ws); return; }
         send(ws, {
           type: "error",
           message: e instanceof SyntaxError ? "Invalid JSON." : e.message,
         });
-        if (record && record.sessions.owns(actor, ws)) publish(record);
       }
-    });
+    }).catch(() => failRecovery(record, ws)); });
     ws.on("close", () => {
-      if (record && record.sessions.disconnect(actor, ws)) {
-        record.party.connected(actor, false);
-        publish(record);
-      }
+      if (!closing && record) void transact(record, () => {
+        if (record.sessions.disconnect(actor, ws)) {
+          record.party.connected(actor, false);
+          publish(record);
+        }
+      });
     });
   });
   const timer = setInterval(() => {
@@ -184,9 +261,11 @@ export function attachPartySocket(server, {
         scheduler.cancel(code);
         rooms.delete(code);
         r.sessions.closeAll();
+        void checkpointStore?.delete("party", code, r.version).catch(() => {});
       }
     }
     for (const [ip, l] of limits) if (now >= l.reset) limits.delete(ip);
+    void checkpointStore?.prune().catch(() => {});
   }, 5000);
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
@@ -199,6 +278,8 @@ export function attachPartySocket(server, {
     }
   }, 15000);
   function cleanup() {
+    if (closing) return;
+    closing = true;
     scheduler.close();
     clearInterval(timer);
     clearInterval(heartbeat);
@@ -214,6 +295,7 @@ export function attachPartySocket(server, {
     scheduler,
     async close() {
       cleanup();
+      await Promise.all([...rooms.values()].map(record => record.queue));
       await new Promise((resolve) => wss.close(resolve));
     },
   };

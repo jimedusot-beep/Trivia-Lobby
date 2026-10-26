@@ -73,8 +73,10 @@ export default function Play() {
   };
 
   if (!connected) return (
-    <div className="h-screen bg-primary flex items-center justify-center text-white font-bold">
-      Reconnecting to game…
+    <div className="min-h-screen bg-primary flex flex-col gap-4 items-center justify-center p-6 text-white font-bold">
+      <p role="status">Reconnecting to game…</p>
+      {lastError && <p role="alert" className="max-w-md text-center">{lastError}</p>}
+      <Button variant="secondary" onClick={() => { localStorage.removeItem("trivia_player"); setLocation("/join"); }}>Return to join</Button>
     </div>
   );
 
