@@ -93,7 +93,7 @@ export function validateAction(message) {
     fail("Invalid message envelope.");
   if (
     message.type === "start" &&
-    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket", ...packIds].includes(message.value)
+    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket", "turbo", "wave", ...packIds].includes(message.value)
   )
     fail("Unknown game mode.");
   if (message.type === "play" && (!object(message.value) || typeof message.value.action !== "string" || message.value.action.length > 24 || Object.keys(message.value).length > 8)) fail("Invalid game move.");
