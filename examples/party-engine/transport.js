@@ -22,10 +22,12 @@ export function attachPartySocket(server, {
       else ws.send(JSON.stringify(data));
     }
   };
-  function publish(record) {
+  function publish(record, { broadcast = true } = {}) {
     if (rooms.get(record.party.code) !== record) return;
     record.sessions.prune(record.party.players);
-    for (const [id, ws] of record.sessions.connections()) {
+    // Race commands get their own acknowledgement; a single 750ms timer handles
+    // snapshots to every racer, rather than 20 broadcasts per controller tap.
+    if (broadcast) for (const [id, ws] of record.sessions.connections()) {
       send(ws, { type: "state", state: record.party.view(id) });
     }
     const party = record.party;
@@ -165,7 +167,7 @@ export function attachPartySocket(server, {
             throw new Error("Connection replaced or room expired.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
-          publish(record);
+          publish(record, { broadcast: record.party.phase !== "racing" });
         }
       } catch (e) {
         send(ws, {
