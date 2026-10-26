@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdtemp,rm } from "node:fs/promises";
+import { mkdtemp,rm,readFile,writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID,createHash } from "node:crypto";
@@ -27,7 +27,14 @@ test("encrypted snapshot restores PostgreSQL contents and exact retained-origina
     const count=(await source.query("SELECT count(*)::int n FROM decks")).rows[0].n;
     const env={...process.env,BACKUP_PASSPHRASE:"CI-only-recovery-passphrase-long-enough-for-GCM",S3_BUCKET:"",BACKUP_S3_BUCKET:""};
     await run(process.execPath,["--import","tsx","script/backup.ts","create",backup],{env});
-    await run(process.execPath,["--import","tsx","script/backup.ts","restore",backup],{env:{...env,PRIVATE_STORAGE_DIR:restoreRoot,RESTORE_DATABASE_URL:target.toString(),RESTORE_DISPOSABLE:"1"}});
+    const restoreEnv={...env,RESTORE_PRIVATE_STORAGE_DIR:restoreRoot,RESTORE_DATABASE_URL:target.toString(),RESTORE_DISPOSABLE:"1",
+      S3_BUCKET:"uploads",AWS_ENDPOINT_URL_S3:"https://source.storage.aws.neon.tech",AWS_ACCESS_KEY_ID:"source-test-key",AWS_SECRET_ACCESS_KEY:"source-test-secret"};
+    // Inherited production-like Neon settings must never redirect a restore.
+    // Existing destination data must survive a refused restore unchanged.
+    const sentinel=join(restoreRoot,"existing-original.blob");await writeFile(sentinel,"do not overwrite");
+    await assert.rejects(run(process.execPath,["--import","tsx","script/backup.ts","restore",backup],{env:restoreEnv}),/must be empty/);
+    assert.equal(await readFile(sentinel,"utf8"),"do not overwrite");await rm(sentinel);
+    await run(process.execPath,["--import","tsx","script/backup.ts","restore",backup],{env:restoreEnv});
     restored=new pg.Client({connectionString:target.toString()});await restored.connect();
     assert.equal((await restored.query("SELECT count(*)::int n FROM decks")).rows[0].n,count);
     assert.deepEqual((await restored.query("SELECT front,back FROM cards WHERE deck_id=$1",[deckId])).rows,[{front:"Recovered Ω prompt",back:"Exact original answer"}]);
