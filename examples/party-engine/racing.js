@@ -134,6 +134,6 @@ export function projectRace(p,actor){
       boostReady:now>=own.boostReady,boostWaitMs:Math.max(0,Math.ceil(own.boostReady-now)),
       distance:Math.round(own.distance),finished:own.finishedAt!==null};
   }
-  if(p.phase==="reveal")view.results=r.standings;
+  if(["reveal","finished"].includes(p.phase))view.results=r.standings;
   return view;
 }
