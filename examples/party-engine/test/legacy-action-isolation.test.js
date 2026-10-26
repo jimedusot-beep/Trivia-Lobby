@@ -42,8 +42,9 @@ test("old Prompt Duel voting frames cannot score or skip an Impostor vote", () =
   const { party, players, action } = room("impostor");
   for (const id of players) action(id, "respond", { value: "A clue" });
   assert.equal(party.phase, "voting");
-  party.votes = new Map([["old vote", "old option"]]);
-  assert.throws(() => action(players[0], "vote", { value: "old option" }), /You cannot vote on this matchup now/);
+  const staleOption = "11111111-1111-4111-8111-111111111111";
+  party.votes = new Map([["old vote", staleOption]]);
+  assert.throws(() => action(players[0], "vote", { value: staleOption }), /You cannot vote on this matchup now/);
   assert.equal(party.phase, "voting");
   assert.equal(party.social.votes.size, 0);
   for (let i = 0; i < players.length; i++)
