@@ -9,7 +9,15 @@ async function ready(page: Page) {
     })));
   });
   expect(await page.evaluate(() => Array.from(document.images).every(image => image.naturalWidth > 0))).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const layout = await page.evaluate(() => ({
+    viewport: innerWidth, width: document.documentElement.scrollWidth,
+    overflow: Array.from(document.querySelectorAll("body *")).filter(element => {
+      const box = element.getBoundingClientRect();
+      return box.width > 0 && (box.right > innerWidth + 1 || box.left < -1);
+    }).slice(0, 12).map(element => ({ tag: element.tagName, id: element.id, class: element.getAttribute("class"),
+      right: element.getBoundingClientRect().right, width: element.getBoundingClientRect().width })),
+  }));
+  expect(layout.width, JSON.stringify(layout)).toBeLessThanOrEqual(layout.viewport);
 }
 async function shot(page: Page, name: string) {
   await ready(page);
