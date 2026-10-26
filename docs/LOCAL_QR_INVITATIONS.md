@@ -2,7 +2,7 @@
 
 ## Behavior
 
-The host lobby displays an accessible SVG QR code containing the **same public guest invitation URL** as the adjacent copy/share controls. It is generated entirely in the browser and never sent to a QR image API. Invite links include `/join?code=ABC234` only; there are **no host tokens, player credentials or private deck data** in the code.
+Every guest and private host lobby displays an accessible SVG QR code containing the **same public guest invitation URL** as the adjacent copy/share controls. A compact invitation remains available during play and after the match. Assignment owners also have QR invitations. Encoding is entirely local and never uses a QR image API. Private live links use `/join?code=ABC234`; guest party links use `/party/?code=ABC234` (or `/?code=ABC234` on the standalone guest server). Assignment links use their existing public guest route. There are **no host tokens, player credentials, private deck IDs or question data** in the QR code or downloaded SVG.
 
 Mobile guests scan using their device camera, open the join page with the room code prefilled, choose a nickname, and join without an account. If QR encoding is unavailable, the original room code and link remain visible. Hosts can still copy and share the ordinary link.
 
@@ -15,13 +15,13 @@ We use the established MIT-licensed QR Code generator by **Project Nayuki**, wit
 - Original source blob SHA: `c4191ac0b5f8a24d87fd9340ceaa2d3b07d0231a`
 - Copyright / license: **Copyright (c) Project Nayuki. (MIT License)**. The full MIT permission and warranty notice is retained intact in `client/src/lib/vendor/qrcodegen.ts`. The only project adjustment is an export statement making the existing namespace available as an ES module.
 
-No npm dependency, external QR endpoint, license-significant rewrite or tracking SDK is introduced.
+The generated browser module at `examples/party-engine/public/vendor/qrcodegen.js` is derived from this same source with `node --import tsx script/build-qr.ts`, retaining the full MIT notice. The production build regenerates it. No runtime npm dependency, external QR endpoint, license-significant rewrite or tracking SDK is introduced. See `QR_PARTY_SHARING.md` for the complete upgrade specification and the development-only independent decoder.
 
 ## Test and release limits
 
-- Unit tests exercise reproducible QR generation for full HTTPS invitation URLs, finder modules, and distinctions between room codes.
-- Browser acceptance verifies a QR SVG appears in the host lobby, the encoded matrix is nonempty and the adjacent guest URL includes the exact room code.
-- These checks **do not simulate an actual phone camera decoding the QR image**. A physical iOS/Android scan and real deployed HTTPS domain check remain a manual release requirement.
+- Unit and browser tests independently decode QR pixels and check the exact public invitation payload, including different origins, guest paths and assignment URLs.
+- Browser acceptance covers hosted modes, guest joining, custom quizzes, sharing fallbacks, SVG downloads, reconnects and phone layouts.
+- These checks **do not claim a physical phone camera was tested**. Real deployed HTTPS links are checked separately; physical iOS/Android camera scanning remains an additional manual check.
 - QR generation does not solve broader catalog discovery, public moderation or distributed room authority.
 
-This work is stacked on earlier parity PRs #27–#32. Merge and review dependent PRs in order after checks pass; no production deployment without offsite backup/recovery, permissions and real host/player acceptance.
+Merge, deployment, automated decoding and physical-device verification are distinct states. Report only checks that actually ran. This presentation upgrade does not change game authority, private access controls or storage.

@@ -64,15 +64,23 @@ test("creator-backed four-kind live quiz works through host and mobile player", 
 
     await expect(guest.getByText("Arrange by size")).toBeVisible();
     const order=["Small","Medium","Large"];
-    const rows=guest.getByRole("listitem");
+    const ordering=guest.getByRole("region",{name:"Put the answers in order",exact:true});
+    const rows=ordering.getByRole("listitem");
+    // The prompt renders before the per-question selection reset. Read the
+    // list only when the new question's controls and labels are ready.
+    await expect(ordering.getByRole("button",{name:"Submit order",exact:true})).toBeEnabled();
+    await expect(rows).toHaveCount(order.length);
+    for(const item of order)await expect(rows.filter({hasText:item})).toBeVisible();
     for(let desired=0;desired<order.length;desired++){
       let list=await rows.allInnerTexts();
       let current=list.findIndex(text=>text.includes(order[desired]));
       expect(current).toBeGreaterThanOrEqual(desired);
       while(current>desired){
         await guest.getByRole("button",{name:`Move item ${current+1} up`}).click();
+        await expect(rows.nth(current-1)).toContainText(order[desired]);
         current--;
       }
+      await expect(rows.nth(desired)).toContainText(order[desired]);
     }
     await guest.getByRole("button",{name:"Submit order"}).click();
     await expect(guest.getByRole("heading",{name:"Correct!"})).toBeVisible();

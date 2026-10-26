@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { cp, rm, readFile } from "fs/promises";
+import { buildQrEncoder } from "./build-qr";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -34,6 +35,7 @@ const allowlist = [
 
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
+  await buildQrEncoder();
 
   console.log("building client...");
   await viteBuild();
