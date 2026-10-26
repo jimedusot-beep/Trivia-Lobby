@@ -158,7 +158,7 @@ button, a { touch-action: manipulation; }
 .sakura-handheld .sakura-answer:disabled {box-shadow:0 3px 0 #241c44;}
 .sakura-phone-result {background:#fffaf5;border:3px solid #d6a1c8;padding:24px 18px;border-radius:25px;box-shadow:0 7px 0 #241c44;position:relative;}
 .sakura-phone-result::before {content:"✿";font-size:2.4rem;color:#d27ca4;position:absolute;top:-24px;right:13px;transform:rotate(-15deg);pointer-events:none;}
-.sakura-join-panel {background:#fffaf5;border:3px solid #a58ab9;box-shadow:0 9px 0 #241c44,0 22px 55px #241c4438;}
+.sakura-join-panel {background:#ffffff;border:3px solid #a58ab9;box-shadow:0 9px 0 #241c44,0 22px 55px #241c4438;}
 .sakura-join-panel input {background:#fff;color:#241c44;}
 .sakura-learning {background-image:linear-gradient(180deg,#fff5e9cc,#fff5e9 550px),url("/party/sakura-vista.svg");background-size:100% 650px,auto 500px;background-repeat:no-repeat;background-position:top center;}
 .sakura-learning .sample-path > button {position:relative;border-radius:17px;box-shadow:0 5px 0 #241c44;}
