@@ -1,4 +1,5 @@
 import { listGuestDecks, restoreGuestDecks } from "./guest-decks.js";
+import { celebrate } from "./party-ui.js";
 import { courseFromDeck, emptyProgress, lessonResult, isUnlocked, dailyLessonIndex, progressStats,
   newSession, sessionStep, answerSession, advanceSession, completeLesson, learningBackup,
   parseLearningBackup, mergeProgress } from "./guest-learning.js";
@@ -6,6 +7,7 @@ import { loadLearningProgress, loadLearningSession, saveLearningSession, finishL
   restoreLearningProgress } from "./guest-learning-store.js";
 
 const $ = id => document.getElementById(id);
+const countLabel = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 const element = (tag, content, parent, className) => {
   const node = document.createElement(tag);
   if (content !== undefined) node.textContent = content;
@@ -39,7 +41,7 @@ function renderStats() {
   $("level-progress").value = stats.levelXP;
   $("next-level").textContent = `${100 - stats.levelXP} XP to level ${stats.level + 1}`;
   $("streak").textContent = `${stats.current}-day streak`;
-  $("best-streak").textContent = `Best: ${stats.best} days`;
+  $("best-streak").textContent = `Best: ${countLabel(stats.best, "day")}`;
   $("lesson-count").textContent = String(stats.lessons);
   $("daily-goal").textContent = stats.todayDone ? "Today’s goal complete ✓" : "Today’s goal: one lesson";
   $("daily").textContent = stats.todayDone ? "Practice another lesson" : "Start today’s lesson";
@@ -59,7 +61,7 @@ function renderCourses() {
     const done = item.lessons.filter(lesson => lessonResult(progress, lesson)).length;
     const card = button(item.title, $("course-list"), () => chooseCourse(item), "course-card");
     card.setAttribute("aria-pressed", String(course?.key === item.key));
-    element("small", `${done} of ${item.lessons.length} lessons complete`, card);
+    element("small", `${done} of ${countLabel(item.lessons.length, "lesson")} complete`, card);
   }
 }
 function renderPath() {
@@ -67,22 +69,23 @@ function renderPath() {
   if (!course) return;
   $("course-title").textContent = course.title;
   const done = course.lessons.filter(lesson => lessonResult(progress, lesson)).length;
-  $("course-progress").textContent = `${done} / ${course.lessons.length} lessons complete`;
+  $("course-progress").textContent = `${done} / ${countLabel(course.lessons.length, "lesson")} complete`;
   const changed = sessionChanged || progress.completions.some(c => c.courseKey.startsWith(`${course.id}:`) && c.courseKey !== course.key);
   $("version-note").hidden = !changed;
   $("version-note").textContent = "Your quiz questions changed. This version starts a fresh path; your earlier XP and achievements are kept.";
   const daily = course.lessons[dailyLessonIndex(progress, course)];
-  $("daily-detail").textContent = `${course.title} · ${daily.title} · ${daily.questions.length} questions. One completed lesson meets your daily goal.`;
+  $("daily-detail").textContent = `${course.title} · ${daily.title} · ${countLabel(daily.questions.length, "question")}. One completed lesson meets your daily goal.`;
   $("path").replaceChildren();
   for (const lesson of course.lessons) {
     const result = lessonResult(progress, lesson), unlocked = isUnlocked(progress, course, lesson.index);
     const li = element("li", undefined, $("path"));
     const action = button(undefined, li, () => openLesson(lesson.index));
     action.disabled = !unlocked;
+    action.dataset.step = result ? "complete" : unlocked ? "current" : "locked";
     element("span", result ? "✓" : String(lesson.index + 1), action, result ? "step-number completed" : "step-number");
     const info = element("span", lesson.title, action);
     element("small", result ? `Completed · Best first try: ${result.bestCorrect}/${result.total} · Replay`
-      : unlocked ? `${lesson.questions.length} questions · Start` : "Finish the earlier lesson to unlock", info);
+      : unlocked ? `${countLabel(lesson.questions.length, "question")} · Start` : "Finish the earlier lesson to unlock", info);
   }
   $("resume").hidden = !savedSession || sessionStep(course, savedSession).done;
   if (savedSession) $("resume").textContent = `Resume ${course.lessons[savedSession.lessonIndex].title}`;
@@ -174,7 +177,7 @@ $("continue").addEventListener("click", () => run(async () => {
   result ??= completeLesson(progress, course, session);
   progress = result.progress; sessionXP = result.earnedXP; savedSession = session;
   const earned = progressStats(progress).achievements.filter(a => a.earned && !before.includes(a.id)).map(a => a.title);
-  renderSummary(earned); say(persistent ? "Lesson complete. Your progress is saved." : "Lesson complete. Progress is available for this page session only; download a backup.");
+  renderSummary(earned); celebrate(); say(persistent ? "Lesson complete. Your progress is saved." : "Lesson complete. Progress is available for this page session only; download a backup.");
 }));
 $("daily").addEventListener("click", () => run(async () => {
   await refreshProgress(); await openLesson(dailyLessonIndex(progress, course));

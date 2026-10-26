@@ -5,20 +5,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
+  "lobby-button inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-bold focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0" +
   " hover-elevate active-elevate-2",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground border border-primary-border",
+          "bg-primary text-primary-foreground border-2 border-primary-border",
         destructive:
-          "bg-destructive text-destructive-foreground border border-destructive-border",
+          "bg-destructive text-destructive-foreground border-2 border-destructive-border",
         outline:
           // Shows the background color of whatever card / sidebar / accent background it is inside of.
           // Inherits the current text color.
-          " border [border-color:var(--button-outline)]  shadow-xs active:shadow-none ",
-        secondary: "border bg-secondary text-secondary-foreground border border-secondary-border ",
+          "bg-white border-2 [border-color:var(--button-outline)] shadow-xs active:shadow-none",
+        secondary: "border-2 bg-secondary text-secondary-foreground border-secondary-border",
         // Add a transparent border so that when someone toggles a border on later, it doesn't shift layout/size.
         ghost: "border border-transparent",
       },
@@ -50,6 +50,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
+        data-variant={variant ?? "default"}
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}

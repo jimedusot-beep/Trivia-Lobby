@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#6146df" />
   <title>My learning path · Trivia Lobby</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./learn.css" />
+  <link rel="icon" type="image/svg+xml" href="./lobby-spark.svg" />
   <script src="./learn.js" type="module"></script>
 </head>
-<body>
+<body class="public-learn">
 <main>
   <header>
-    <nav aria-label="Learning navigation"><a href="/">Trivia Lobby</a><a href="./create.html">My quizzes</a><a href="./">Party games</a></nav>
-    <p class="eyebrow">YOUR NEXT SMALL WIN</p>
-    <h1>A little progress,<br />every day.</h1>
-    <p>Turn your own quizzes into short courses. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.</p>
+    <nav class="page-nav" aria-label="Learning navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./create.html">My quizzes</a><a href="./">Party games</a></div></nav>
+    <div class="learning-hero"><div><span class="lobby-kicker">Your next small win</span><h1>A little progress,<br /><span>every day.</span></h1><p>Turn your quizzes into a little adventure. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.</p></div><img class="lobby-hello" src="./lobby-spark.svg" alt="" width="155" height="155" /></div>
   </header>
 
   <section class="stats" aria-label="My learning progress">
@@ -51,7 +51,7 @@
   </section>
 
   <section id="summary" class="runner summary" aria-labelledby="summary-heading" hidden>
-    <span class="celebration" aria-hidden="true">✦</span>
+    <img class="celebration lobby-hello" src="./lobby-spark.svg" width="95" height="95" alt="" />
     <h2 id="summary-heading" tabindex="-1">Lesson complete!</h2>
     <p id="score"></p><p id="retry-score"></p><p id="earned-xp"></p><p id="milestones"></p>
     <div class="summary-actions"><button id="next-lesson" type="button">Continue to next lesson</button><button id="replay" class="quiet" type="button">Replay this lesson</button><button id="summary-path" class="quiet" type="button">Back to course</button></div>

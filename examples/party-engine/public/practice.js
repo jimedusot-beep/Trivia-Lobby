@@ -1,4 +1,5 @@
 import { getGuestDeck, validateLocalDeck } from "./guest-decks.js";
+import { celebrate } from "./party-ui.js";
 const $ = id => document.getElementById(id);
 const id = new URLSearchParams(location.search).get("deck");
 let quiz, index = 0, correct = 0, answered = false;
@@ -39,6 +40,7 @@ $("next").addEventListener("click", () => {
   $("completed").hidden = false;
   $("score").textContent = `You got ${correct} of ${quiz.questions.length} right. Your answers are not uploaded or added to private learning history.`;
   $("status").textContent = "Quiz complete.";
+  celebrate();
 });
 $("again").addEventListener("click", () => {
   index = 0; correct = 0; render();

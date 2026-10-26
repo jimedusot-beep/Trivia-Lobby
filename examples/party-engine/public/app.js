@@ -1,3 +1,5 @@
+import { celebrate } from "./party-ui.js";
+
 let ws,
   state,
   credential,
@@ -156,6 +158,8 @@ function render() {
   const selectedMode = $("mode")?.value || "quiz";
   const selectedCategory = $("charades-category")?.value || "actions";
   const previousPhase = phaseKey;
+  document.body.classList.add("party-playing");
+  document.body.dataset.partyPhase = state.phase;
   $("entry").hidden = true;
   $("game").hidden = false;
   $("content").replaceChildren();
@@ -180,8 +184,12 @@ function render() {
     element("p", invite.href);
     element(
       "p",
-      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.`,
+      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer.`,
     );
+    const rules = element("details");
+    rules.className = "mode-rules";
+    element("summary", "How these games work", rules);
+    element("p", "Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.", rules);
     if (host) {
       const label = element("label", "Game mode");
       label.htmlFor = "mode";
@@ -223,15 +231,24 @@ function render() {
   }
   if (state.phase === "countdown") element("p", "Get ready!");
   if (state.question) {
-    element("h3", state.question.prompt);
+    element("h2", state.question.prompt);
     state.question.choices.forEach((choice, i) => {
+      let tile;
       if (state.phase === "question" && !host)
-        button(choice, () => action("answer", i), undefined, state.locked);
+        tile = button(choice, () => action("answer", i), undefined, state.locked);
       else
-        element(
+        tile = element(
           "p",
           `${choice}${state.question.correct === i ? " ✓ Correct" : ""}`,
         );
+      tile.className = "answer-tile";
+      tile.dataset.answerTone = String(i);
+      tile.dataset.correct = String(state.question.correct === i);
+      const letter = document.createElement("span");
+      letter.className = "answer-letter";
+      letter.setAttribute("aria-hidden", "true");
+      letter.textContent = String.fromCharCode(65 + i);
+      tile.prepend(letter);
     });
     if (state.locked) element("p", "Answer locked.");
     if (state.question.explanation) element("p", state.question.explanation);
@@ -241,7 +258,7 @@ function render() {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
       const box = element("article");
-      element("h3", a.prompt, box);
+      element("h2", a.prompt, box);
       if (a.locked) element("p", "Response locked.", box);
       else {
         const label = element(
@@ -272,7 +289,7 @@ function render() {
     }
   }
   if (state.prompt) {
-    element("h3", state.prompt);
+    element("h2", state.prompt);
     if (state.skipped)
       element(
         "p",
@@ -303,7 +320,7 @@ function render() {
     );
     if (state.phase === "acting") {
       if (c.canMark) {
-        const clue = element("h3", c.clue.text);
+        const clue = element("h2", c.clue.text);
         clue.id = "current-clue";
         clue.tabIndex = -1;
         element(
@@ -319,7 +336,7 @@ function render() {
         );
     }
     if (c.history) {
-      element("h3", "Turn summary");
+      element("h2", "Turn summary");
       const list = element("ul");
       for (const mark of c.history)
         element("li", `${mark.text} — ${mark.result}`, list);
@@ -327,6 +344,7 @@ function render() {
   }
   if (state.phase === "reveal" && host) button("Next", () => action("next"));
   if (state.phase === "finished") {
+    if (previousPhase !== phaseKey && !state.interrupted) celebrate();
     element(
       "p",
       state.interrupted
@@ -346,12 +364,17 @@ function render() {
     if (host) button("Return to same party", () => action("lobby"));
   }
   $("roster").replaceChildren();
-  for (const p of state.players)
+  for (const p of state.players) {
+    const row = element("li", undefined, $("roster"));
+    const token = element("span", (Array.from(p.name)[0] || "?").toUpperCase(), row);
+    token.className = "player-token";
+    token.setAttribute("aria-hidden", "true");
     element(
-      "li",
+      "span",
       `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
-      $("roster"),
+      row,
     );
+  }
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {
@@ -367,5 +390,6 @@ setInterval(() => {
   $("timer").textContent = state.deadline
     ? `${Math.max(0, Math.ceil((state.deadline - Date.now() - offset) / 1000))} seconds remaining`
     : "";
+  $("timer").dataset.urgent = String(!!state.deadline && state.deadline - Date.now() - offset <= 5000);
 }, 200);
 connect();
