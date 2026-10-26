@@ -101,7 +101,7 @@ export function validateAction(message) {
     message.type === "write" &&
     (!Number.isInteger(message.promptIndex) ||
       message.promptIndex < 0 ||
-      message.promptIndex > 7 ||
+      message.promptIndex > 19 ||
       typeof message.value !== "string" ||
       !message.value.trim() ||
       message.value.trim().length > 240)
