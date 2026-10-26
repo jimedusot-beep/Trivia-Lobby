@@ -110,6 +110,7 @@
   min-width: 68px;
   max-width: 104px;
   margin: 0;
+  padding: .35rem !important;
 }
 .open-game .card-hand .standard-card {
   width: 76px;
