@@ -165,3 +165,12 @@ body[data-party-phase="finished"] #heading::after { content:" ✿"; color:#ba639
 .lobby-confetti > i { box-shadow:0 1px 0 #ffffff90; }
 @media(max-width:600px){body.public-party {background-size:100% 790px,auto 420px;} .party-intro::before,.party-intro::after {display:none;} #game.sakura-game-stage{padding:18px;} #roster{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(prefers-reduced-motion:reduce){.party-intro::before,.party-intro::after {animation:none;}}
+
+/* Cross-game standings stay visible on TV and phone; public room data only. */
+.championship { margin: 1.3rem 0; padding: 1rem; border: 2px solid var(--lobby-ink); border-radius: 18px; background: #fff8e9; }
+.championship > h2 { margin: .2rem 0 .6rem; }
+.championship-standings { display: grid; gap: .45rem; padding: 0; margin: .7rem 0; list-style: none; }
+.championship-standings li { border: 1px solid #dbbdd2; border-radius: 12px; background: white; display: flex; flex-wrap: wrap; gap: .25rem 1rem; justify-content: space-between; padding: .55rem .75rem; }
+.championship-standings span { font-variant-numeric: tabular-nums; }
+.championship-recent { padding-left: 1.4rem; }
+@media (max-width: 425px) { .championship { padding: .65rem; } .championship-standings li { display: grid; } }
