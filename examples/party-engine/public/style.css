@@ -97,3 +97,13 @@ body[data-party-phase="countdown"] #content { font: 600 2rem var(--font-display)
 #content > button {min-height:48px;margin:6px 5px 6px 0;}
 #content > button:disabled {opacity:.6;cursor:not-allowed;}
 @media(min-width:960px){#roster {grid-template-columns:repeat(4,minmax(0,1fr));}#roster > li {font-size:.9rem;}}
+
+/* Four-by-four private Bingo cards and small-screen social controls. */
+.family-bingo-board { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; width:100%; margin:16px 0; }
+.family-bingo-square { min-height:70px; margin:0!important; padding:7px 3px!important; font-size:clamp(.66rem,1.9vw,.91rem); line-height:1.2; overflow-wrap:anywhere; box-shadow:none!important; }
+.family-bingo-square.called { background:var(--lobby-gold); color:var(--lobby-ink); border-width:3px; }
+.family-bingo-square.marked { background:var(--lobby-mint); color:var(--lobby-ink); opacity:1; border-color:#286746; }
+.timeline-list { display:grid; gap:3px; }
+.timeline-list label { font-weight:900; }
+.timeline-list select { max-width:100%; }
+@media(min-width:700px) {.family-bingo-square {min-height:84px;}}
