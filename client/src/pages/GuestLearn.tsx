@@ -90,7 +90,7 @@ export default function GuestLearn() {
           <h1 className="text-3xl font-display font-bold">Learn something today</h1>
           <p className="text-muted-foreground">Three bite-sized sample lessons. No email or password required.</p>
           <p className="text-sm text-muted-foreground">Completed lessons are saved on this browser only. Clearing site data removes this progress; it does not synchronize between devices.</p>
-          <Button asChild variant="outline"><a href="/party/learn.html">Learn from my quizzes: courses, levels and daily lessons</a></Button>
+          <Button asChild variant="outline" className="whitespace-normal h-auto text-left"><a href="/party/learn.html">Learn from my quizzes: courses, levels and daily lessons</a></Button>
         </div><img className="lobby-hello" src="/party/lobby-spark.svg" alt="" /></div>
 
         <section aria-label="Learning path" className="sample-path grid sm:grid-cols-3 gap-3">

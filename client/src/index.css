@@ -118,6 +118,7 @@ button, a { touch-action: manipulation; }
 .shadcn-card { box-shadow: 0 4px 0 hsl(var(--foreground) / .12); }
 .sample-learning { background-image: radial-gradient(circle at 95% 5%, #e8e0ff 0, transparent 26rem), radial-gradient(circle at 0 55%, #fff0be 0, transparent 30rem); }
 .sample-learning .sample-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.sample-learning .sample-heading > div { min-width: 0; flex: 1; }
 .sample-learning .sample-heading img { width: 98px; flex: 0 0 98px; }
 .sample-learning .sample-path > button { border: 2px solid var(--lobby-ink); box-shadow: 0 4px 0 var(--lobby-ink); color: var(--lobby-ink); background: var(--lobby-sky); }
 .sample-learning .sample-path > button:nth-child(2) { background: var(--lobby-coral); }
