@@ -151,7 +151,13 @@ for (const mode of packIds)
         );
         const active = players[0].s,
           id = players[0].credential.actor;
-        if (mode === "feud") {
+        if (mode === "race") {
+          assert.equal(snapshot.pack.karts, undefined);
+          assert.equal(party.view("host").pack.karts.length, size);
+          active.send({ v: 1, type: "race_input", matchId: party.matchId, heat: party.index, seq: 0,
+            steer: 0.5, drift: true, item: false, assist: true });
+          await active.wait(m => m.type === "race_frame" && m.own?.seq === 0);
+        } else if (mode === "feud") {
           assert.ok(snapshot.pack.board.every((a) => a.hidden));
           assert.equal(snapshot.pack.judge, undefined);
           await send(active, id, "play", { action: "buzz" });
