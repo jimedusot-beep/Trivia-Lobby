@@ -27,7 +27,12 @@ jobs:
           cache-dependency-path: examples/party-engine/package-lock.json
       - run: npm ci
       - run: npm test
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install guest browsers with bounded mirror retries
+        timeout-minutes: 7
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
+          npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:browser
       - uses: actions/upload-artifact@v4
         if: failure()
