@@ -2,6 +2,7 @@ import { celebrate } from "./party-ui.js";
 import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
 import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
+import { renderRace } from "./race-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
 import { renderPack, drawingBusy } from "./pack-ui.js";
@@ -351,6 +352,7 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.race) renderRace(state,{element,button,action,actor:()=>credential?.actor});
   if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
