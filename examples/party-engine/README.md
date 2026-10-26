@@ -52,6 +52,10 @@ PUBLIC_ORIGIN=https://party.example.com HOST=127.0.0.1 PORT=3001 npm start
 
 Replace the example domain. Forward that HTTPS origin to port 3001, including WebSocket upgrades for `/socket`; retain the original Host header. `PUBLIC_ORIGIN` must exactly match the browser origin, without a trailing slash. Keep it running with your VPS process manager. This is a startup example, not an automatic deployment or domain/TLS provisioning script.
 
+## Six more family party modes (stacked PR)
+
+Selected by the owner: Guess the Percentage, Category Clash, Family Bingo, Caption Chaos, Timeline Tangle, Bracket Battle. All six reuse the existing QR guest lobby and 3–20 participant limit. They have original starter content and server-controlled points, private player projections, room timers and reconnect semantics. For exact rules, answer-bank limitations, timeout rules and acceptance gates see [SIX_GAMES.md](docs/SIX_GAMES.md). The six-game PR is based on the five-game PR below and **neither is live until reviewed, merged and deployed**.
+
 ## Five additional social games (new feature PR)
 
 Games reuse the existing six-character room code and host/player credentials; a same-origin SVG QR invitation is shown in the integrated main app. Each room supports **3–20 connected guests**. Original Quiz, Prompt Duel and Charades remain available, including expanded twenty-person Prompt Duel prompts. All five social packs contain five original rounds (35 seconds for choices, guesses and survey answers; 45-second clue submission plus 35-second suspect voting in Secret Impostor):
