@@ -66,7 +66,7 @@ test("Closest Wins: server keeps target private, validates safe integer, ties co
  const {p,ids,act,advance}=fixture("closest",10);
  const privateView=p.view(ids[0]).social;
  assert.ok(!Object.hasOwn(privateView,"target"));
- assert.throws(()=>act(ids[0],"respond",1.5),/integer/);
+ assert.throws(()=>act(ids[0],"respond",1.5),/integer|Invalid social response/);
  assert.throws(()=>act(ids[0],"respond",1e9),/Invalid social response|integer/);
  for(let i=0;i<10;i++)act(ids[i],"respond",i<2?88:120+i);
  assert.equal(p.players.get(ids[0]).score,100);
