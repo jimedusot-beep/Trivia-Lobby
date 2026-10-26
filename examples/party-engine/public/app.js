@@ -2,8 +2,10 @@ import { celebrate } from "./party-ui.js";
 import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
 import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
+import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 
 let invitationCode, invitationPhase;
+let preferredMode = "quiz";
 
 let ws,
   state,
@@ -160,12 +162,13 @@ function render() {
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
-  const selectedMode = $("mode")?.value || "quiz";
+  const selectedMode = $("mode")?.value || preferredMode;
   const selectedCategory = $("charades-category")?.value || "actions";
   const previousPhase = phaseKey;
   document.body.classList.add("party-playing");
   document.body.dataset.partyPhase = state.phase;
   $("entry").hidden = true;
+  $("pick-games").hidden = true;
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
@@ -204,22 +207,7 @@ function render() {
       label.htmlFor = "mode";
       const select = element("select");
       select.id = "mode";
-      for (const [value, text] of [
-        ["quiz", "Quiz"],
-        ["duel", "Prompt Duel"],
-        ["charades", "Charades"],
-        ["majority", "Majority Rules"],
-        ["likely", "Who's Most Likely?"],
-        ["closest", "Closest Wins"],
-        ["survey", "Survey Showdown"],
-        ["impostor", "Secret Impostor"],
-        ["percentage", "Guess the Percentage"],
-        ["category", "Category Clash"],
-        ["bingo", "Family Bingo"],
-        ["caption", "Caption Chaos"],
-        ["timeline", "Timeline Tangle"],
-        ["bracket", "Bracket Battle"],
-      ]) {
+      for (const { id: value, name: text } of guestGames) {
         const o = element("option", text, select);
         o.value = value;
       }
@@ -239,7 +227,9 @@ function render() {
       const showPack = () => {
         pack.hidden = packLabel.hidden = select.value !== "charades";
       };
-      select.onchange = showPack;
+      select.onchange = () => { preferredMode = select.value; showPack(); };
+      const selection = element("p", `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} of 3–20 guests connected.`);
+      selection.className = "pick-game-selection";
       showPack();
       button(
         "Start match",
@@ -407,6 +397,7 @@ function render() {
     }
   }
 }
+mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
   $("timer").textContent = state.deadline
