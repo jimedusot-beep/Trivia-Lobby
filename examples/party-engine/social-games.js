@@ -101,7 +101,8 @@ export function scoreSocial(p) {
   }else if(p.mode==="impostor"){
     const targets=[...s.votes.values()].filter(id=>id===s.impostorId).length;
     for(const [id,target] of s.votes)if(target===s.impostorId)award(id,100);
-    if(targets<=Math.floor(s.votes.size/4))award(s.impostorId,200);
+    // A completely unattended vote cannot award the impostor free points.
+    if(s.votes.size>0 && targets<=Math.floor(s.votes.size/4))award(s.impostorId,200);
   }
 }
 export function projectSocial(p,actor) {
