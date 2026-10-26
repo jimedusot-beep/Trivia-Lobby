@@ -1,4 +1,5 @@
 import { celebrate } from "./party-ui.js";
+import { renderSocial } from "./social-ui.js";
 
 let ws,
   state,
@@ -182,6 +183,12 @@ function render() {
     link.id = "invite";
     link.href = invite.href;
     element("p", invite.href);
+    if (partyUrl.pathname.startsWith("/party/")) {
+      const qr=element("img",undefined);
+      qr.src=`/party/join-qr.svg?code=${encodeURIComponent(state.code)}`;
+      qr.alt=`Scan QR code to join party ${state.code}`;
+      qr.width=208;qr.height=208;qr.className="join-qr";
+    }
     element(
       "p",
       `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer.`,
@@ -199,6 +206,11 @@ function render() {
         ["quiz", "Quiz"],
         ["duel", "Prompt Duel"],
         ["charades", "Charades"],
+        ["majority", "Majority Rules"],
+        ["likely", "Who's Most Likely?"],
+        ["closest", "Closest Wins"],
+        ["survey", "Survey Showdown"],
+        ["impostor", "Secret Impostor"],
       ]) {
         const o = element("option", text, select);
         o.value = value;
@@ -254,6 +266,7 @@ function render() {
     if (state.question.explanation) element("p", state.question.explanation);
     element("p", `${state.received} answers received.`);
   }
+  if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.phase === "writing") {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
