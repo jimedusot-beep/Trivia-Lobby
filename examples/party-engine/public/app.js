@@ -3,6 +3,7 @@ import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
 import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
+import { mountInvitationEntry } from "./invitation-entry.js";
 
 let invitationCode, invitationPhase;
 let preferredMode = "quiz";
@@ -34,7 +35,8 @@ try {
       preferredCategory = saved.category;
   }
 } catch {}
-$("code").value = new URLSearchParams(location.search).get("code") || "";
+const entry = mountInvitationEntry({ search: location.search, savedParty: credential, partyUrl });
+let resumeSavedParty = entry.resumeSavedParty;
 function saveHostChoice(mode = preferredMode, category = preferredCategory) {
   preferredMode = mode;
   preferredCategory = category;
@@ -63,13 +65,16 @@ function connect(hello) {
   ws.onopen = () => {
     if (socket !== ws) { socket.close(); return; }
     status("Connected.");
-    if (credential) ws.send(JSON.stringify({ type: "resume", ...credential }));
+    if (credential && resumeSavedParty) ws.send(JSON.stringify({ type: "resume", ...credential }));
     else if (hello) ws.send(JSON.stringify(hello));
   };
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === "credential") {
       credential = { code: m.code, actor: m.actor, token: m.token };
+      resumeSavedParty = true;
+      if (m.actor !== "host")
+        history.replaceState(null, "", guestInvitation(location.href, m.code));
       save();
       saveHostChoice();
       status("Party ready.");
@@ -99,8 +104,10 @@ function connect(hello) {
       pending = null;
       clearTimeout(retryTimer);
       status(m.message);
-      if (!state && credential) {
+      if (!state) entry.showError(m.message);
+      if (!state && credential && resumeSavedParty) {
         credential = null;
+        resumeSavedParty = false;
         save();
         ws.close();
       }
@@ -121,7 +128,7 @@ function hello(message) {
     // Avoid opening a second socket on a fast tap before the initial connect.
     const socket = ws;
     socket.addEventListener("open", () => {
-      if (socket === ws && !credential) socket.send(JSON.stringify(message));
+      if (socket === ws && (!credential || !resumeSavedParty)) socket.send(JSON.stringify(message));
     }, { once: true });
   } else connect(message);
 }
@@ -140,6 +147,7 @@ $("create").onclick = async () => {
 };
 $("join").onsubmit = (e) => {
   e.preventDefault();
+  entry.clearError();
   hello({
     type: "join",
     code: $("code").value.trim().toUpperCase(),
@@ -199,6 +207,7 @@ function render() {
   const selectedCategory = $("charades-category")?.value || preferredCategory;
   const previousPhase = phaseKey;
   document.body.classList.add("party-playing");
+  document.body.classList.remove("party-invited");
   document.body.dataset.partyPhase = state.phase;
   $("entry").hidden = true;
   $("pick-games").hidden = true;

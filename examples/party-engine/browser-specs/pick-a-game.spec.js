@@ -29,6 +29,11 @@ for (const game of guestGames) {
       const guest=await guestContext.newPage();
       await guest.goto(url);
       await expect(guest.getByLabel("Party code")).toHaveValue(code);
+      await expect(guest.getByLabel("Nickname")).toBeFocused();
+      await expect(guest.locator("#host-entry")).toBeHidden();
+      await expect(guest.locator("#pick-games")).toBeHidden();
+      const joinBox = await guest.getByRole("button", { name: "Join party", exact: true }).boundingBox();
+      expect(joinBox.y + joinBox.height).toBeLessThanOrEqual(844);
       await guest.getByLabel("Nickname").fill("Family Guest");
       await guest.getByRole("button",{name:"Join party"}).click();
       await expect(guest.locator("#heading")).toContainText("lobby");

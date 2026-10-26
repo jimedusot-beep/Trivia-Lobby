@@ -50,6 +50,22 @@ li { padding: 6px; }
 .entry-grid > article:nth-child(2) { background: #fff0d5; }
 .entry-grid h2 { margin-top: 14px; }
 .entry-grid p { color: var(--lobby-muted); font-size: .9rem; }
+.party-invited main { max-width: 620px; }
+.party-invited .page-nav { margin-bottom: 12px; }
+.party-invited .page-nav-links, .party-invited .house-notes { display: none; }
+.party-invited .entry-grid { grid-template-columns: 1fr; margin-top: 14px; }
+.party-invited #join-entry { background: linear-gradient(145deg, #fff0d5, #fff9ed); padding: clamp(20px, 5vw, 30px); }
+#invite-intro h1 { font-size: clamp(2rem, 7vw, 3.3rem); margin: 8px 0; }
+#invite-intro > p { margin: 6px 0 12px; }
+.invite-spark { float: right; width: 64px; height: 64px; margin-left: 8px; }
+#invite-intro .invite-room { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 10px 14px; border: 2px dashed var(--lobby-ink); border-radius: 13px; background: var(--lobby-gold); color: var(--lobby-ink); font-weight: 900; }
+.invite-room strong { font: 600 clamp(1.1rem, 5vw, 1.65rem) var(--font-display); letter-spacing: .08em; overflow-wrap: anywhere; }
+.join-error, .entry-grid .join-error { padding: 12px; border: 2px solid #a13a39; border-radius: 12px; background: #fff0eb; color: #792c2b; font-weight: 800; }
+.other-party { padding: 12px; border: 1px solid #a898cf; border-radius: 12px; background: var(--lobby-violet-soft); }
+.other-party p { margin: 0 0 8px; }
+.change-code { width: auto; min-height: 44px; margin: 3px 0; padding: 8px 4px; border: 0; background: transparent; box-shadow: none; color: var(--lobby-violet); text-decoration: underline; text-underline-offset: 4px; font-size: .85rem; }
+.change-code:hover:enabled { transform: none; box-shadow: none; }
+.browse-games { display: block; width: fit-content; min-height: 44px; padding: 10px 0; font-size: .85rem; }
 #join button { background: var(--lobby-coral); color: var(--lobby-ink); }
 #code { font: 600 1.7rem var(--font-display); letter-spacing: .16em; text-transform: uppercase; text-align: center; }
 .host-spark { display: block; width: 114px; height: 114px; margin: 15px auto 22px; transform: rotate(-9deg); }

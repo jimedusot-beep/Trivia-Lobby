@@ -65,6 +65,18 @@ for (const [mode, name] of [["quiz", "Quiz"], ["duel", "Prompt Duel"], ["charade
         await player.goto(invite);
         await expect(player.getByLabel("Party code", { exact: true })).toHaveValue(code);
         await expect(player.getByLabel("Email", { exact: true })).toHaveCount(0);
+        await expect(player.getByLabel("Nickname", { exact: true })).toBeFocused();
+        await expect(player.locator("#host-entry")).toBeHidden();
+        await expect(player.locator("#pick-games")).toBeHidden();
+        if (mode === "quiz" && index === 0) {
+          await player.setViewportSize({ width: 320, height: 667 });
+          await player.evaluate(async () => { await document.fonts.ready; });
+          await fitsPhone(player);
+          const joinBox = await player.getByRole("button", { name: "Join party", exact: true }).boundingBox();
+          expect(joinBox!.y + joinBox!.height).toBeLessThanOrEqual(667);
+          expect((await new AxeBuilder({ page: player }).analyze()).violations).toEqual([]);
+          await player.screenshot({ path: test.info().outputPath("qr-guest-entry-320.png"), fullPage: true });
+        }
         await player.getByLabel("Nickname", { exact: true }).fill(`QR friend ${index}`);
         if (index === 2) await page.getByLabel("Direct invitation link", { exact: true }).focus();
         await player.getByRole("button", { name: "Join party", exact: true }).click();
