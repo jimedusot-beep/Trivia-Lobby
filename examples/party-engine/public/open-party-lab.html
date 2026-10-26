@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#6146df" />
+    <title>Open Party Lab · Full 21-game catalog · Trivia Lobby</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./open-party-lab.css" />
+    <link rel="icon" type="image/svg+xml" href="./lobby-spark.svg" />
+    <script src="./open-party-lab-browser.js" type="module"></script>
+  </head>
+  <body class="public-party opl-page">
+    <main>
+      <header>
+        <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="./"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./">Back to games</a><a href="./sources.html">Credits &amp; sources</a></div></nav>
+        <div class="opl-hero">
+          <span class="lobby-kicker">Self-hosted party games · full upstream selection</span>
+          <h1>Open Party Lab <span>21-game catalog</span></h1>
+          <p>Explore every publicly listed game, see its actual upstream player limit, and launch the complete collection on your own Windows computer.</p>
+        </div>
+      </header>
+      <section class="opl-notice" aria-labelledby="opl-note-title">
+        <h2 id="opl-note-title">Important: a connected catalog, not 21 native game ports</h2>
+        <p>These games run in <strong>a separate Open Party Lab host</strong>. They are not playable inside Trivia Lobby's current room, and its room codes, identities, progress and scores do not transfer. The source projects are experimental; published player limits are not 20-phone performance certification. Nothing is streamed from a gaming service.</p>
+      </section>
+      <section class="opl-guide" aria-labelledby="opl-play-title">
+        <div>
+          <h2 id="opl-play-title">Play the whole collection locally</h2>
+          <ol>
+            <li>On a Windows laptop, download the <a href="https://github.com/Hartwich/Open-Party-Lab/releases" target="_blank" rel="noopener noreferrer">official Open Party Lab Windows ZIP</a>. Unzip the complete archive and launch its EXE.</li>
+            <li>Keep the laptop and phones on the same Wi-Fi. The laptop displays the game board and a QR join code.</li>
+            <li>Choose one of the included games, and have family members scan its QR code on their phones. Respect that game's individual player limit.</li>
+          </ol>
+          <p class="opl-small">Advanced users can <a href="https://github.com/Hartwich/Open-Party-Lab#run-from-source" target="_blank" rel="noopener noreferrer">run from source</a> with Node.js 20+ and `npm run games:clone-all`. Raspberry Pi performance and all-games 20-player support have not been established.</p>
+        </div>
+        <form id="opl-connect" class="opl-connect" autocomplete="off">
+          <h3>Already hosting on your own network?</h3>
+          <label for="opl-host-address">Open Party Lab host address</label>
+          <input id="opl-host-address" type="url" placeholder="http://192.168.1.20:3000" inputmode="url" spellcheck="false" />
+          <button type="submit">Open local game host</button>
+          <p id="opl-host-feedback" role="status" aria-live="polite">Use the address displayed by your own Open Party Lab launcher. This does not connect rooms or scores.</p>
+        </form>
+      </section>
+      <section class="opl-library" aria-labelledby="opl-list-title">
+        <div class="opl-list-heading"><h2 id="opl-list-title">Browse all 21 games</h2><p>Source manifests checked October 26, 2026. Limits shown are those published by each project, not newly tested capacity.</p></div>
+        <div class="opl-filters">
+          <label for="opl-search">Search games<input id="opl-search" type="search" placeholder="Racing, drawing, cards..." /></label>
+          <label for="opl-genre">Game type<select id="opl-genre"><option value="all">All types</option></select></label>
+          <label class="opl-check"><input id="opl-ten-plus" type="checkbox" /> Upstream cap of 10+ players</label>
+        </div>
+        <p id="opl-count" role="status" aria-live="polite">Loading catalog…</p>
+        <div id="opl-games" class="opl-grid"></div>
+      </section>
+      <footer class="open-source-footer"><p>Open Party Lab is a separate community project, not affiliated with Trivia Lobby. The <a href="https://github.com/Hartwich/Open-Party-Lab/blob/bb221f92d1b29afce1cd5b3953c7450612d52a71/LICENSE" target="_blank" rel="noopener noreferrer">platform is Apache-2.0</a>; assets and individual games have separate rights considerations.</p><a href="./">Return to Trivia Lobby</a></footer>
+    </main>
+  </body>
+</html>
