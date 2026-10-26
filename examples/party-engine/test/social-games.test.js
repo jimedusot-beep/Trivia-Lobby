@@ -122,6 +122,14 @@ test("Secret Impostor: only legitimate players see word; reconnect identity stab
  advance(35000);
  assert.equal(p.phase,"reveal");
 });
+test("an unattended impostor vote cannot mint 200 free points",()=>{
+ const {p,advance}=fixture("impostor",10);
+ advance(45000);
+ assert.equal(p.phase,"voting");
+ advance(35000);
+ assert.equal(p.phase,"reveal");
+ assert.equal([...p.players.values()].reduce((sum,player)=>sum+player.score,0),0);
+});
 test("standalone protocol rejects unknown event, extra actor, malformed social input",()=>{
  const base={v:1,type:"respond",requestId:"social-accepted",matchId:null,revision:0,value:1};
  assert.equal(validateAction(base),base);
