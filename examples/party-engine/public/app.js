@@ -487,6 +487,31 @@ function render() {
       row,
     );
   }
+  // One party-wide championship survives every individual game and its score reset.
+  const championshipBox = $("championship");
+  championshipBox.replaceChildren();
+  const championship = state.championship;
+  if (championship) {
+    element("h2", "🏆 Game Night Championship", championshipBox);
+    element("p", `${championship.gamesPlayed} completed games · One shared family leaderboard. Standings survive switching games in this room.`, championshipBox);
+    if (championship.standings.length) {
+      const ranking = element("ol", undefined, championshipBox);
+      ranking.className = "championship-standings";
+      for (const [i, player] of championship.standings.entries()) {
+        const row = element("li", undefined, ranking);
+        element("strong", `#${i + 1} ${player.name}`, row);
+        element("span", `${player.points} points · ${player.wins} wins · ${player.games} games`, row);
+      }
+    } else element("p", "Finish the first game to start collecting championship points.", championshipBox);
+    if (championship.recent.length) {
+      const heading = element("h3", "Recent games", championshipBox);
+      const recentList = element("ul", undefined, championshipBox);
+      recentList.className = "championship-recent";
+      for (const game of championship.recent) {
+        element("li", `${gameById(game.mode)?.name || game.mode}: ${game.winners.length ? game.winners.join(", ") : "No points awarded"}`, recentList);
+      }
+    }
+  }
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {
