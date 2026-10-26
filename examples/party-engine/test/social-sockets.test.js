@@ -43,9 +43,9 @@ test("20 distinct QR guests play Majority Rules over real WebSockets with creden
  host.send({v:1,type:"start",requestId:"start-social",matchId:null,revision:party.revision,value:"majority"});
  const question=(await players[0].wait(m=>m.type==="state"&&m.state.phase==="question","question phase")).state;
  assert.equal(question.mode,"majority");
- const action=(id,n,req)=>({v:1,type:"respond",requestId:"vote-"+req,matchId:question.matchId,revision:question.revision,value:n});
+ const action=(id,n,req)=>({v:1,type:"respond",requestId:"vote-social-"+req,matchId:question.matchId,revision:question.revision,value:n});
  players[0].send(action(players[0].credential.actor,0,0));
- await players[0].wait(m=>m.type==="ack"&&m.requestId==="vote-0","first vote ack");
+ await players[0].wait(m=>m.type==="ack"&&m.requestId==="vote-social-0","first vote ack");
  const resumed=peer(port);await resumed.open();
  resumed.send({type:"resume",code:token.code,actor:players[0].credential.actor,token:players[0].credential.token});
  await resumed.wait(m=>m.type==="ready","resume ready");
@@ -55,7 +55,7 @@ test("20 distinct QR guests play Majority Rules over real WebSockets with creden
  assert.match((await resumed.wait(m=>m.type==="error","locked duplicate")).message,/locked/);
  for(let i=1;i<20;i++){
   players[i].send(action(players[i].credential.actor,i<12?0:1,i));
-  await players[i].wait(m=>m.type==="ack"&&m.requestId==="vote-"+i,"vote ack "+i);
+  await players[i].wait(m=>m.type==="ack"&&m.requestId==="vote-social-"+i,"vote ack "+i);
  }
  const reveal=(await host.wait(m=>m.type==="state"&&m.state.phase==="reveal","final reveal")).state;
  assert.deepEqual(reveal.social.counts,[12,8]);
