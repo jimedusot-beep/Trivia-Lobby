@@ -1,4 +1,5 @@
 import { Party } from "./engine.js";
+import { Chess } from "chess.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
@@ -7,6 +8,10 @@ const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "rac
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
 function encode(value) {
+  // chess.js instances contain methods and non-enumerable state; serialize
+  // replayable legal history, not its object internals. Replaying moves also
+  // preserves repetition history that FEN alone would lose.
+  if (value instanceof Chess) return { $chess: { moves: value.history(), fen: value.fen() } };
   if (value instanceof Map) return { $map: [...value].map(([k, v]) => [k, encode(v)]) };
   if (value instanceof Set) return { $set: [...value].map(encode) };
   if (Array.isArray(value)) return value.map(encode);
@@ -16,6 +21,17 @@ function encode(value) {
 function decode(value) {
   if (Array.isArray(value)) return value.map(decode);
   if (value && typeof value === "object") {
+    if (Object.keys(value).length === 1 && value.$chess) {
+      const saved = value.$chess;
+      if (!saved || !Array.isArray(saved.moves) || saved.moves.length > 4096 ||
+        !saved.moves.every(move => typeof move === "string" && move.length <= 32) ||
+        typeof saved.fen !== "string" || saved.fen.length > 128)
+        throw new Error("Unsupported chess recovery state.");
+      const chess = new Chess();
+      for (const move of saved.moves) chess.move(move);
+      if (chess.fen() !== saved.fen) throw new Error("Unsupported chess recovery state.");
+      return chess;
+    }
     if (Object.keys(value).length === 1 && Array.isArray(value.$map)) return new Map(value.$map.map(([k, v]) => [k, decode(v)]));
     if (Object.keys(value).length === 1 && Array.isArray(value.$set)) return new Set(value.$set.map(decode));
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, decode(v)]));

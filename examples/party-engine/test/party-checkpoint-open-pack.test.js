@@ -73,3 +73,19 @@ test("missing active pack checkpoint is rejected rather than resetting a match",
   delete state.pack;
   assert.throws(() => restoreParty(g.p.code, state, g.options, 1000), /Unsupported room recovery state/);
 });
+
+test("Chess restart replays legal moves and preserves the live engine and board geometry", () => {
+  const g = game("chess", 2);
+  const table = g.p.pack.tables[0];
+  const first = table.players[0];
+  const initialFen = table.game.chess.fen();
+  action(g.p, first, "play", { action: "move", table: 0, from: 52, to: 36 });
+  const original = table.game.chess.fen();
+  assert.notEqual(original, initialFen);
+  const r = g.restore();
+  const recovered = r.pack.tables[0].game.chess;
+  assert.equal(typeof recovered.board, "function");
+  assert.equal(recovered.fen(), original);
+  assert.deepEqual(recovered.history(), table.game.chess.history());
+  assert.ok(r.view("host").pack.tables[0].legal.length);
+});
