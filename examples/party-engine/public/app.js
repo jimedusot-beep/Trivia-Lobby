@@ -275,7 +275,7 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.phase === "writing") {
+  if (state.phase === "writing" && state.mode === "duel") {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
       const box = element("article");
