@@ -351,7 +351,7 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render});
+  if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
   });

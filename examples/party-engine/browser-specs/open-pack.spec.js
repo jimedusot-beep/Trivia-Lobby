@@ -337,3 +337,42 @@ test("Game categories keep all 24 modes easy to browse", async ({page}) => {
   await page.getByRole("button",{name:"All games",exact:true}).click();
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(24);
 });
+
+test("Drawing waits for a slow submission instead of showing a stroke that was never sent", async ({browser}) => {
+  const f=await lobby(browser,"draw");
+  try {
+    await f.start();
+    const [artist,guesser]=f.players;
+    await artist.locator(".open-game button").first().click();
+    await expect(artist.getByLabel("Pen color",{exact:true})).toBeVisible();
+    await artist.evaluate(()=>{
+      const send=WebSocket.prototype.send, seen=new Set();
+      window.__heldStrokes=[];
+      WebSocket.prototype.send=function(raw){
+        const msg=JSON.parse(raw);
+        if(msg.type==="play"&&msg.value?.action==="stroke"){
+          if(!seen.has(msg.requestId)){seen.add(msg.requestId);window.__heldStrokes.push(()=>send.call(this,raw));}
+        } else send.call(this,raw);
+      };
+    });
+    const pad=artist.locator(".doodle-pad");
+    await pad.scrollIntoViewIfNeeded();
+    const box=await pad.boundingBox();
+    async function stroke(offset){
+      await artist.mouse.move(box.x+20+offset,box.y+20);
+      await artist.mouse.down();
+      await artist.mouse.move(box.x+50+offset,box.y+60,{steps:3});
+      await artist.mouse.up();
+    }
+    await stroke(0);
+    await expect(pad).toHaveAttribute("aria-disabled","true");
+    await stroke(60);
+    expect(await artist.evaluate(()=>window.__heldStrokes.length)).toBe(1);
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(0);
+    await artist.evaluate(()=>window.__heldStrokes.shift()());
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(1);
+    await expect(pad).toHaveAttribute("aria-disabled","false");
+    await artist.reload();
+    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(1);
+  } finally { await f.close(); }
+});

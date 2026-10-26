@@ -4,7 +4,7 @@ let drawing = false;
 export const drawingBusy = () => drawing;
 export function renderPack(state, context) {
   drawing = false;
-  const { element: E, button: B, action, actor, refresh } = context,
+  const { element: E, button: B, action, actor, refresh, canAct = () => true } = context,
     root = E("section");
   root.className = "open-game";
   const e = (tag, text, parent = root) => E(tag, text, parent),
@@ -230,6 +230,7 @@ export function renderPack(state, context) {
     for (const stroke of s.strokes) line(stroke);
     if (s.canDraw) {
       svg.tabIndex = 0;
+      svg.setAttribute("aria-disabled", String(!canAct()));
       const tools = e("div");
       tools.className = "drawing-tools";
       const color = e("select", undefined, tools);
@@ -281,7 +282,7 @@ export function renderPack(state, context) {
         ];
       };
       svg.onpointerdown = (event) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || !canAct()) return;
         event.preventDefault();
         svg.setPointerCapture(event.pointerId);
         points = [position(event)];
