@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RoomInvitation } from "@/components/RoomInvitation";
 
 type Deck={id:number;title:string};
 type Summary={id:string;title:string;opensAt:string|null;closesAt:string|null;maxAttempts:number;questionCount:number;attempts:number;completed:number};
@@ -88,6 +89,7 @@ export default function Assignments(){
             {a.closesAt&&<p className="text-xs">Closes: {new Date(a.closesAt).toLocaleString()}</p>}</div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={()=>void copyLink(a.id)}>Copy invitation</Button>
+            <Button asChild variant="outline"><Link href={`/assignments/${a.id}#invitation`}>QR &amp; share</Link></Button>
             <Button asChild><Link href={`/assignments/${a.id}`}>Review results</Link></Button>
           </div>
         </CardContent></Card>)}
@@ -95,9 +97,7 @@ export default function Assignments(){
       {id&&detail&&<Card>
         <CardHeader><CardTitle>{detail.title}</CardTitle></CardHeader>
         <CardContent className="space-y-5">
-          <div><Label htmlFor="assignment-link">Guest invitation link</Label>
-            <Input id="assignment-link" readOnly value={window.location.origin+"/assignment/"+detail.id} onFocus={e=>e.currentTarget.select()}/></div>
-          <Button variant="outline" onClick={()=>void copyLink(detail.id)}>Copy invitation</Button>
+          <div id="invitation"><RoomInvitation assignment url={window.location.origin+"/assignment/"+encodeURIComponent(detail.id)}/></div>
           <p>{detail.attempts.length} started attempts</p>
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead><tr className="border-b text-left"><th className="p-2">Guest nickname</th><th className="p-2">Status</th><th className="p-2">Score</th><th className="p-2">Submitted</th></tr></thead>

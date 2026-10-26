@@ -1,4 +1,7 @@
 import { celebrate } from "./party-ui.js";
+import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
+
+let invitationCode, invitationPhase;
 
 let ws,
   state,
@@ -164,6 +167,16 @@ function render() {
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
+  const invitation = $("party-invitation");
+  invitation.hidden = false;
+  if (invitationCode !== state.code) {
+    $("invitation-card").replaceChildren();
+    mountRoomInvitation($("invitation-card"), { url: guestInvitation(location.href, state.code), code: state.code });
+    invitationCode = state.code;
+    invitation.open = host && state.phase === "lobby";
+  } else if (invitationPhase === "lobby" && state.phase !== "lobby") invitation.open = false;
+  else if (invitationPhase !== "lobby" && state.phase === "lobby" && host) invitation.open = true;
+  invitationPhase = state.phase;
   $("heading").textContent = `${state.code} · ${state.phase}`;
   const key = `${state.matchId}:${state.phase}:${state.index}:${state.charades?.clue?.id ?? ""}`;
   if (key !== phaseKey) {
@@ -176,12 +189,6 @@ function render() {
       "Host disconnected. Timed play continues; afterward we wait up to 60 seconds for the host.",
     );
   if (state.phase === "lobby") {
-    const invite = new URL(partyUrl);
-    invite.searchParams.set("code", state.code);
-    const link = element("a", "Join this party on your phone");
-    link.id = "invite";
-    link.href = invite.href;
-    element("p", invite.href);
     element(
       "p",
       `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer.`,

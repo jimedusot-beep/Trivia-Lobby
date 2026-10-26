@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TimerBar } from "@/components/TimerBar";
-import { ArrowLeft, Users, Play, Copy, Trophy, Maximize, Minimize, Volume2, VolumeX, Share2 } from "lucide-react";
+import { ArrowLeft, Users, Play, Copy, Trophy, Maximize, Minimize, Volume2, VolumeX } from "lucide-react";
 import { enableGameAudio, playGameCue } from "@/lib/game-audio";
-import { JoinQrCode } from "@/components/JoinQrCode";
+import { RoomInvitation } from "@/components/RoomInvitation";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
@@ -78,28 +78,15 @@ export default function Host() {
     emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out",...oddSettings});
   },[connected,gameState.roomCode,gameState.phase,emit]);
 
-  const copyCode = () => {
+  const copyCode = async () => {
     if (gameState.roomCode) {
-      navigator.clipboard.writeText(gameState.roomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied!", description: "Room code copied to clipboard" });
+      try {
+        await navigator.clipboard.writeText(gameState.roomCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        toast({ title: "Copied!", description: "Room code copied to clipboard" });
+      } catch { toast({ title: "Clipboard unavailable", description: "Use the QR code or select the visible invitation link." }); }
     }
-  };
-
-  const shareInvite = async () => {
-    if (!invitationUrl) return;
-    if (navigator.share) {
-      try { await navigator.share({ title: "Join Trivia Lobby", text: "Join my live quiz!", url: invitationUrl }); }
-      catch (error) { if ((error as Error)?.name !== "AbortError") await copyInvite(); }
-    } else await copyInvite();
-  };
-  const copyInvite = async () => {
-    if (!invitationUrl) return;
-    try {
-      await navigator.clipboard.writeText(invitationUrl);
-      toast({ title: "Invite copied", description: "Send this link to players. It contains no host credentials." });
-    } catch { toast({ title: "Clipboard unavailable", description: "Copy the visible invitation URL instead.", variant: "destructive" }); }
   };
 
   const startGame = () => {
@@ -141,6 +128,10 @@ export default function Host() {
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-6xl mx-auto w-full">
         {lastError&&<p role="alert" className="p-4 bg-red-950 text-white rounded">{lastError} <Link href="/" className="underline">Return to decks</Link></p>}
+        {invitationUrl && gameState.gameStatus !== "lobby" && <details className="lobby-invite-panel">
+          <summary>Invite friends · QR &amp; sharing · {gameState.roomCode}</summary>
+          <RoomInvitation url={invitationUrl} code={gameState.roomCode}/>
+        </details>}
         
         {/* LOBBY STATE */}
         {gameState.gameStatus === 'lobby' && (
@@ -175,15 +166,7 @@ export default function Host() {
               <Button variant="ghost" size="sm" onClick={copyCode} className="text-slate-400 hover:text-white">
                 {copied ? "Copied!" : <><Copy className="w-4 h-4 mr-2" /> Click to Copy</>}
               </Button>
-              {invitationUrl && <div className="space-y-4 max-w-xl mx-auto">
-                <JoinQrCode url={invitationUrl} code={gameState.roomCode!}/>
-                <label htmlFor="invite-link" className="block text-sm text-slate-300">Direct invitation link</label>
-                <input id="invite-link" type="text" readOnly value={invitationUrl} onFocus={e=>e.target.select()} className="w-full bg-slate-800 border rounded p-3 text-sm text-white" />
-                <div className="flex gap-2 justify-center flex-wrap">
-                  <Button variant="outline" onClick={()=>void copyInvite()} className="text-slate-900"><Copy className="mr-2 w-4 h-4"/> Copy invitation link</Button>
-                  <Button variant="outline" onClick={()=>void shareInvite()} className="text-slate-900"><Share2 className="mr-2 w-4 h-4"/> Share game</Button>
-                </div>
-              </div>}
+              {invitationUrl && <RoomInvitation url={invitationUrl} code={gameState.roomCode}/>}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
