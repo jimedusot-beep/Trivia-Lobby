@@ -52,9 +52,25 @@ PUBLIC_ORIGIN=https://party.example.com HOST=127.0.0.1 PORT=3001 npm start
 
 Replace the example domain. Forward that HTTPS origin to port 3001, including WebSocket upgrades for `/socket`; retain the original Host header. `PUBLIC_ORIGIN` must exactly match the browser origin, without a trailing slash. Keep it running with your VPS process manager. This is a startup example, not an automatic deployment or domain/TLS provisioning script.
 
+## Six more family party modes (stacked PR)
+
+Selected by the owner: Guess the Percentage, Category Clash, Family Bingo, Caption Chaos, Timeline Tangle, Bracket Battle. All six reuse the existing QR guest lobby and 3–20 participant limit. They have original starter content and server-controlled points, private player projections, room timers and reconnect semantics. For exact rules, answer-bank limitations, timeout rules and acceptance gates see [SIX_GAMES.md](docs/SIX_GAMES.md). The six-game PR is based on the five-game PR below and **neither is live until reviewed, merged and deployed**.
+
+## Five additional social games (new feature PR)
+
+Games reuse the existing six-character room code and host/player credentials; a same-origin SVG QR invitation is shown in the integrated main app. Each room supports **3–20 connected guests**. Original Quiz, Prompt Duel and Charades remain available, including expanded twenty-person Prompt Duel prompts. All five social packs contain five original rounds (35 seconds for choices, guesses and survey answers; 45-second clue submission plus 35-second suspect voting in Secret Impostor):
+
+- **Majority Rules:** all answers are hidden until reveal. Matching the most popular of two choices earns 100 points; both groups score if tied.
+- **Who's Most Likely?:** each guest nominates another current player. Choosing any most-nominated player earns 100 points; self-votes and forged IDs are rejected.
+- **Closest Wins:** each person enters a safe whole number (0–1,000,000). Every tied closest player earns 100, with the answer shown only after the round ends.
+- **Survey Showdown:** guests type one answer. Five original ranked answers give 100/80/60/40/20 points, with exact case-insensitive punctuation-normalized comparison; unmatched or misspelled responses score zero. The list is an editorial game pack, *not* a claim about a real poll.
+- **Secret Impostor:** one player is randomly designated impostor each round. Other players privately receive a word, while the impostor sees only a category. Everyone submits one short clue; then clues become visible and players vote for someone other than themselves. Each correct suspect vote earns 100; the impostor earns 200 if at most a quarter of received votes identify them. Secret word and impostor identity appear on reveal.
+
+Request IDs are idempotent and bound to the socket's credentialed actor; duplicate, stale, out-of-range or post-deadline submissions cannot mint points. No raw submitted survey responses are broadcast. Impostor clues are guest-authored, so hosts should play with trusted family members and supervise nicknames. Guest rooms are process-local and do not persist through free-tier restarts. The new modes do not read private study/account data.
+
 ## Rules
 
-- 3–8 connected players, nickname only. One six-character code survives successive matches.
+- 3–20 connected players, nickname only. One six-character code survives successive matches.
 - Quiz: five demo questions **or 1–20 validated local custom questions**, 30 seconds each, first valid answer locked; 100 points per correct answer and no speed bonus. All answers or the deadline ends a question; reveal occurs once.
 - Charades: select Actions or Animals; each participant acts once for up to 60 seconds after a three-second countdown. Only the performer sees the active clue. Correct adds one point; Pass adds none. Marks require group agreement and are self-reported. The round ends at the deadline or deck exhaustion; the turn summary reveals completed/pass/unanswered clues. No motion permission is needed.
 - Prompt Duel: one paired prompt per player, two assignments per player, 90 seconds to write. Responses lock on submission. Each matchup has 20 seconds for eligible players to vote; neither author may vote. Every valid vote gives its chosen author 100 points. Missing-response matchups skip without points. Identical response text still has distinct choice IDs.

@@ -57,7 +57,7 @@ export function validateHello(message) {
 export function validateAction(message) {
   if (!object(message)) fail("Invalid message envelope.");
   if (
-    !["start", "answer", "write", "vote", "next", "lobby", "mark"].includes(
+    !["start", "answer", "write", "vote", "respond", "next", "lobby", "mark"].includes(
       message.type,
     )
   )
@@ -65,6 +65,7 @@ export function validateAction(message) {
   const payload = {
     start: ["value"],
     answer: ["value"],
+    respond: ["value"],
     write: ["value", "promptIndex"],
     vote: ["value"],
     next: [],
@@ -88,7 +89,7 @@ export function validateAction(message) {
     fail("Invalid message envelope.");
   if (
     message.type === "start" &&
-    !["quiz", "duel", "charades"].includes(message.value)
+    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket"].includes(message.value)
   )
     fail("Unknown game mode.");
   if (
@@ -100,12 +101,13 @@ export function validateAction(message) {
     message.type === "write" &&
     (!Number.isInteger(message.promptIndex) ||
       message.promptIndex < 0 ||
-      message.promptIndex > 7 ||
+      message.promptIndex > 19 ||
       typeof message.value !== "string" ||
       !message.value.trim() ||
       message.value.trim().length > 240)
   )
     fail("Invalid prompt or response.");
+  if (message.type === "respond" && !(typeof message.value === "string" && message.value.length<=80) && !(Number.isSafeInteger(message.value) && message.value>=0 && message.value<=1000000)) fail("Invalid social response.");
   if (message.type === "vote" && !uuid(message.value)) fail("Invalid vote.");
   if (
     message.type === "start" &&

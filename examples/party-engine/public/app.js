@@ -1,7 +1,11 @@
 import { celebrate } from "./party-ui.js";
 import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
+import { renderSocial } from "./social-ui.js";
+import { renderBonus } from "./bonus-ui.js";
+import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 
 let invitationCode, invitationPhase;
+let preferredMode = "quiz";
 
 let ws,
   state,
@@ -35,7 +39,9 @@ function connect(hello) {
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(socketUrl);
+  const socket = ws;
   ws.onopen = () => {
+    if (socket !== ws) { socket.close(); return; }
     status("Connected.");
     if (credential) ws.send(JSON.stringify({ type: "resume", ...credential }));
     else if (hello) ws.send(JSON.stringify(hello));
@@ -81,13 +87,22 @@ function connect(hello) {
     }
   };
   ws.onclose = () => {
+    // Before the first game, no credential exists. Reconnect the *public*
+    // socket too, otherwise a transient disconnect permanently traps guests.
+    if (socket !== ws) return;
     status("Disconnected. Reconnecting…");
-    if (credential) retryTimer = setTimeout(() => connect(), 2000);
+    retryTimer = setTimeout(() => connect(), 1100);
   };
 }
 function hello(message) {
-  if (ws?.readyState === 1) ws.send(JSON.stringify(message));
-  else connect(message);
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+  else if (ws?.readyState === WebSocket.CONNECTING) {
+    // Avoid opening a second socket on a fast tap before the initial connect.
+    const socket = ws;
+    socket.addEventListener("open", () => {
+      if (socket === ws && !credential) socket.send(JSON.stringify(message));
+    }, { once: true });
+  } else connect(message);
 }
 $("create").onclick = async () => {
   const localId = new URLSearchParams(location.search).get("deck");
@@ -158,12 +173,13 @@ function render() {
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
-  const selectedMode = $("mode")?.value || "quiz";
+  const selectedMode = $("mode")?.value || preferredMode;
   const selectedCategory = $("charades-category")?.value || "actions";
   const previousPhase = phaseKey;
   document.body.classList.add("party-playing");
   document.body.dataset.partyPhase = state.phase;
   $("entry").hidden = true;
+  $("pick-games").hidden = true;
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
@@ -202,11 +218,7 @@ function render() {
       label.htmlFor = "mode";
       const select = element("select");
       select.id = "mode";
-      for (const [value, text] of [
-        ["quiz", "Quiz"],
-        ["duel", "Prompt Duel"],
-        ["charades", "Charades"],
-      ]) {
+      for (const { id: value, name: text } of guestGames) {
         const o = element("option", text, select);
         o.value = value;
       }
@@ -226,7 +238,9 @@ function render() {
       const showPack = () => {
         pack.hidden = packLabel.hidden = select.value !== "charades";
       };
-      select.onchange = showPack;
+      select.onchange = () => { preferredMode = select.value; showPack(); };
+      const selection = element("p", `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} of 3–20 guests connected.`);
+      selection.className = "pick-game-selection";
       showPack();
       button(
         "Start match",
@@ -261,7 +275,9 @@ function render() {
     if (state.question.explanation) element("p", state.question.explanation);
     element("p", `${state.received} answers received.`);
   }
-  if (state.phase === "writing") {
+  if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.phase === "writing" && state.mode === "duel") {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
       const box = element("article");
@@ -392,6 +408,7 @@ function render() {
     }
   }
 }
+mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
   $("timer").textContent = state.deadline

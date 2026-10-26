@@ -1,0 +1,26 @@
+/* One cheerful, accessible guest game catalog. No account gate. */
+.pick-games { margin: 30px auto 36px; padding: 30px clamp(15px,3vw,34px); border-radius: 28px; border: 2px solid #312d64; background: linear-gradient(160deg, #282455, #4c3790 53%, #211c4d); color: #fff; box-shadow: 0 17px 36px #26204b35; }
+.pick-game-heading { text-align: center; max-width: 760px; margin: 0 auto 24px; }
+.pick-game-heading .eyebrow { color: #ffdd76; font-weight: 900; }
+.pick-game-heading h2 { font-size: clamp(2.2rem, 5vw, 3.3rem); color: #fff; margin: 6px 0; }
+.pick-game-heading p { color: #ede9ff; margin: 0; }
+.pick-game-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,240px),1fr)); gap: 16px; }
+.pick-game-card { --card-light: #ffeff8; --card-border: #db87aa; --card-text: #4a2341; background: var(--card-light); border: 3px solid var(--card-border); border-radius: 20px; color: var(--card-text); padding: 17px; display: flex; flex-direction: column; gap: 6px; min-height: 260px; box-shadow: 0 6px 0 #1c164c55; transition: transform .15s ease; }
+.pick-game-card[data-tone="violet"] { --card-light:#e6dcff; --card-border:#ae86fc; --card-text:#38236e; }
+.pick-game-card[data-tone="pink"] { --card-light:#ffe1ec; --card-border:#f489b6; --card-text:#70234d; }
+.pick-game-card[data-tone="orange"] { --card-light:#ffead1; --card-border:#f7aa50; --card-text:#71400a; }
+.pick-game-card[data-tone="blue"] { --card-light:#dcedff; --card-border:#74b6f2; --card-text:#163f73; }
+.pick-game-card[data-tone="teal"] { --card-light:#d1f6eb; --card-border:#56c4a5; --card-text:#175c4c; }
+.pick-game-card[data-tone="yellow"] { --card-light:#fff3c6; --card-border:#efc351; --card-text:#634607; }
+.pick-game-card:hover { transform: translateY(-3px); }
+.pick-game-card h3 { font-size:1.4rem; line-height:1.2; margin:0; font-weight:900; color:var(--card-text); }
+.pick-game-tag { display:inline-block; align-self:start; background:#ffffffbe; color:var(--card-text); border-radius:999px; padding:2px 10px; font-size:.76rem; font-weight:900; }
+.pick-game-players { margin:0; font-size:.82rem; font-weight:900; color:var(--card-text); }
+.pick-game-rules { font-size:.92rem; line-height:1.45; flex:1; margin:4px 0 10px; color:var(--card-text); }
+.pick-game-button { display:block; width:100%; margin:0; min-height:50px; background:#20204f; color:#fff; border:2px solid transparent; border-radius:12px; font-weight:900; font-size:1rem; padding:9px; cursor:pointer; }
+.pick-game-button:hover, .pick-game-button:focus-visible { background:#40358b; }
+.pick-game-button:focus-visible { outline:3px solid #ffde70; outline-offset:3px; }
+.pick-game-card[data-selected="true"] { outline:4px solid #ffee86; outline-offset:2px; }
+.pick-game-selection { background:#f0e9ff; color:#312d64; border:2px solid #8465d8; border-radius:13px; font-weight:850; padding:10px 14px; }
+@media (prefers-reduced-motion: reduce) { .pick-game-card { transition:none; } .pick-game-card:hover { transform:none; } }
+@media (max-width:600px) { .pick-games { padding:19px 13px; } .pick-game-grid { grid-template-columns: 1fr; } .pick-game-card { min-height:auto; } }
