@@ -9,6 +9,7 @@ async function room(browser){
  };
  const host=await page(false);
  await host.getByRole("button",{name:"Create host screen"}).click();
+ await expect(host.locator("#heading")).toContainText("lobby");
  const code=(await host.locator("#heading").innerText()).split(" · ")[0];
  const players=[];
  for(let i=0;i<3;i++){
