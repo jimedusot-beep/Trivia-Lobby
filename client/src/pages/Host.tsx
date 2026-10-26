@@ -24,6 +24,9 @@ export default function Host() {
     const next={...oddSettings,...patch};setOddSettings(next);
     if(gameState.roomCode&&gameState.phase==="lobby")emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out",...next});
   };
+  useEffect(() => {
+    if (gameState.oddSettings) setOddSettings(gameState.oddSettings);
+  }, [gameState.oddSettings]);
   const [presenting, setPresenting] = useState(false);
   const reducedMotion = useReducedMotion();
   const lastCountdownCue = useRef("");

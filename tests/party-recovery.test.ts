@@ -155,3 +155,61 @@ test("a guest deadline elapsed during shutdown reveals once and does not reopen 
   await resumed.take("ready"); const state = (await resumed.take("state")).state;
   assert.equal(state.phase, "reveal"); assert(state.players.every((player: any) => player.score === 0));
 });
+
+test("a healthy guest host can recover after idling longer than the host absence grace", () => {
+  let now = 1000;
+  const party = new Party("ABC234", { clock: () => now });
+  const saved = JSON.parse(JSON.stringify(snapshotParty(party)));
+  now += 90000;
+  const restored = restoreParty("ABC234", saved, { clock: () => now }, 1000);
+  restored.tick(); restored.connected("host", true);
+  assert.equal(restored.phase, "lobby");
+  assert.equal(restored.interrupted, false);
+  assert.equal(restored.hostWaitAt, null);
+});
+
+test("the newly established guest recovery grace survives another restart without extending", () => {
+  let now = 1000;
+  const party = new Party("ABC234", { clock: () => now });
+  now = 91000;
+  const first = restoreParty("ABC234", snapshotParty(party), { clock: () => now }, 1000);
+  assert.equal(first.hostWaitAt, now);
+  const checkpoint = JSON.parse(JSON.stringify(snapshotParty(first)));
+  now += 30000;
+  const second = restoreParty("ABC234", checkpoint, { clock: () => now }, 91000);
+  assert.equal(second.hostWaitAt, 91000);
+  second.tick(); assert.equal(second.phase, "lobby");
+  now += 30000;
+  second.tick(); assert.equal(second.phase, "finished");
+  assert.equal(second.interrupted, true);
+});
+
+test("an elapsed-round guest replacement failure disconnects the displaced phone for recovery", async t => {
+  let now = 1000;
+  const store = new MemoryRoomCheckpointStore();
+  const server = await launch(store, { clock: () => now, countdownMs: 0 }); t.after(() => server.close());
+  const host = await server.open(); host.send({ type: "create" }); const hc = await host.take("credential");
+  const players = await Promise.all(Array.from({ length: 3 }, () => server.open()));
+  const credentials = await Promise.all(players.map(async (player, i) => {
+    player.send({ type: "join", code: hc.code, name: `Replacement ${i}` }); return player.take("credential");
+  }));
+  const lobby = (await host.take("state", m => m.state.players.length === 3)).state;
+  host.send({ v: 1, type: "start", requestId: randomUUID(), matchId: lobby.matchId, revision: lobby.revision, value: "quiz" });
+  const question = (await players[0].take("state", m => m.state.phase === "question")).state;
+  const original = players[0], replacement = await server.open();
+  const closed = once(original.ws, "close", { signal: AbortSignal.timeout(1500) });
+  const save = store.save.bind(store);
+  store.save = async () => { throw new Error("injected replacement failure"); };
+  now = question.deadline + 1;
+  replacement.send({ ...credentials[0], type: "resume" });
+  assert.match((await replacement.take("error")).message, /recovery/i);
+  assert.equal((await closed)[0], 1013);
+  assert.match((await original.take("error")).message, /recovery/i);
+  assert(!replacement.frames.some(frame => frame.type === "ready"));
+  store.save = save;
+  const recovered = await server.open(); recovered.send({ ...credentials[0], type: "resume" });
+  await recovered.take("ready");
+  const state = (await recovered.take("state")).state;
+  assert.equal(state.phase, "reveal");
+  assert(state.players.every((player: any) => player.score === 0));
+});

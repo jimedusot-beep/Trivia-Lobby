@@ -33,9 +33,12 @@ export function restoreParty(code, state, options, savedAt) {
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
+  const hostWasConnected = party.hostConnected;
   party.hostConnected = false;
   for (const player of party.players.values()) player.connected = false;
-  // The original grace deadline survives recovery; a restart cannot extend it indefinitely.
-  if (!party.deadline && party.phase !== "finished" && party.hostWaitAt === null) party.hostWaitAt = savedAt;
+  // A healthy host may have been idle since the last checkpoint. That write time
+  // is not its disconnect time. Preserve an existing absence, or start recovery grace now.
+  if (!party.deadline && party.phase !== "finished" && party.hostWaitAt === null)
+    party.hostWaitAt = hostWasConnected ? party.clock() : savedAt;
   return party;
 }

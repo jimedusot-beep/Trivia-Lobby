@@ -61,6 +61,11 @@ export const questionSchema = z.object({
 export type PublicQuestion = z.infer<typeof questionSchema>;
 export const oddReviewSchema=z.object({questionIndex:z.number().int().nonnegative(),finalized:z.boolean(),entries:z.array(z.object({playerId:z.string().uuid(),name:z.string(),correct:z.boolean(),explanation:z.string(),bonusAwarded:z.boolean()}).strict())}).strict();
 export type OddReview=z.infer<typeof oddReviewSchema>;
+export const oddSettingsSchema = z.object({
+  roundCount: z.number().int().min(1).max(500), timeLimitMs: z.number().int().positive(),
+  shuffleQuestions: z.boolean(), shuffleAnswers: z.boolean(),
+}).strict();
+export type OddSettings = z.infer<typeof oddSettingsSchema>;
 export const answerResultSchema = z.object({
   questionIndex: z.number().int(), correctLetter: letter.optional(),
   correctAnswers: z.array(z.string().max(500)).max(8).optional(),
@@ -74,6 +79,7 @@ export const snapshotSchema = z.object({
   playerId: z.string().uuid().optional(), score: z.number().optional(), answered:z.boolean().optional(),
   question: questionSchema.optional(), answerResult: answerResultSchema.optional(),
   leaderboard: z.array(publicPlayerSchema).optional(), oddReview:oddReviewSchema.optional(),
+  oddSettings: oddSettingsSchema.optional(),
 }).strict();
 
 export const serverMessageSchema = z.discriminatedUnion("type", [
@@ -85,7 +91,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   }).strict()),
   envelope(WS_EVENTS.LOBBY_UPDATE, z.object({ players: z.array(publicPlayerSchema) }).strict()),
   envelope(WS_EVENTS.GAME_STARTED, z.object({}).strict()),
-  envelope(WS_EVENTS.GAME_CONFIGURED,z.object({mode:gameModeSchema}).strict()),
+  envelope(WS_EVENTS.GAME_CONFIGURED,z.object({mode:gameModeSchema,oddSettings:oddSettingsSchema.optional()}).strict()),
   envelope(WS_EVENTS.BUZZ_STATE,z.object({playerId:z.string().uuid().nullable()}).strict()),
   envelope(WS_EVENTS.PLAYER_STATUS,playerStatusSchema),
   envelope(WS_EVENTS.ANSWER_ACCEPTED,z.object({questionIndex:z.number().int().nonnegative()}).strict()),

@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { WS_EVENTS } from "@shared/schema";
 import {
   PROTOCOL_VERSION, serverMessageSchema,
-  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState, type OddReview,
+  type PublicPlayer, type PublicQuestion, type AnswerResult, type RoomState, type OddReview, type OddSettings,
 } from "@shared/game-protocol";
 
 export type GameState = {
@@ -12,6 +12,7 @@ export type GameState = {
   submissionProgress?:{questionIndex:number;received:number;total:number;connected:number};
   status?:{coins:number;focus:number;guard:number};
   oddReview?:OddReview;
+  oddSettings?:OddSettings;
   buzzedPlayerId?:string|null;
   answered?:boolean;
   roomCode?: string;
@@ -148,7 +149,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
             setGameState(prev => ({ ...prev, gameStatus: "playing", phase: "playing" }));
             break;
           case WS_EVENTS.GAME_CONFIGURED:
-            setGameState(prev=>({...prev,mode:payload.mode}));break;
+            setGameState(prev=>({...prev,mode:payload.mode,oddSettings:payload.oddSettings??prev.oddSettings}));break;
           case WS_EVENTS.BUZZ_STATE:
             setGameState(prev=>({...prev,buzzedPlayerId:payload.playerId}));break;
           case WS_EVENTS.PLAYER_STATUS:
@@ -189,6 +190,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
               serverStartTs: payload.question?.serverStartTs,
               timeRemainingMs: payload.question?.timeLimitMs,
               mode:payload.mode,status:payload.status,buzzedPlayerId:payload.buzzedPlayerId,submissionProgress:undefined,oddReview:payload.oddReview,
+              oddSettings:payload.oddSettings,
             }));
             break;
           case WS_EVENTS.GAME_OVER:

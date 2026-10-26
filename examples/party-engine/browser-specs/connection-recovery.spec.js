@@ -36,7 +36,9 @@ test("a phone recovers on restored connectivity without creating a duplicate pla
     await socket.waitForEvent("framereceived", { predicate: event => {
       const frame = JSON.parse(String(event.payload)); return frame.type === "state";
     } });
-    await expect(game.players[0].locator("#status")).toHaveText("Party ready.");
+    await expect(game.players[0].locator("#status")).toHaveText("Reconnected.");
+    await game.players[0].reload();
+    await expect(game.players[0].locator("#status")).toHaveText("Reconnected.");
     await expect(game.host.locator("#roster li")).toHaveCount(3);
     for (const player of game.players) await player.getByRole("button", { name: "Triangle", exact: true }).click();
     await expect(game.host.locator("#heading")).toContainText("reveal");

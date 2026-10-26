@@ -28,7 +28,7 @@ export function attachPartySocket(server, {
     } });
   };
   function recordFor(party, sessions, version = null) {
-    return { party, sessions, version, queue: Promise.resolve(), saved: null };
+    return { party, sessions, version, queue: Promise.resolve(), saved: null, sockets: new Set() };
   }
   async function recover(code) {
     if (rooms.has(code)) return rooms.get(code);
@@ -53,7 +53,8 @@ export function attachPartySocket(server, {
     if (record && rooms.get(record.party.code) === record) {
       rooms.delete(record.party.code);
       scheduler.cancel(record.party.code);
-      const peers = [...record.sessions.connections()].map(([, socket]) => socket);
+      // Membership includes displaced owners until their deferred close commits.
+      const peers = [...record.sockets];
       for (const socket of new Set([...peers, ws].filter(Boolean))) {
         send(socket, { type: "error", message: "Room recovery could not be saved. Please reconnect." });
         socket.close(1013, "Recovery storage unavailable");
@@ -197,6 +198,7 @@ export function attachPartySocket(server, {
                 id = candidate.party.join(m.name);
                 record = candidate; actor = id;
                 const token = record.sessions.issue(actor, ws);
+                record.sockets.add(ws);
                 send(ws, { type: "credential", code: record.party.code, actor, token });
                 publish(record);
               }, ws);
@@ -206,6 +208,7 @@ export function attachPartySocket(server, {
                 candidate.sessions.resume(m.actor, m.token, ws);
                 record = candidate;
                 actor = m.actor;
+                record.sockets.add(ws);
               // Apply any deadline that elapsed before reconnect. A resumed phone
               // cannot rewind a round or suppress an expired host grace period.
               record.party.tick();
@@ -219,6 +222,7 @@ export function attachPartySocket(server, {
           record = candidate;
           actor = id;
           await transact(record, () => { const token = record.sessions.issue(actor, ws);
+          record.sockets.add(ws);
           send(ws, {
             type: "credential",
             code: record.party.code,
@@ -246,6 +250,7 @@ export function attachPartySocket(server, {
       }
     }).catch(() => failRecovery(record, ws)); });
     ws.on("close", () => {
+      record?.sockets.delete(ws);
       if (!closing && record) void transact(record, () => {
         if (record.sessions.disconnect(actor, ws)) {
           record.party.connected(actor, false);

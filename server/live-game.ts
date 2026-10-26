@@ -42,6 +42,7 @@ type Room = {
   buzzDeadlineTs?: number;
   hostResumeReceipt?: ResumeReceipt;
   pendingReports: Array<Parameters<GameReportSink["round"]>[0]>;
+  members: Set<WebSocket>;
 };
 const socketRooms = new WeakMap<WebSocket, Room>();
 const metadataSockets = new WeakSet<WebSocket>();
@@ -99,6 +100,18 @@ function broadcast(room: Room, type: string, payload: unknown) {
 function lobbyUpdate(room: Room) {
   broadcast(room, WS_EVENTS.LOBBY_UPDATE, { players: publicPlayers(room) });
 }
+function oddSettings(room: Room) {
+  return { roundCount: room.oddRoundCount, timeLimitMs: room.oddTimeLimitMs,
+    shuffleQuestions: room.oddShuffleQuestions, shuffleAnswers: room.oddShuffleAnswers };
+}
+function configured(room: Room) {
+  // Extra configuration fields are negotiated by modern hosts; legacy v1 frames stay unchanged.
+  send(room.hostWs, WS_EVENTS.GAME_CONFIGURED, { mode: room.mode,
+    ...(room.hostWs && metadataSockets.has(room.hostWs) ? { oddSettings: oddSettings(room) } : {}),
+  });
+  for (const player of room.players.values()) if (player.connected)
+    send(player.ws, WS_EVENTS.GAME_CONFIGURED, { mode: room.mode });
+}
 /** Aggregate-only signal restricted to the authenticated host's current socket. */
 function sendSubmissionProgress(room: Room) {
   if (room.state !== "playing") return;
@@ -139,6 +152,7 @@ function snapshot(room: Room, ws: WebSocket, player?: Player) {
     ...(room.state === "reveal" || room.state === "leaderboard" || room.state === "finished"
       ? { answerResult: resultFor(room, player?.id), leaderboard: publicPlayers(room) } : {}),
     ...(!player && room.mode==="odd_one_out" && ["reveal","leaderboard","finished"].includes(room.state)?{oddReview:oddReview(room)}:{}),
+    ...(!player && metadataSockets.has(ws) ? { oddSettings: oddSettings(room) } : {}),
   });
   if (!player && room.state === "playing") sendSubmissionProgress(room);
 }
@@ -306,7 +320,8 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
     room.failed = true;
     if (rooms.get(room.code) === room) rooms.delete(room.code);
     clearTimeout(room.timer); clearTimeout(room.buzzTimer);
-    const peers = [room.hostWs, ...[...room.players.values()].map(player => player.ws), ws];
+    // Owners can change before commit. Retain every bound socket for failure cleanup.
+    const peers = [...room.members, ws];
     for (const socket of new Set(peers.filter(isOpen))) {
       send(socket, WS_EVENTS.ERROR, { message: "Room recovery could not be saved. Please reconnect." });
       socket.close(1013, "Recovery storage unavailable");
@@ -326,9 +341,13 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
     room.queue = next.catch(() => failRecovery(room, ws));
     return room.queue;
   }
-  function bindRoom(data: Omit<Room, "queue" | "run" | "pendingReports"> & { pendingReports?: Room["pendingReports"] }): Room {
-    const room: Room = { ...data, pendingReports: data.pendingReports ?? [], queue: Promise.resolve(), run: operation => transact(room, operation) };
+  function bindRoom(data: Omit<Room, "queue" | "run" | "pendingReports" | "members"> & { pendingReports?: Room["pendingReports"] }): Room {
+    const room: Room = { ...data, members: new Set(), pendingReports: data.pendingReports ?? [], queue: Promise.resolve(), run: operation => transact(room, operation) };
     return room;
+  }
+  function trackSocket(room: Room, ws: WebSocket) {
+    room.members.add(ws);
+    socketRooms.set(ws, room);
   }
   async function recover(code: string): Promise<Room | undefined> {
     if (rooms.has(code)) return rooms.get(code);
@@ -352,7 +371,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         const room = bindRoom({ ...restoredFields, players, hostWs: null, hostConnected: false,
           hostTokenHash: Buffer.from(data.hostTokenHash, "hex"), hostResumeReceipt: readReceipt(data.hostResumeReceipt), answers: new Map(data.answers), requests: new Map(data.requests),
           reportSink: options.reportSink, reportChain: Promise.resolve(), version: saved.version,
-        } as Omit<Room, "queue" | "run">);
+        } as Omit<Room, "queue" | "run" | "members">);
         if (closing) return undefined;
         if (rooms.size >= 500) throw new Error("Room capacity reached");
         rooms.set(code, room);
@@ -483,7 +502,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
           });
-          rooms.set(code, room); role = "host"; socketRooms.set(ws, room);
+          rooms.set(code, room); role = "host"; trackSocket(room, ws);
           await transact(room, () => { send(ws, WS_EVENTS.ROOM_CREATED, { roomCode: code, hostToken }); snapshot(room!, ws); }, ws);
           return;
         }
@@ -501,7 +520,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             tokenHash: tokenHash(token), ws, connected: true, teamId:target.players.size%2+1,coins:60,focus:0,guard:0,
           };
           target.players.set(id, player);
-          room = target; role = "player"; playerId = id; target.touchedAt = now; socketRooms.set(ws, target);
+          room = target; role = "player"; playerId = id; target.touchedAt = now; trackSocket(target, ws);
           send(ws, WS_EVENTS.ROOM_JOINED, { roomCode: target.code, playerId: id, token });
           snapshot(target, ws, player); lobbyUpdate(target);
           return;
@@ -520,7 +539,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           const prior = player.ws;
           player.ws = ws; player.connected = true; player.tokenHash = tokenHash(newToken);
           player.resumeReceipt = rotated.receipt;
-          room = target; role = "player"; playerId = player.id; target.touchedAt = now; socketRooms.set(ws, target);
+          room = target; role = "player"; playerId = player.id; target.touchedAt = now; trackSocket(target, ws);
           send(ws, WS_EVENTS.ROOM_JOINED, { roomCode: target.code, playerId: player.id, token: newToken });
           snapshot(target, ws, player); lobbyUpdate(target); sendSubmissionProgress(target);
           if (prior !== ws) deliver(() => prior?.close(1000, "Session replaced"));
@@ -537,7 +556,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           const prior = target.hostWs;
           target.hostWs = ws; target.hostConnected = true; target.hostTokenHash = tokenHash(newToken);
           target.hostResumeReceipt = rotated.receipt;
-          target.touchedAt = now; room = target; role = "host"; socketRooms.set(ws, target);
+          target.touchedAt = now; room = target; role = "host"; trackSocket(target, ws);
           send(ws, WS_EVENTS.HOST_RESUMED, { roomCode: target.code, hostToken: newToken });
           snapshot(target, ws);
           if (prior !== ws) deliver(() => prior?.close(1000, "Host session replaced"));
@@ -564,7 +583,9 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             room.oddShuffleQuestions=msg.payload.shuffleQuestions??room.oddShuffleQuestions;
             room.oddShuffleAnswers=msg.payload.shuffleAnswers??room.oddShuffleAnswers;
           }
-          room.revision++; room.mode=msg.payload.mode;broadcast(room,WS_EVENTS.GAME_CONFIGURED,{mode:room.mode});lobbyUpdate(room);return;
+          // Revision identifies the gameplay phase. Ordered lobby edits from the
+          // current host compose without invalidating the next keystroke in flight.
+          room.mode=msg.payload.mode;configured(room);lobbyUpdate(room);return;
         }
         if(msg.type===WS_EVENTS.AWARD_ODD_BONUS){
           if(role!=="host"||room.hostWs!==ws||room.mode!=="odd_one_out"||room.state!=="reveal"||room.oddReviewFinalized||room.questionIndex!==msg.payload.questionIndex){error("Bonus review is unavailable");return;}
@@ -715,6 +736,7 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       else { send(ws, WS_EVENTS.ERROR, { message: "Room recovery is temporarily unavailable. Please reconnect." }); ws.close(1013, "Recovery storage unavailable"); }
     }); });
     ws.on("close", () => {
+      room?.members.delete(ws);
       if (!room || closing) return;
       const disconnectedRoom = room;
       void disconnectedRoom.run(() => {

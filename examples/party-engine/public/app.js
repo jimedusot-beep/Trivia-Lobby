@@ -63,8 +63,10 @@ function connect(hello) {
   connection?.stop();
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  let resumed = false;
   connection = createRecoveringConnection(socketUrl.href, {
     onOpen(socket) {
+      resumed = false;
       ws = socket;
       if (credential && resumeSavedParty) {
         status("Restoring your party…");
@@ -87,11 +89,11 @@ function connect(hello) {
         if (m.actor !== "host") history.replaceState(null, "", guestInvitation(location.href, m.code));
         save(); saveHostChoice(); status("Joining your party…");
       }
-      if (m.type === "ready") status("Synchronizing your party…");
+      if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
         const resuming = !roomReady;
         state = m.state; offset = state.serverNow - Date.now();
-        connection.ready(); status("Party ready."); render();
+        connection.ready(); status(resumed ? "Reconnected." : "Party ready."); render();
         if (pending) {
           if (resuming) socket.send(JSON.stringify(pending));
           clearTimeout(retryTimer);

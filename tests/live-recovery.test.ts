@@ -31,10 +31,10 @@ const fixture = { async getDeck() { return { id: 1, cards: [
   { id: 1, deckId: 1, type: "multiple_choice", front: "Two plus two?", back: "Four", options: ["Four", "Five"], correctOption: "A" },
   { id: 2, deckId: 1, type: "multiple_choice", front: "One plus one?", back: "Two", options: ["Two", "Three"], correctOption: "A" },
 ] }; } } as unknown as IStorage;
-async function launch(store: MemoryRoomCheckpointStore, questionMs = 60000, reportSink?: GameReportSink) {
+async function launch(store: MemoryRoomCheckpointStore, questionMs = 60000, reportSink?: GameReportSink, deck = fixture) {
   const server = createServer();
   const owner = randomUUID();
-  const wss = attachGameSocket(server, fixture, { authorizeHost: async () => owner, questionMs, checkpointStore: store, reportSink } as any);
+  const wss = attachGameSocket(server, deck, { authorizeHost: async () => owner, questionMs, checkpointStore: store, reportSink } as any);
   server.listen(0, "127.0.0.1"); await once(server, "listening");
   const address = server.address(); assert(address && typeof address !== "string");
   const sockets: WebSocket[] = [];
@@ -200,4 +200,53 @@ test("the first phone back after a restart cannot close a question before the ot
   second.send("submit_answer", { questionIndex: 0, answer: "A" });
   assert.equal((await first.take("answer_result")).payload.awarded, 100);
   assert.equal((await second.take("answer_result")).payload.awarded, 100);
+});
+
+test("rapid lobby settings edits share a phase revision and preserve the final authoritative values", async t => {
+  const deck = { async getDeck() { return { id: 1, cards: [
+    { id: 1, deckId: 1, type: "multiple_choice", front: "Odd one out?", back: "A is different", options: ["A", "B", "C", "D"], correctOption: "A" },
+  ] }; } } as unknown as IStorage;
+  const store = new MemoryRoomCheckpointStore(); const server = await launch(store, 60000, undefined, deck); t.after(() => server.close());
+  const host = await server.open(); host.send("create_room", { deckId: 1 }, { requestId: randomUUID() });
+  const created = (await host.take("room_created")).payload;
+  const initial = await host.take("sync_snapshot"), metadata = { matchId: initial.matchId, revision: initial.revision };
+  const save = store.save.bind(store);
+  store.save = async (...args) => { await delay(25); return save(...args); };
+  const edits = [{ roundCount: 3 }, { roundCount: 30 }, { shuffleAnswers: true }, { timeLimitMs: 15000 }];
+  const ids = edits.map(() => randomUUID());
+  edits.forEach((edit, i) => host.send("configure_game", { roomCode: created.roomCode, mode: "odd_one_out", ...edit }, { ...metadata, requestId: ids[i] }));
+  for (const id of ids) assert.equal((await host.take("action_ack")).payload.requestId, id);
+  assert.equal(host.frames.some(frame => frame.type === "error"), false);
+  const saved = await store.load("quiz", created.roomCode);
+  assert.equal(saved!.state.room.oddRoundCount, 30);
+  assert.equal(saved!.state.room.oddShuffleAnswers, true);
+  assert.equal(saved!.state.room.oddTimeLimitMs, 15000);
+  // An exact retry returns the current settings instead of applying the earlier edit again.
+  host.frames.length = 0;
+  host.send("configure_game", { roomCode: created.roomCode, mode: "odd_one_out", ...edits[0] }, { ...metadata, requestId: ids[0] });
+  await host.take("action_ack");
+  assert.deepEqual((await host.take("sync_snapshot")).payload.oddSettings,
+    { roundCount: 30, timeLimitMs: 15000, shuffleQuestions: false, shuffleAnswers: true });
+});
+
+for (const role of ["host", "player"] as const) test(`a failed quiz ${role} replacement also disconnects its original socket`, async t => {
+  const store = new MemoryRoomCheckpointStore(); const server = await launch(store); t.after(() => server.close());
+  const host = await server.open(); host.send("create_room", { deckId: 1 }); const created = (await host.take("room_created")).payload;
+  let original = host, credentials = created;
+  if (role === "player") {
+    original = await server.open(); original.send("join_room", { roomCode: created.roomCode, playerName: "Displaced phone" });
+    credentials = (await original.take("room_joined")).payload;
+  }
+  const replacement = await server.open(), closed = once(original.ws, "close", { signal: AbortSignal.timeout(1500) });
+  const save = store.save.bind(store);
+  store.save = async () => { throw new Error("injected replacement failure"); };
+  replacement.send(role === "host" ? "resume_host" : "rejoin_room", credentials, { requestId: randomUUID() });
+  assert.match((await replacement.take("error")).payload.message, /recovery/i);
+  assert.equal((await closed)[0], 1013);
+  assert.match((await original.take("error")).payload.message, /recovery/i);
+  assert(!replacement.frames.some(frame => frame.type === "host_resumed" || frame.type === "room_joined"));
+  store.save = save;
+  const recovered = await server.open(); recovered.send(role === "host" ? "resume_host" : "rejoin_room", credentials, { requestId: randomUUID() });
+  await recovered.take(role === "host" ? "host_resumed" : "room_joined");
+  assert.equal((await recovered.take("sync_snapshot")).payload.state, "lobby");
 });

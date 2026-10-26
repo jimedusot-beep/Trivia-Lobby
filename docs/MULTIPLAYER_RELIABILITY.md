@@ -6,10 +6,12 @@ This implements networking/recovery ideas from the source research in Trivia Lob
 
 - Both transports save authoritative, private PostgreSQL checkpoints before releasing credentials, acknowledgments, scores or game snapshots. Database failures discard the prepared frames and disconnect affected clients for recovery from the last committed state.
 - Recovery reconstructs the same room, match, roster, scores, private assignments, question deadline and accepted-request history. All restored socket bindings start offline. An elapsed deadline advances once; reconnecting cannot reset it or score the round again.
+- A guest host that was healthy at its last checkpoint receives a fresh recovery grace period, even after a long idle lobby. An already established absence timestamp persists across subsequent restarts. Failed connection replacements disconnect both the old and new sockets so each affected phone can recover.
 - Disconnected quiz participants remain eligible until the original deadline; the first returning phone cannot close the question for everyone else. The per-IP quiz resume budget allows repeated twenty-phone reconnects from one household.
 - Optimistic checkpoint versions fence older writers. Versions are globally increasing, including when an expired room code is reused. Each payload is capped at 4 MiB, all active payloads at 32 MiB and active records at 700. Idle rooms expire after ten minutes. These are application payload budgets, not a guarantee about PostgreSQL's physical storage usage.
 - Only credential hashes persist. Modern quiz resumes use a stable request ID so a lost rotated-token response can be replayed. The client confirms receipt of the new credential, which removes the previous-token replay receipt. Legacy quiz clients retain their original wire format and token rotation.
 - New quiz commands carry request IDs and match/phase identity. Exact retries replay the acknowledgment and a current private snapshot. Changed requests using an old ID reject. The bounded replay history retains at most 256 requests per actor and 4096 per room. Answer, purchase, bonus and phase authorization remain server-controlled.
+- Ordered lobby configuration edits share the lobby's phase revision, so rapid typing does not invalidate the next edit in flight. Modern hosts receive authoritative settings after configuration, retries and reconnects; the form reconciles with those saved values.
 - Both transports detect stale/slow sockets. Browsers use capped exponential reconnect backoff with jitter, a liveness deadline, restored-connectivity/foreground handling and readiness only after authenticated room synchronization. Replaced sessions stop retrying. Recovering screens provide a route back to joining or owned decks.
 - Pending quiz report rows are part of the checkpoint and replay into the existing idempotent report sink after a restart. Private checkpoints have no HTTP export route.
 
@@ -36,7 +38,7 @@ npm run test:production
 
 The integrated workflow exercises PostgreSQL 16, built-runtime restarts and three application browsers. A separate PostgreSQL 18 job verifies atomic competing writes, expired-code reuse and payload capacity. The guest-browser suite adds restored-connectivity and deliberately dropped-acknowledgment scenarios.
 
-The local twenty-player scenario uses real WebSocket connections from one source IP and an in-memory persistence adapter. It verifies burst answers, concurrent replacement sockets, restart recovery and replayed requests with unchanged scores. Its sampled p95 acknowledgment latency was 29 ms in an isolated run and 58 ms alongside other tests. These are local synthetic measurements, not Render/Neon or household-Wi-Fi performance claims.
+The local twenty-player scenario uses real WebSocket connections from one source IP and an in-memory persistence adapter. It verifies burst answers, concurrent replacement sockets, restart recovery and replayed requests with unchanged scores. Its sampled p95 acknowledgment latency was 29 ms in an isolated run and 58–71 ms alongside other tests. These are local synthetic measurements, not Render/Neon or household-Wi-Fi performance claims.
 
 ## Actual game-night acceptance still required
 
