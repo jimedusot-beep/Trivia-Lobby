@@ -24,3 +24,5 @@
 .pick-game-selection { background:#f0e9ff; color:#312d64; border:2px solid #8465d8; border-radius:13px; font-weight:850; padding:10px 14px; }
 @media (prefers-reduced-motion: reduce) { .pick-game-card { transition:none; } .pick-game-card:hover { transform:none; } }
 @media (max-width:600px) { .pick-games { padding:19px 13px; } .pick-game-grid { grid-template-columns: 1fr; } .pick-game-card { min-height:auto; } }
+
+.pick-game-filters{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}.pick-game-filters button{width:auto;flex:0 1 auto;padding:.6rem 1rem;border:2px solid #20264b;border-radius:999px;background:#fff5dc;color:#20264b;min-height:44px}.pick-game-filters button[aria-pressed=true]{background:#6146df;color:#fff}.pick-game-card[hidden]{display:none!important}

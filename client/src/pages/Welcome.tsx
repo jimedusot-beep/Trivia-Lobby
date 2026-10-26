@@ -35,8 +35,8 @@ export default function Welcome() {
         <div className="home-play-grid">
           <article className="home-play-card home-card-coral">
             <div className="home-card-top"><span className="home-card-icon"><Users size={30} aria-hidden="true" /></span><span className="home-card-tag">THE WHOLE CREW</span></div>
-            <h3>Bring the room to life.</h3><p>Quick guesses, big laughs, and a six-character code that gets everyone in. Quiz, Prompt Duel, or Charades?</p>
-            <a className="home-card-action" href="/party/">Play as a guest <ArrowRight size={19} aria-hidden="true" /></a><span className="home-card-foot">3–8 players · nicknames welcome</span>
+            <h3>Bring the room to life.</h3><p>Quick guesses, big laughs, and a six-character code that gets everyone in. Try a team showdown, a drawing race, color cards, or a classic board game.</p>
+            <a className="home-card-action" href="/party/">Play as a guest <ArrowRight size={19} aria-hidden="true" /></a><span className="home-card-foot">2–20 players · nicknames welcome</span>
           </article>
           <article className="home-play-card home-card-sky">
             <div className="home-card-top"><span className="home-card-icon"><BookOpen size={30} aria-hidden="true" /></span><span className="home-card-tag">YOUR LITTLE WIN</span></div>

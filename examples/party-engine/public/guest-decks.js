@@ -1,3 +1,4 @@
+import { importRazziaQuiz } from "./razzia-import.js";
 // Browser-local Quiz Library. Stored only in this origin's IndexedDB.
 export const LOCAL_DB_NAME = "trivia-lobby-local-library";
 const VERSION = 1;
@@ -27,11 +28,17 @@ export function validateLocalDeck(value) {
       fail(`Question ${index + 1}: choose the correct answer.`);
     if (typeof q.explanation !== "string" || q.explanation.length > 240)
       fail(`Question ${index + 1}: explanation must be 240 characters or fewer.`);
+    for (const [key,min,max] of [["seconds",5,120],["points",0,100000],["penalty",0,100000]]) {
+      if (q[key] !== undefined && (!Number.isInteger(q[key]) || q[key] < min || q[key] > max)) fail(`Question ${index + 1}: invalid ${key}.`);
+    }
     return {
       prompt: clean(q.prompt, 200, `Question ${index + 1}`),
       choices: q.choices.map((v, i) => clean(v, 120, `Answer ${i + 1}`)),
       correct: q.correct,
       explanation: q.explanation.trim(),
+      ...(q.seconds !== undefined ? { seconds: q.seconds } : {}),
+      ...(q.points !== undefined ? { points: q.points } : {}),
+      ...(q.penalty !== undefined ? { penalty: q.penalty } : {}),
     };
   });
   return { title, questions };
@@ -83,6 +90,7 @@ export function importGuestDeck(name, input) {
     let parsed;
     try { parsed = JSON.parse(input); }
     catch { fail("This is not valid JSON."); }
+    if (parsed && Object.hasOwn(parsed,"subject") && Object.hasOwn(parsed,"questions")) return validateLocalDeck(importRazziaQuiz(parsed));
     if (parsed?.format !== "trivia-lobby-local-quiz" || parsed?.version !== 1)
       fail("Choose a Trivia Lobby local quiz JSON backup.");
     return validateLocalDeck(parsed.deck);

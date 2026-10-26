@@ -159,3 +159,9 @@ acceptance checks. The guest workflow runs the learning unit and browser scenari
 the main-app workflow also verifies public integration and accessibility in all
 three supported browser engines. Historical verification counts above describe
 their original deliveries, not this change.
+
+## Integrated open game pack
+
+Ten new account-free modes now share the same engine, code, QR invitation and reconnect credentials: Family Showdown, Doodle Dash, Color Clash, Four in a Row, Chess Club, Checkers Chase, Reversi Rivals, Mancala Match, Card & Dice Table and Backgammon Table. See [implementation and acceptance](../../docs/OPEN_GAME_PACK.md) and [pinned source/reuse scope](../../docs/OPEN_GAME_SOURCES.json). `show.html` creates/imports original showdown packs; `create.html` imports supported Razzia single-answer files. These adaptations do not embed the upstream applications or their entire catalogs.
+
+The new pack is AGPL-3.0-or-later with retained component notices. `npm start` generates `public/open-source` from the exact checked-out source; the integrated production build does the same. No generated source snapshot or private environment data is committed. The Credits & Source link exposes notices and corresponding guest source.

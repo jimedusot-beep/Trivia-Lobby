@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Make a Showdown · Trivia Lobby</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./create.css" />
+    <link rel="stylesheet" href="./pack.css" />
+    <script type="module" src="./show.js"></script>
+  </head>
+  <body class="public-party">
+    <main>
+      <nav class="page-nav">
+        <a href="./">← Pick a Game</a
+        ><a href="./create.html">Make a trivia quiz</a>
+      </nav>
+      <h1>Your family. Your showdown.</h1>
+      <p>
+        Make 1–8 team boards and five lightning questions. Each board's points
+        add up to 100. Keep a backup: your show saves on this device.
+      </p>
+      <p id="show-status" role="status" aria-live="polite">
+        Loading your show…
+      </p>
+      <label for="show-title">Show title</label
+      ><input id="show-title" maxlength="80" />
+      <h2>Team boards</h2>
+      <div id="show-rounds"></div>
+      <button id="add-board" type="button">Add a board</button>
+      <details>
+        <summary>Edit the five lightning questions</summary>
+        <div id="show-final"></div>
+      </details>
+      <section class="pack-settings">
+        <button id="save-show" type="button">Save on this device</button
+        ><button id="host-show" type="button">Save &amp; host showdown</button
+        ><button id="export-show" type="button">Download JSON backup</button
+        ><label for="import-show"
+          >Import a showdown or Friendly Feud JSON file</label
+        ><input
+          id="import-show"
+          type="file"
+          accept=".json,application/json"
+        /><button id="sample-show" type="button">Load sample show</button>
+      </section>
+      <p>
+        Sample points are curated for fun, not the results of a real survey. Use
+        your own questions and content that you have permission to share.
+      </p>
+      <footer>
+        <a href="./sources.html">Game credits, licenses &amp; source code</a>
+      </footer>
+    </main>
+  </body>
+</html>

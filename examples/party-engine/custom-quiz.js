@@ -17,7 +17,7 @@ export function validateGuestQuiz(value) {
     fail(`Use 1–${MAX_GUEST_QUESTIONS} quiz questions.`);
   const questions = value.questions.map((q, i) => {
     if (!q || typeof q !== "object" || Array.isArray(q) ||
-        Object.keys(q).some(key => !["prompt", "choices", "correct", "explanation"].includes(key)))
+        Object.keys(q).some(key => !["prompt", "choices", "correct", "explanation", "seconds", "points", "penalty"].includes(key)))
       fail(`Invalid question ${i + 1}.`);
     if (!Array.isArray(q.choices) || q.choices.length < 2 || q.choices.length > 4)
       fail(`Question ${i + 1} needs 2–4 choices.`);
@@ -25,11 +25,17 @@ export function validateGuestQuiz(value) {
       fail(`Question ${i + 1} has an invalid correct choice.`);
     if (typeof q.explanation !== "string" || q.explanation.length > 240)
       fail(`Question ${i + 1} has an invalid explanation.`);
+    for (const [key,min,max] of [["seconds",5,120],["points",0,100000],["penalty",0,100000]]) {
+      if (q[key] !== undefined && (!Number.isInteger(q[key]) || q[key] < min || q[key] > max)) fail(`Question ${i + 1}: invalid ${key}.`);
+    }
     return {
       prompt: text(q.prompt, 200, `Question ${i + 1}`),
       choices: q.choices.map((choice, j) => text(choice, 120, `Question ${i + 1}, choice ${j + 1}`)),
       correct: q.correct,
       explanation: q.explanation.trim(),
+      ...(q.seconds !== undefined ? { seconds: q.seconds } : {}),
+      ...(q.points !== undefined ? { points: q.points } : {}),
+      ...(q.penalty !== undefined ? { penalty: q.penalty } : {}),
     };
   });
   return { title, questions };

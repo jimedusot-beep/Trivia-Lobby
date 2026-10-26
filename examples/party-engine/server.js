@@ -24,6 +24,8 @@ export function createPartyServer(options = {}) {
   };
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { buildGameSources } = await import("../../script/build-game-sources.mjs");
+  await buildGameSources();
   const { server } = createPartyServer();
   const port = Number(process.env.PORT || 3001);
   server.listen(port, process.env.HOST || "127.0.0.1", () =>
