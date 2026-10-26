@@ -91,8 +91,8 @@ test("five-question match finishes and returns to same party without stale actio
   act("host", "start", "quiz");
   assert.throws(() => p.handle(ids[0], stale), /out of date/);
 });
-test("all 3–8 player duel assignments are balanced and votes stay anonymous until reveal", () => {
-  for (let n = 3; n <= 8; n++) {
+test("all 3–20 player duel assignments are balanced and votes stay anonymous until reveal", () => {
+  for (let n = 3; n <= 20; n++) {
     const { p, ids, act } = setup("duel", n);
     for (const id of ids) {
       const assignments = p.view(id).assignments;
@@ -141,8 +141,8 @@ test("host loss completes timed phase then grants 60 seconds to return", () => {
 test("host role, player count, message types and text bounds are enforced", () => {
   const p = new Party("ABC234");
   assert.throws(() => p.join(" "));
-  for (let i = 0; i < 8; i++) p.join(String(i));
-  assert.throws(() => p.join("ninth"));
+  for (let i = 0; i < 20; i++) p.join(String(i));
+  assert.throws(() => p.join("twenty-first"),/Room full/);
   const { p: q, ids, act } = setup("duel");
   assert.throws(() => act(ids[0], "next"));
   assert.throws(() => act(ids[0], "write", "x".repeat(241), 0));
@@ -191,7 +191,7 @@ test("rejected start preserves disconnected participants until a valid match beg
     revision: 0,
     value: "quiz",
   };
-  assert.throws(() => p.handle("host", start), /3–8/);
+  assert.throws(() => p.handle("host", start), /3–20/);
   assert.equal(p.phase, "lobby");
   assert.equal(p.revision, 0);
   assert.equal(p.players.has(ids[0]), true);
