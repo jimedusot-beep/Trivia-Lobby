@@ -4,6 +4,7 @@ import { validateAction } from "./protocol.js";
 import { makeTurn, markClue, finishTurn } from "./charades.js";
 import { projectParty } from "./projections.js";
 import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSocial, scoreSocial } from "./social-games.js";
+import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -98,8 +99,8 @@ export class Party {
       if (this.phase === "countdown") this.open();
       else if (this.phase === "clue") openSocialVoting(this);
       else if (this.phase === "writing") {
-        this.index = 0;
-        this.openVote();
+        if (bonusModes.includes(this.mode)) openBonusVoting(this);
+        else { this.index = 0; this.openVote(); }
       } else if (["question", "voting", "acting"].includes(this.phase))
         this.closeRound();
     }
@@ -116,6 +117,8 @@ export class Party {
     }
     if (socialModes.includes(this.mode)) {
       openSocial(this);
+    } else if (bonusModes.includes(this.mode)) {
+      openBonus(this);
     } else if (this.mode === "quiz") {
       this.answers = new Map();
       this.enter("question", this.quizMs);
@@ -156,6 +159,7 @@ export class Party {
       }
     }
     if (socialModes.includes(this.mode)) scoreSocial(this);
+    if (bonusModes.includes(this.mode)) scoreBonus(this);
     if (this.mode === "charades") finishTurn(this.turn);
     this.enter("reveal");
   }
@@ -176,7 +180,7 @@ export class Party {
     if (msg.type === "start") {
       if (actor !== "host" || this.phase !== "lobby")
         fail("Only the host can start from the lobby.");
-      if (!["quiz", "duel", "charades", ...socialModes].includes(msg.value))
+      if (!["quiz", "duel", "charades", ...socialModes, ...bonusModes].includes(msg.value))
         fail("Unknown game mode.");
       // Validate before pruning: a rejected start must not revoke a disconnected
       // participant's reconnect access while the party is still in the lobby.
@@ -193,6 +197,8 @@ export class Party {
       this.index = 0;
       this.interrupted = false;
       this.roster = [...this.players.keys()];
+      this.bonusBingo = null;
+      this.bonusBracket = null;
       this.players.forEach((p) => {
         p.score = 0;
         p.correct = 0;
@@ -203,7 +209,8 @@ export class Party {
       }));
       this.enter("countdown", this.countdownMs);
     } else if (msg.type === "respond") {
-      acceptSocial(this,actor,msg);
+      if (bonusModes.includes(this.mode)) acceptBonus(this,actor,msg);
+      else acceptSocial(this,actor,msg);
     } else if (msg.type === "answer") {
       if (
         actor === "host" ||
@@ -263,6 +270,7 @@ export class Party {
       if (actor !== "host" || this.phase !== "reveal")
         fail("Only the host can advance after reveal.");
       const total =
+        bonusModes.includes(this.mode) ? bonusRoundCount[this.mode] :
         socialModes.includes(this.mode) ? socialPackLength :
         this.mode === "quiz"
           ? this.quiz.length
@@ -272,7 +280,7 @@ export class Party {
       if (++this.index >= total) this.enter("finished");
       else if (this.mode === "charades")
         this.enter("countdown", this.countdownMs);
-      else if (this.mode === "quiz" || socialModes.includes(this.mode)) this.open();
+      else if (this.mode === "quiz" || socialModes.includes(this.mode) || bonusModes.includes(this.mode)) this.open();
       else this.openVote();
     } else if (msg.type === "lobby") {
       if (actor !== "host" || this.phase !== "finished")
