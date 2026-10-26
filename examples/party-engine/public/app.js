@@ -4,10 +4,13 @@ import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
+import { renderPack, drawingBusy } from "./pack-ui.js";
 
 let invitationCode, invitationPhase;
-let preferredMode = "quiz";
+const launchGame = new URLSearchParams(location.search).get("game");
+let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
+let preferredSettings = {};
 
 let ws,
   state,
@@ -33,8 +36,10 @@ try {
     if (gameById(saved.mode)) preferredMode = saved.mode;
     if (["actions", "animals"].includes(saved.category))
       preferredCategory = saved.category;
+    if (saved.settings && typeof saved.settings === "object") preferredSettings = saved.settings;
   }
 } catch {}
+if (gameById(launchGame)) { credential = null; preferredMode = launchGame; }
 const entry = mountInvitationEntry({ search: location.search, savedParty: credential, partyUrl });
 let resumeSavedParty = entry.resumeSavedParty;
 function saveHostChoice(mode = preferredMode, category = preferredCategory) {
@@ -43,7 +48,7 @@ function saveHostChoice(mode = preferredMode, category = preferredCategory) {
   if (credential?.actor !== "host") return;
   try {
     sessionStorage.setItem(preferenceKey, JSON.stringify({
-      code: credential.code, mode, category,
+      code: credential.code, mode, category, settings: preferredSettings,
     }));
   } catch {}
 }
@@ -77,6 +82,7 @@ function connect(hello) {
         history.replaceState(null, "", guestInvitation(location.href, m.code));
       save();
       saveHostChoice();
+      if (m.actor === "host" && gameById(launchGame)) history.replaceState(null, "", partyUrl.pathname);
       status("Party ready.");
     }
     if (m.type === "ready") {
@@ -134,7 +140,11 @@ function hello(message) {
 }
 $("create").onclick = async () => {
   const localId = new URLSearchParams(location.search).get("deck");
-  if (!localId) return hello({ type: "create" });
+  if (!localId) {
+    let show;
+    try { if (preferredMode === "feud") show = JSON.parse(sessionStorage.getItem("party-custom-show")); } catch {}
+    return hello({ type: "create", ...(show ? { show } : {}) });
+  }
   try {
     const { getGuestDeck, validateLocalDeck } = await import("./guest-decks.js");
     const record = await getGuestDeck(localId);
@@ -179,6 +189,7 @@ function action(type, value, promptIndex) {
   if (promptIndex !== undefined) pending.promptIndex = promptIndex;
   if (type === "start" && value === "charades")
     pending.category = $("charades-category").value;
+  if (type === "start" && ["colors", "table"].includes(value)) pending.settings = preferredSettings[value] || {};
   if (type === "mark") pending.clueId = state.charades.clue.id;
   ws.send(JSON.stringify(pending));
   status("Sending…");
@@ -200,6 +211,7 @@ function button(text, fn, parent, disabled = false) {
   return b;
 }
 function render() {
+  if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
@@ -238,7 +250,7 @@ function render() {
   if (state.phase === "lobby") {
     element(
       "p",
-      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer.`,
+      `Quiz (${state.quizTitle}): ${state.quizLength} questions. Each round shows its timer and point value.`,
     );
     const rules = element("details");
     rules.className = "mode-rules";
@@ -272,27 +284,49 @@ function render() {
       const selection = element("p");
       selection.className = "pick-game-selection";
       const showSelection = () => {
-        selection.textContent = `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} of 3–20 guests connected.`;
+        selection.textContent = `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} connected · ${gameById(select.value)?.min ?? 3}–20 needed.`;
       };
       select.onchange = () => {
         saveHostChoice(select.value, pack.value);
         showPack();
         showSelection();
+        showSettings();
       };
       pack.onchange = () => saveHostChoice(select.value, pack.value);
       showPack();
       showSelection();
-      button(
+      const settingsBox = element("div"); settingsBox.className = "pack-settings";
+      const settingsSelect = (label, key, options, mode, fallback) => {
+        const caption = element("label", label, settingsBox);
+        const field = element("select", undefined, settingsBox); field.id = `pack-setting-${key}`; caption.htmlFor = field.id;
+        for (const [value, title] of options) { const option = element("option", title, field); option.value = String(value); }
+        field.value = String(preferredSettings[mode]?.[key] ?? fallback);
+        field.onchange = () => { preferredSettings[mode] ||= {}; preferredSettings[mode][key] = key === "preset" ? field.value : key === "stacking" ? field.value === "true" : Number(field.value); saveHostChoice(); };
+      };
+      function showSettings() {
+        settingsBox.replaceChildren();
+        if (select.value === "colors") {
+          settingsSelect("Computer players (up to ten total seats)", "bots", Array.from({ length: 9 }, (_, i) => [i, String(i)]), "colors", 0);
+          settingsSelect("Draw-card stacking", "stacking", [[false,"Off"],[true,"On"]], "colors", false);
+          settingsSelect("Seconds per card turn", "turnSeconds", [15,30,60,90].map(n=>[n,String(n)]), "colors", 30);
+        }
+        if (select.value === "table") settingsSelect("Card-table preset", "preset", [["poker","Five-card poker (manual rules)"],["whist","Whist (four seats, manual rules)"]], "table", "poker");
+        if (select.value === "feud") { const link = element("a", "Make or import your own showdown questions", settingsBox); link.href = "./show.html"; }
+        start.disabled = state.players.filter(p=>p.connected).length < (gameById(select.value)?.min ?? 3) || !!pending;
+      }
+      const start = button(
         "Start match",
         () => action("start", select.value),
         undefined,
-        state.players.filter((p) => p.connected).length < 3,
+        state.players.filter((p) => p.connected).length < (gameById(select.value)?.min ?? 3),
       );
+      showSettings();
     } else element("p", "Waiting for the host to start.");
   }
   if (state.phase === "countdown") element("p", "Get ready!");
   if (state.question) {
     element("h2", state.question.prompt);
+    element("p", `${state.question.seconds} seconds · ${state.question.points} points${state.question.penalty ? ` · ${state.question.penalty} wrong-answer penalty` : ""}`);
     state.question.choices.forEach((choice, i) => {
       let tile;
       if (state.phase === "question" && !host)
@@ -317,6 +351,10 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render});
+  if (state.pack && host && state.phase === "playing") button("End this match", () => {
+    if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
+  });
   if (state.phase === "writing" && state.mode === "duel") {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
@@ -407,10 +445,10 @@ function render() {
   }
   if (state.phase === "reveal" && host) button("Next", () => action("next"));
   if (state.phase === "finished") {
-    if (previousPhase !== phaseKey && !state.interrupted) celebrate();
+    if (previousPhase !== phaseKey && !state.interrupted && !state.endedByHost) celebrate();
     element(
       "p",
-      state.interrupted
+      state.endedByHost ? "The host ended this match early. Current points are shown below." : state.interrupted
         ? "Match interrupted: host did not reconnect."
         : "Match complete! Equal scores share the result.",
     );
@@ -457,3 +495,4 @@ setInterval(() => {
   $("timer").dataset.urgent = String(!!state.deadline && state.deadline - Date.now() - offset <= 5000);
 }, 200);
 connect();
+if (gameById(launchGame)) $("create").click();

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "feud",
+    "repository": "https://github.com/joshzcold/Friendly-Feud",
+    "commit": "eae4b1bf7a55303b3b48c49788e0b87f4870ecef",
+    "license": "MIT",
+    "reuse": "Architecture and game flow only; original implementation and question pack."
+  },
+  {
+    "id": "draw",
+    "repository": "https://github.com/scribble-rs/scribble.rs",
+    "commit": "1bda7ed8b880bb598dede5096c0e2f3f58abe0b8",
+    "license": "BSD-3-Clause",
+    "reuse": "Architecture and private canvas/clue behavior only; original implementation and words."
+  },
+  {
+    "id": "cards",
+    "repository": "https://github.com/tanmay-tiwari-20/Unoverse",
+    "commit": "0695d5a285f1e33cabea1bb6ce28de8a1ac627ad",
+    "license": "MIT",
+    "reuse": "Adapted deck construction, getNextPlayerIndex, and scoring functions, with cryptographic randomness and identifiers."
+  },
+  {
+    "id": "boards",
+    "repository": "https://github.com/freeboardgames/FreeBoardGames.org",
+    "commit": "41a0077b7e76c1050b28f67537f00705a9095ed5",
+    "license": "AGPL-3.0",
+    "reuse": "Adapted Four in a Row victory scan, Mancala sow/capture flow, and Checkers jump rules; standard Reversi independently implemented."
+  },
+  {
+    "id": "table",
+    "repository": "https://github.com/ArnoldSmith86/virtualtabletop",
+    "commit": "459d2b6e5053643089c41ab5a86c1e236021936c",
+    "license": "GPL-3.0",
+    "reuse": "Manual card/dice/table interaction model only; original implementation and presets. No upstream game packs or artwork."
+  },
+  {
+    "id": "trivia",
+    "repository": "https://github.com/Ralex91/Razzia",
+    "commit": "5161eb7022144ee26d46a5f94cdbc714ec8b560d",
+    "license": "MIT",
+    "reuse": "Quiz JSON schema interoperability only; original import implementation."
+  }
+]

@@ -139,7 +139,9 @@ $("question-form").addEventListener("submit", event => {
       throw new Error("Fill answers in order starting with A and B. Leave only the last answers blank.");
     const choices = raw.filter(Boolean);
     const correct = Number($("correct").value);
+    const previous = editIndex >= 0 ? draft.questions[editIndex] : {};
     const single = {
+      ...Object.fromEntries(["seconds","points","penalty"].filter(key=>previous[key] !== undefined).map(key=>[key,previous[key]])),
       prompt: $("prompt").value,
       choices,
       correct,

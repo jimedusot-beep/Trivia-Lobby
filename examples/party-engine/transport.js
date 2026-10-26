@@ -4,6 +4,7 @@ import { ParticipantSessions } from "./sessions.js";
 import { DeadlineScheduler } from "./scheduler.js";
 import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
+import { validateShow } from "./open-pack/feud.js";
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -117,6 +118,7 @@ export function attachPartySocket(server, {
               party: new Party(code, {
                 ...partyOptions,
                 ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
+                ...(Object.hasOwn(m, "show") ? { customShow: validateShow(m.show) } : {}),
               }),
               sessions: new ParticipantSessions(),
             };
