@@ -1,9 +1,9 @@
 import { Link } from "wouter";
 
 export function LobbyBrand() {
-  return <Link href="/" className="lobby-brand" aria-label="Trivia Lobby home">
+  return <Link href="/" className="lobby-brand">
     <img src="/party/lobby-spark.svg" alt="" width="46" height="46" />
-    <span className="lobby-wordmark">Trivia<span>Lobby</span></span>
+    <span className="lobby-wordmark">Trivia <span>Lobby</span></span>
   </Link>;
 }
 

@@ -184,8 +184,12 @@ function render() {
     element("p", invite.href);
     element(
       "p",
-      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer. Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.`,
+      `Quiz (${state.quizTitle}): ${state.quizLength} questions, 30 seconds each, 100 points per correct answer.`,
     );
+    const rules = element("details");
+    rules.className = "mode-rules";
+    element("summary", "How these games work", rules);
+    element("p", "Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.", rules);
     if (host) {
       const label = element("label", "Game mode");
       label.htmlFor = "mode";
@@ -238,6 +242,7 @@ function render() {
           `${choice}${state.question.correct === i ? " ✓ Correct" : ""}`,
         );
       tile.className = "answer-tile";
+      tile.dataset.answerTone = String(i);
       tile.dataset.correct = String(state.question.correct === i);
       const letter = document.createElement("span");
       letter.className = "answer-letter";
@@ -361,7 +366,7 @@ function render() {
   $("roster").replaceChildren();
   for (const p of state.players) {
     const row = element("li", undefined, $("roster"));
-    const token = element("span", p.name.slice(0, 1).toUpperCase(), row);
+    const token = element("span", (Array.from(p.name)[0] || "?").toUpperCase(), row);
     token.className = "player-token";
     token.setAttribute("aria-hidden", "true");
     element(

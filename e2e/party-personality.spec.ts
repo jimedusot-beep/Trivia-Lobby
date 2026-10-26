@@ -61,6 +61,7 @@ test("learning celebrations finish, and reduced motion preserves calm keyboard p
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.locator("#replay").click();
   await page.getByRole("button", { name: "A. Yellow", exact: true }).click();
+  await expect(page.locator("#continue")).toBeFocused();
   await page.locator("#continue").press("Enter");
   await expect(page.locator("#summary-heading")).toBeFocused();
   await expect(page.locator(".lobby-confetti")).toHaveCount(0);
