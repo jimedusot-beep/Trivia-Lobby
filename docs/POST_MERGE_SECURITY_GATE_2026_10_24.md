@@ -1,3 +1,5 @@
+> **Historical advisory; remediated on main (October 25, 2026).** The pinned dependencies now include `body-parser@2.4.0` and `zod@4.6.7`, with a passing dependency audit and production compressed-body regression tests. The release-blocking package defect described below is resolved; see [repository cleanup](REPOSITORY_CLEANUP_2026_10_25.md). Actual independently verified offsite backups (#48) and branch protection (#49) remain outstanding. Do not read the original contemporaneous warnings below as the *current* package state.
+
 # Post-merge HTTP request parsing mitigation — October 24, 2026
 
 The merged Trivia Lobby parity code is on `main`, but dependency audit detected two newly disclosed high-severity vulnerabilities. This is **not a complete fix for the release gate**.
