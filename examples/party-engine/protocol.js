@@ -89,7 +89,7 @@ export function validateAction(message) {
     fail("Invalid message envelope.");
   if (
     message.type === "start" &&
-    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor"].includes(message.value)
+    !["quiz", "duel", "charades", "majority", "likely", "closest", "survey", "impostor", "percentage", "category", "bingo", "caption", "timeline", "bracket"].includes(message.value)
   )
     fail("Unknown game mode.");
   if (
