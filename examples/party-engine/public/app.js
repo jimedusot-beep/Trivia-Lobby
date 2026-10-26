@@ -185,7 +185,7 @@ function render() {
     element("p", invite.href);
     if (partyUrl.pathname.startsWith("/party/")) {
       const qr=element("img",undefined);
-      qr.src=`/party/join-qr.svg?code=${encodeURIComponent(state.code)}`;
+      qr.src=`/party/join-qr.svg?code=${encodeURIComponent(state.code)}&origin=${encodeURIComponent(location.origin)}`;
       qr.alt=`Scan QR code to join party ${state.code}`;
       qr.width=208;qr.height=208;qr.className="join-qr";
     }
