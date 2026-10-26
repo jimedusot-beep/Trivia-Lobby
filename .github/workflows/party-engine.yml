@@ -2,10 +2,8 @@ name: Guest party engine
 on:
   pull_request:
     branches: [main]
-    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
   push:
     branches: [main, feature/guest-party-engine]
-    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
 concurrency:
   group: party-engine-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
