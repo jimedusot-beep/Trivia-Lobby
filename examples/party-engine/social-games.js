@@ -35,7 +35,7 @@ const impostor = [
  {category:"Places",word:"Airport"}, {category:"Objects",word:"Umbrella"},
  {category:"Activities",word:"Camping"},
 ];
-const clean = (text) => text.toLowerCase().normalize("NFKC").replace(/[^\\p{L}\\p{N}]+/gu," ").trim();
+const clean = (text) => text.toLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu," ").trim();
 export const socialPackLength = 5;
 const err = (message) => { throw new Error(message); };
 const active = (p,actor) => actor !== "host" && p.roster.includes(actor);
@@ -70,7 +70,7 @@ export function acceptSocial(p,actor,msg) {
   if(p.mode==="closest" && (!Number.isSafeInteger(v)||v<0||v>1000000))
     err("Enter an integer from 0 to 1,000,000.");
   if(["survey","impostor"].includes(p.mode) &&
-    (typeof v!=="string" || !v.trim() || v.trim().length>80 || /[\\u0000-\\u001f\\u007f]/.test(v)))
+    (typeof v!=="string" || !v.trim() || v.trim().length>80 || /[\u0000-\u001f\u007f]/.test(v)))
     err("Enter 1–80 readable characters.");
   s.responses.set(actor,typeof v==="string"?v.trim():v);
   if(s.responses.size === p.roster.length){
