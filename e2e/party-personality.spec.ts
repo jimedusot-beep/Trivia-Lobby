@@ -35,9 +35,11 @@ test("clubhouse identity fits phone and desktop, ships local fonts, and keeps pu
     await page.setViewportSize({ width, height: 850 });
     for (const [route, name] of routes) {
       await page.goto(route);
-      await expect(page.locator("h1")).toBeVisible();
+      const heading = page.locator("h1:visible");
+      await expect(heading).toHaveCount(1);
+      await expect(heading).toBeVisible();
       await expect(page.locator(".lobby-brand").first()).toBeVisible();
-      await expect(page.locator("h1")).toHaveCSS("font-family", /Fredoka/);
+      await expect(heading).toHaveCSS("font-family", /Fredoka/);
       await expect(page.getByLabel("Email", { exact: true })).toHaveCount(0);
       await shot(page, `lobby-${name}-${width}`);
       if (width === 390) expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
