@@ -1,5 +1,6 @@
 import { celebrate } from "./party-ui.js";
 import { renderSocial } from "./social-ui.js";
+import { renderBonus } from "./bonus-ui.js";
 
 let ws,
   state,
@@ -211,6 +212,12 @@ function render() {
         ["closest", "Closest Wins"],
         ["survey", "Survey Showdown"],
         ["impostor", "Secret Impostor"],
+        ["percentage", "Guess the Percentage"],
+        ["category", "Category Clash"],
+        ["bingo", "Family Bingo"],
+        ["caption", "Caption Chaos"],
+        ["timeline", "Timeline Tangle"],
+        ["bracket", "Bracket Battle"],
       ]) {
         const o = element("option", text, select);
         o.value = value;
@@ -267,6 +274,7 @@ function render() {
     element("p", `${state.received} answers received.`);
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
   if (state.phase === "writing") {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
