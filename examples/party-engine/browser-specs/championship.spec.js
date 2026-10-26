@@ -24,9 +24,7 @@ test("Game Night Championship persists when a family switches games in one QR ro
       await expect(tap).toBeVisible({timeout:10000});
       await tap.click();
       await expect(host.locator(".tap-results li")).toHaveCount(2,{timeout:18000});
-      if (heat<2) {
-        await host.getByRole("button",{name:"Next",exact:true}).click();
-      }
+      await host.getByRole("button",{name:"Next",exact:true}).click();
     }
     await expect(host.locator("#heading")).toContainText("finished");
     const standings=host.locator("#championship");
