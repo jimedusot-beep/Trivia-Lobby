@@ -13,7 +13,7 @@ async function lobby(browser, mode, count = 2) {
   }
   const host = await page(1280);
   await host.goto(base);
-  await host.locator(`[data-game="${mode}"] button`).click();
+  await host.locator(`[data-game="${mode}"] .pick-game-button`).click();
   await expect(host.locator("#heading")).toContainText("lobby");
   const qr = host.locator("#party-invitation svg"),
     png = PNG.sync.read(await qr.screenshot()),

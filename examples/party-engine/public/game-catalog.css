@@ -26,3 +26,37 @@
 @media (max-width:600px) { .pick-games { padding:19px 13px; } .pick-game-grid { grid-template-columns: 1fr; } .pick-game-card { min-height:auto; } }
 
 .pick-game-filters{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0}.pick-game-filters button{width:auto;flex:0 1 auto;padding:.6rem 1rem;border:2px solid #20264b;border-radius:999px;background:#fff5dc;color:#20264b;min-height:44px}.pick-game-filters button[aria-pressed=true]{background:#6146df;color:#fff}.pick-game-card[hidden]{display:none!important}
+
+/* Sakura Arcade game shelf — modern responsive layout with console-like selection. */
+.pick-games { background:linear-gradient(148deg,#241c44 4%,#40316c 61%,#5142a1); border:3px solid #8e7bb8; box-shadow:0 9px 0 #1b1432,0 25px 45px #241c4430; position:relative; overflow:clip; }
+.pick-games::before { content:"✿"; position:absolute; top:4px; right:17px; font-size:7rem; line-height:1; color:#f5a9c42b; pointer-events:none; }
+.pick-game-heading h2 { font-size:clamp(2.1rem,5vw,3.5rem); text-shadow:0 4px 0 #1d173b; }
+.pick-game-heading .eyebrow { color:#ffcfdf; letter-spacing:.14em; }
+.pick-game-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:16px; }
+.pick-game-card { border-color:var(--sakura-plum); box-shadow:0 6px 0 #1d173b; transition:transform .16s ease,box-shadow .16s ease; }
+.pick-game-card:hover { transform:translateY(-3px); box-shadow:0 9px 0 #1d173b; }
+.pick-game-card[data-preview="true"] { outline:4px solid #ffe4ad; outline-offset:1px; }
+.pick-game-card[data-selected="true"] { outline:4px dashed #86cfb2; outline-offset:1px; }
+.pick-game-rules { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.pick-game-actions { display:grid; gap:9px; grid-template-columns:minmax(90px,.8fr) minmax(110px,1.2fr); }
+.pick-game-actions button { font-size:.83rem; margin:0; min-height:50px; padding:8px; overflow-wrap:anywhere; }
+.pick-game-preview-button { border:2px solid var(--sakura-plum); border-radius:12px; background:#fffaf5; color:var(--sakura-plum); font-weight:900; cursor:pointer; }
+.pick-game-preview-button[aria-pressed="true"] { background:#f6c8dc; box-shadow:inset 0 3px 0 #ffffff90; }
+.pick-game-preview-button:focus-visible,.pick-spotlight-button:focus-visible { outline:4px solid #f5a9c4; outline-offset:3px; }
+.pick-game-button { background:var(--sakura-plum); border-color:var(--sakura-plum); }
+.pick-game-button:hover,.pick-game-button:focus-visible { background:var(--sakura-indigo); }
+.pick-game-spotlight { display:grid; grid-template-columns:90px minmax(0,1fr) minmax(160px,auto); align-items:center; gap:19px; padding:22px; margin-bottom:20px; border-radius:22px; border:3px solid #dcb6df; color:#fffaf5; background:linear-gradient(130deg,#342658,#55438e); box-shadow:inset 0 2px 0 #fff7,0 5px 0 #1a1739; }
+.pick-spotlight-icon { display:grid; place-items:center; width:80px; height:80px; font-size:3rem; border:3px solid #241c44; border-radius:23px; background:#f5a9c4; box-shadow:0 5px 0 #18102c; }
+.pick-game-spotlight[data-tone="yellow"] .pick-spotlight-icon {background:#ffdb88;}.pick-game-spotlight[data-tone="teal"] .pick-spotlight-icon {background:#86cfb2;}.pick-game-spotlight[data-tone="blue"] .pick-spotlight-icon {background:#c9e1ff;}
+.pick-spotlight-copy h3 { color:white; font-size:clamp(1.3rem,2.5vw,1.85rem); margin:4px 0 6px; }
+.pick-spotlight-meta { font-weight:850; color:#ffdbdf; margin:0 0 5px; font-size:.87rem; }
+.pick-spotlight-rules { margin:0; font-size:.89rem; line-height:1.5; color:#f7f0ff; }
+.pick-spotlight-button { width:auto; align-self:center; padding:14px 17px; min-height:55px; margin:0; border:2px solid #241c44; border-radius:15px; color:#241c44; background:#86cfb2; box-shadow:0 4px 0 #1b1432; font-weight:900; cursor:pointer; }
+.pick-spotlight-button:hover { background:#b2e5ce; }
+.pick-game-filters { margin-top:10px; }
+.pick-game-filters button { background:#fff3ed; border-color:#241c44; color:#241c44; }
+.pick-game-filters button[aria-pressed=true] { background:#f5a9c4; color:#241c44; border-color:#241c44; box-shadow:inset 0 3px 0 #ffffff8c; }
+.pick-game-status { color:#fff5e9; font-size:.85rem; margin:0 0 10px; }
+@media(max-width:760px){.pick-game-spotlight {grid-template-columns:65px 1fr;gap:13px;padding:15px;}.pick-spotlight-icon{width:62px;height:62px;font-size:2.3rem;border-radius:17px;}.pick-spotlight-button{grid-column:1 / -1;width:100%;}.pick-game-card{min-height:auto;}}
+@media(max-width:600px){.pick-game-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));}.pick-games{padding:19px 13px;}}
+@media(prefers-reduced-motion:reduce){.pick-game-card{transition:none;}}

@@ -74,3 +74,17 @@ footer { text-align: center; font-size: .78rem; margin: 35px 0 17px; color: var(
 .primary-link { display: inline-block; background: var(--lobby-violet); color: white; font-weight: 900; padding: 14px 21px; border: 2px solid var(--lobby-ink); border-radius: 12px; box-shadow: 0 4px 0 var(--lobby-ink); text-decoration: none; }
 @media (max-width: 700px) { .achievements { grid-template-columns: repeat(2, minmax(0, 1fr)); } .learning-hero { gap: 12px; } .learning-hero > img { width: 86px; height: 86px; flex-basis: 86px; } .learning-hero h1 { font-size: 2.7rem; } }
 @media (max-width: 600px) { .learning-hero { align-items: flex-start; } .learning-hero > img { width: 64px; height: 64px; flex-basis: 64px; margin-top: 40px; } .learning-hero .lobby-kicker { font-size: .62rem; } .stats { grid-template-columns: 1fr 1fr; gap: 13px; } .stats > div { padding: 17px; } .stats > div:first-child { grid-column: 1 / -1; } .stats strong { font-size: 1.6rem; } .daily-card { display: block; padding: 20px; } .daily-card button { width: 100%; margin-top: 20px; } .runner { padding: 20px; } .course-grid { grid-template-columns: 1fr; } .achievements li { padding: 15px; } .path { padding-left: 15px; margin-left: 10px; } .path button { gap: 11px; padding: 13px; } }
+
+/* Original memory-card-inspired learning rewards, without pixelated body text. */
+.course-card { position:relative; padding-top:48px; border:3px solid #786193; background:linear-gradient(135deg,#fffaf5,#fce9f0); box-shadow:0 5px 0 #241c44; }
+.course-card::before {content:"▣  COURSE SAVE";position:absolute;left:16px;top:12px;font:900 .7rem/1.4 var(--font-body);color:#5142a1;letter-spacing:.14em;}
+.course-card[aria-pressed="true"] {background:linear-gradient(140deg,#fbe1ec,#e9e3fa);box-shadow:0 6px 0 #241c44;}
+.path {border-left-color:#d99dc2;}
+.path button {border-color:#71608c;border-radius:17px;box-shadow:0 4px 0 #241c44;}
+.path button[data-step="current"] {background:#ffebdb;}
+.path button[data-step="complete"] {background:#e3f6ed;}
+.step-number.completed {background:#86cfb2;}
+.achievements li {border:2px solid #c7afce;background:#fffaf5;box-shadow:0 4px 0 #241c44;}
+.achievements li.earned {background:linear-gradient(140deg,#ffdfeb,#fff0c9);}
+.achievements li.earned::before {content:"✿";background:#f5a9c4;color:#241c44;}
+.summary {background:linear-gradient(135deg,#fff8eb,#fce0ef);}
