@@ -18,6 +18,8 @@ export const guestGames = Object.freeze([
   { id:"caption", name:"Caption Chaos", icon:"📸", color:"pink", players:"3–20", min:3, max:20, rounds:"4 scenes", rules:"Write a caption for a silly scene, then vote for someone else's caption. Each vote gives 100 points.", tag:"Laugh out loud" },
   { id:"timeline", name:"Timeline Tangle", icon:"🕰️", color:"blue", players:"3–20", min:3, max:20, rounds:"5 timelines", rules:"Place four shuffled events in chronological order. Earn 25 points for each correct position.", tag:"Put in order" },
   { id:"bracket", name:"Bracket Battle", icon:"🏆", color:"yellow", players:"3–20", min:3, max:20, rounds:"15 matchups", rules:"Vote for the winner of each showdown. Correct votes earn points as contenders advance.", tag:"Tournament" },
+  { id:"turbo", name:"Turbo Circuit", icon:"🏎️", color:"orange", players:"3–20", min:3, max:20, rounds:"90-second race", rules:"Race your original kart through three lanes. Toggle GAS, dodge cones and use a timed speed boost. The server determines positions and results.", tag:"Arcade racing" },
+  { id:"wave", name:"Wave Sprint", icon:"🌊", color:"teal", players:"3–20", min:3, max:20, rounds:"90-second race", rules:"Race a jet ski across three buoy-marked lanes. Dodge choppy water, build speed and launch your boost to win.", tag:"Water racing" },
   ...packGames,
 ]);
 export const gameById = id => guestGames.find(g=>g.id===id);
