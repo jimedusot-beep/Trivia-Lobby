@@ -74,4 +74,44 @@ Merge, deployment and physical-device acceptance are separate delivery states.
 
 ## Verification record
 
-Pending implementation and verification.
+Implementation and acceptance evidence are maintained in
+[PR #68](https://github.com/jimedusot-beep/Trivia-Lobby/pull/68), including the
+guest Chromium/Firefox/WebKit run and the retained TV/controller screenshots.
+The runtime code is pinned by that PR's recorded CI head; a later evidence-only
+documentation edit does not change the game.
+
+Local verification:
+
+- `npm run check`, 75 application tests, production build and license inventory
+  pass; `npm audit --audit-level=moderate` reports zero vulnerabilities.
+- All 146 guest engine/network tests pass. This includes full three-heat
+  20-kart championships, drift/item behavior, bounded catch-up, malformed/stale
+  controls, per-actor projections, rate/admission limits and same-room return.
+- Ten and twenty real local WebSocket controllers sustain 20 Hz inputs for
+  three seconds (600 and 1,200 input frames respectively), with both host and
+  player socket replacement, recovery and no valid-input errors.
+- A separate four-room/80-kart, 60-second simulation completed all 80 natural
+  finishes. Local simulation work per 50 ms tick measured about 1.6 ms at the
+  95th percentile, 5.5 ms maximum. This is a local measurement, not a Render
+  latency, network or physical-device guarantee.
+- Local Chrome execution is blocked by the execution environment's process
+  socket restriction. Browser acceptance therefore runs in GitHub CI; consult
+  the PR for actual outcomes rather than treating local browser attempts as passes.
+
+## Playing the feature
+
+On the shared computer/TV, choose **Host Party Grand Prix** from Pick a Game.
+Players scan its QR invitation, enter nicknames and keep their controller pages
+open. The host starts with 2–20 connected players. Each phone shows its numbered
+kart, steering, drift, item and assistance control; the TV shows every racer.
+After a heat, the host chooses **Next**; after the championship, **Return to same
+party** retains the room for another game.
+
+For a local installation, follow the standalone engine's Node 22+ instructions,
+listen with `HOST=0.0.0.0`, and open the host computer's LAN IP in its browser
+before sharing the QR. A localhost URL cannot be opened by another phone.
+Keep the host and phones on a Wi-Fi network that allows devices to communicate.
+
+Physical 20-phone acceptance, process-restart recovery (#66), merge and production
+deployment remain separate from these automated tests. The PR is the authoritative
+delivery-status record.
