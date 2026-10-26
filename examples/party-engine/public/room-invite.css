@@ -1,0 +1,23 @@
+.lobby-invite-panel { width: 100%; margin: 18px 0; padding: 14px 16px; border: 2px solid var(--lobby-ink); border-radius: 16px; background: var(--lobby-violet-soft); color: var(--lobby-ink); text-align: left; }
+.lobby-invite-panel > summary { cursor: pointer; font-weight: 900; font-size: .95rem; overflow-wrap: anywhere; }
+.lobby-invite-panel > summary::marker { color: var(--lobby-violet); }
+.lobby-invite-card { display: grid; grid-template-columns: minmax(180px, 280px) minmax(0, 1fr); align-items: center; gap: 24px; width: 100%; max-width: 900px; margin: 16px auto; padding: 22px; border: 2px solid var(--lobby-ink); border-radius: 20px; background: white; color: var(--lobby-ink); text-align: left; box-shadow: 0 4px 0 var(--lobby-ink); }
+.lobby-invite-visual { min-width: 0; text-align: center; }
+.lobby-invite-qr { display: block; width: 100%; max-width: 280px; height: auto; margin: auto; background: white; border: 2px solid var(--lobby-ink); border-radius: 10px; }
+.lobby-invite-card p { margin: 8px 0; font-size: .9rem; line-height: 1.6; overflow-wrap: anywhere; }
+.lobby-invite-visual > p { font-size: .78rem; color: var(--lobby-muted); }
+.lobby-invite-content { min-width: 0; }
+.lobby-invite-card h2 { margin: 8px 0; font: 600 clamp(1.7rem, 4vw, 2.4rem)/1.15 var(--font-display); color: var(--lobby-ink); }
+.lobby-invite-kicker { color: var(--lobby-violet); font-size: .68rem; font-weight: 1000; letter-spacing: .1em; }
+.lobby-invite-card strong { font-size: 1.25rem; letter-spacing: .12em; }
+.lobby-invite-card label { display: block; margin-top: 15px; font-size: .8rem; font-weight: 900; }
+.lobby-invite-card input { display: block; width: 100%; min-width: 0; min-height: 46px; margin: 6px 0 10px; padding: 10px; border: 2px solid var(--lobby-ink); border-radius: 9px; background: #f6f3ff; color: var(--lobby-ink); font: 700 .85rem/1.5 var(--font-body); }
+.lobby-invite-card a { color: #5234c9; text-decoration: underline; text-underline-offset: 3px; font-size: .82rem; font-weight: 900; }
+.lobby-invite-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+.lobby-invite-actions button { width: auto; min-width: 0; min-height: 46px; margin: 0; padding: 10px 13px; border: 2px solid var(--lobby-ink); border-radius: 10px; background: var(--lobby-violet); color: white; box-shadow: 0 3px 0 var(--lobby-ink); font: 900 .85rem/1.4 var(--font-body); cursor: pointer; }
+.lobby-invite-actions button:nth-child(2) { background: var(--lobby-coral); color: var(--lobby-ink); }
+.lobby-invite-actions button:nth-child(3) { background: var(--lobby-gold); color: var(--lobby-ink); }
+.lobby-invite-actions button:disabled { opacity: .6; cursor: default; }
+.lobby-invite-card .lobby-invite-notice { min-height: 1.6em; font-size: .8rem; color: #275d40; }
+.lobby-invite-panel :focus-visible, .lobby-invite-card :focus-visible { outline: 3px solid #6146df; outline-offset: 4px; }
+@media (max-width: 650px) { .lobby-invite-card { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; } .lobby-invite-qr { max-width: 260px; } .lobby-invite-panel { padding: 12px; } .lobby-invite-panel .lobby-invite-card { border: 0; box-shadow: none; margin-bottom: 0; padding: 14px 0 0; background: transparent; } .lobby-invite-actions button { flex: 1 1 130px; } }

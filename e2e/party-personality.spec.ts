@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readInvitationQr } from "./helpers/qr";
 
 async function ready(page: Page) {
   await page.evaluate(async () => {
@@ -86,6 +87,7 @@ test("party tiles, scores and the final celebration retain the real three-player
   await page.getByRole("button", { name: "Create host screen", exact: true }).click();
   await expect(page.locator("#heading")).toContainText("lobby");
   const code = (await page.locator("#heading").innerText()).split(" · ")[0];
+  expect(await readInvitationQr(page, code)).toBe(new URL(`/party/?code=${code}`, page.url()).href);
   const contexts = [];
   try {
     const players = [];
@@ -111,5 +113,8 @@ test("party tiles, scores and the final celebration retain the real three-player
     await expect(page.locator("#heading")).toContainText("finished");
     await expect(page.getByRole("button", { name: "Return to same party", exact: true })).toBeVisible();
     await shot(page, "lobby-party-win");
+    await page.getByRole("button", { name: "Return to same party", exact: true }).click();
+    await expect(page.locator("#heading")).toHaveText(`${code} · lobby`);
+    expect(await readInvitationQr(page, code)).toBe(new URL(`/party/?code=${code}`, page.url()).href);
   } finally { await Promise.all(contexts.map(context => context.close())); }
 });

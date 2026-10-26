@@ -1,4 +1,5 @@
 @import "../../examples/party-engine/public/lobby-theme.css";
+@import "../../examples/party-engine/public/room-invite.css";
 
 @import "tailwindcss";
 @config "../../tailwind.config.ts";

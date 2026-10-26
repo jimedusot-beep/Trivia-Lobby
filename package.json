@@ -101,6 +101,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@neon/config": "1.8.6",
     "@playwright/test": "1.64.1",
     "@replit/vite-plugin-cartographer": "^0.4.4",
     "@replit/vite-plugin-dev-banner": "^0.1.1",
@@ -116,12 +117,13 @@
     "@vitejs/plugin-react": "^4.7.0",
     "drizzle-kit": "^0.31.8",
     "esbuild": "^0.25.0",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0",
     "tailwindcss": "4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.20.5",
     "typescript": "5.6.3",
-    "vite": "^7.3.0",
-    "@neon/config": "1.8.6"
+    "vite": "^7.3.0"
   },
   "overrides": {
     "drizzle-kit": {
