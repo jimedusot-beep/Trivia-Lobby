@@ -94,6 +94,7 @@ export function acceptBonus(p,actor,msg){
      if(!Number.isSafeInteger(value)||value<0||value>15 || card.cells[value]!==current || card.marked.has(value))
        fail("Mark only your currently called square.");
      card.marked.add(value);
+     state.entries.set(actor,value);
      if(!card.won && isBingo(card.marked)){card.won=true;p.players.get(actor).score+=100;p.players.get(actor).correct++;state.winners.push(actor);}
      return;
    }
