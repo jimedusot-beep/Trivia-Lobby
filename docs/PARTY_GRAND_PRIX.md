@@ -75,18 +75,20 @@ Merge, deployment and physical-device acceptance are separate delivery states.
 ## Verification record
 
 The initial implementation was merged in
-[PR #68](https://github.com/jimedusot-beep/Trivia-Lobby/pull/68). A focused
-post-merge follow-up corrects the catalog/source acceptance expectations and
+[PR #68](https://github.com/jimedusot-beep/Trivia-Lobby/pull/68). The focused
+[post-merge follow-up](https://github.com/jimedusot-beep/Trivia-Lobby/pull/71) corrects the catalog/source acceptance expectations and
 checks landscape controller placement. Its PR records final CI outcomes and
 TV/controller screenshots. No physical-device pass is claimed.
 
 Local verification:
 
-- `npm run check`, 75 application tests, production build and license inventory
+- `npm run check`, 82 application tests on the updated merge base, production build and license inventory
   pass; `npm audit --audit-level=moderate` reports zero vulnerabilities.
-- All 146 guest engine/network tests pass. This includes full three-heat
+- The initial 146 guest engine/network tests pass. This includes full three-heat
   20-kart championships, drift/item behavior, bounded catch-up, malformed/stale
   controls, per-actor projections, rate/admission limits and same-room return.
+  The updated merge base also contains three Open Party Lab reference tests;
+  their implemented-mode guard now includes the merged Grand Prix explicitly.
 - Ten and twenty real local WebSocket controllers sustain 20 Hz inputs for
   three seconds (600 and 1,200 input frames respectively), with both host and
   player socket replacement, recovery and no valid-input errors.

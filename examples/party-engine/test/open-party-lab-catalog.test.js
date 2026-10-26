@@ -38,5 +38,6 @@ test("catalog keeps the upstream published player capacities, never advertises a
 test("upstream catalog IDs do not silently register unimplemented Trivia Lobby modes", () => {
   const local = new Set(guestGames.map((game) => game.id));
   for (const game of openPartyLabGames) assert(!local.has(game.id));
-  assert.equal(guestGames.length, 24, "Existing modes remain unchanged");
+  assert.equal(guestGames.length, 25, "The merged Grand Prix adds one implemented mode to the original 24");
+  assert(local.has("race"), "The implemented Grand Prix remains separate from upstream research IDs");
 });
