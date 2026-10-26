@@ -172,8 +172,16 @@ async function runScenario(mode, size, t) {
   assert.equal(snapshot.players.find(p=>p.id===original.credential.actor).score,
     reveal.players.find(p=>p.id===original.credential.actor).score);
   assert.doesNotMatch(JSON.stringify(snapshot), /resumeToken|secretToken|credential/);
-  host.send(action(party,"next",undefined,"host-next-"+mode));
-  const advanced=(await host.wait(m=>m.type==="state"&&m.state.index===1, "next round")).state;
+  // Host reconnects using its issued token, not a guessable room code. The
+  // replacement inherits the current round, without resetting scores or time.
+  const hostReturn = await connect();
+  hostReturn.send({ type:"resume", code:room.code, actor:"host", token:room.token });
+  await hostReturn.wait(m=>m.type==="ready", "host credential recovery");
+  const restoredHost=(await hostReturn.wait(m=>m.type==="state"&&m.state.phase==="reveal", "host state recovery")).state;
+  assert.equal(restoredHost.role,"host");
+  assert.deepEqual(restoredHost.players.map(p=>p.score), reveal.players.map(p=>p.score));
+  hostReturn.send(action(party,"next",undefined,"host-next-"+mode));
+  const advanced=(await hostReturn.wait(m=>m.type==="state"&&m.state.index===1, "next round")).state;
   assert.equal(advanced.mode,mode);
   assert.ok(["question","writing","clue"].includes(advanced.phase));
 }
