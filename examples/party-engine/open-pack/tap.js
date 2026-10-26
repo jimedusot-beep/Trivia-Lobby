@@ -48,7 +48,7 @@ export function finishTap(p) {
   let place = 0;
   pack.results = racers.map((racer, index) => {
     if (index === 0 || racer.taps !== racers[index - 1].taps) place = index + 1;
-    const points = Math.max(10, 100 - (place - 1) * 5);
+    const points = racer.taps === 0 ? 0 : Math.max(10, 100 - (place - 1) * 5);
     const player = p.players.get(racer.id);
     player.score += points;
     return { id: racer.id, name: player.name, taps: racer.taps, place, points };
