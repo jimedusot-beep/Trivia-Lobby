@@ -9,8 +9,8 @@
   --font-display: 'Fredoka Variable', sans-serif;
   --font-body: 'Nunito Variable', sans-serif;
 
-  --background: 40 100% 97.06%;
-  --foreground: 231.63 40.19% 20.98%;
+  --background: 34 100% 95.7%;
+  --foreground: 258 42% 19%;
 
   --card: 0 0% 100%;
   --card-foreground: var(--foreground);
@@ -20,19 +20,19 @@
   --popover-border: var(--border);
 
   /* Vibrant Primary - Purple */
-  --primary: 250.59 70.51% 57.45%;
+  --primary: 249 42% 45%;
   --primary-foreground: 0 0% 100%;
 
   /* Fun Secondary - Yellow/Orange */
-  --secondary: 46.63 100% 67.45%;
+  --secondary: 42 100% 77%;
   --secondary-foreground: var(--foreground);
 
   /* Soft Muted */
-  --muted: 253.64 100% 95.69%;
+  --muted: 265 55% 94%;
   --muted-foreground: 231.18 17% 39.22%;
 
   /* Sharp Accents */
-  --accent: 196.17 89.15% 74.71%;
+  --accent: 211 100% 89%;
   --accent-foreground: var(--foreground);
 
   --destructive: 356.25 61.54% 45.88%;
@@ -135,3 +135,35 @@ button, a { touch-action: manipulation; }
 .private-lobby-banner img { width: 72px; height: 72px; }
 .private-lobby-banner p { font-family: var(--font-display); font-size: clamp(1.3rem, 4vw, 2rem); font-weight: 600; }
 @media (max-width: 480px) { .sample-learning .sample-heading { gap: 12px; } .sample-learning .sample-heading img { width: 65px; flex-basis: 65px; } }
+
+/* Sakura Arcade: matching private-host, quiz-phone and memory-card study surfaces. */
+.sakura-stage {
+  background:radial-gradient(circle at 48% 0,#6b569b 0,#302653 31%,#211a43 75%);
+  color:#fff5e9;position:relative;isolation:isolate;
+}
+.sakura-stage::before {content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.15;background-image:url("/party/sakura-vista.svg");background-position:top center;background-repeat:no-repeat;background-size:cover;}
+.sakura-host-header {padding:12px 16px;border:2px solid #a994c9;background:#241c44bd;border-radius:20px;box-shadow:0 5px 0 #120e27;}
+.sakura-stage h1,.sakura-stage h2,.sakura-stage h3 {font-family:var(--font-display);}
+.sakura-stage .sakura-host-player {border-color:#b6a4d4;background:#ffffff17;box-shadow:0 4px 0 #15102d;}
+.sakura-stage .sakura-host-question {border:4px solid #f5a9c4;box-shadow:0 9px 0 #241c44,0 20px 45px #140f2b66;}
+.sakura-stage .sakura-host-podium {background:linear-gradient(145deg,#574287bd,#322657ea);border:2px solid #e2b6db;box-shadow:0 8px 0 #17112f;}
+.sakura-stage .sakura-host-podium::before {content:"✿   SAKURA ARCADE   ✿";display:block;text-align:center;font-size:.85rem;font-weight:900;letter-spacing:.2em;color:#f9bad6;padding-bottom:16px;}
+.sakura-stage .sakura-host-header button:focus-visible,.sakura-stage button:focus-visible {outline:3px solid #ffdb88;outline-offset:3px;}
+.sakura-stage .lobby-invite-panel {background:#fffaf5;color:#241c44;border-color:#d8b8d5;}
+.sakura-stage [data-testid="room-code"] {color:#ffdf99;background:none; -webkit-text-fill-color:#ffdf99; text-shadow:0 3px 0 #1b1237;}
+.sakura-handheld,.sakura-join-screen {background-color:#fff5e9;background-image:linear-gradient(180deg,#fff5e9b8,#fff5e9 70%),url("/party/sakura-vista.svg");background-repeat:no-repeat;background-position:top center;background-size:100% 670px,auto 430px;color:var(--sakura-plum);}
+.sakura-phone-header {background:#fffaf7eb;border:2px solid var(--sakura-border);border-radius:17px;box-shadow:0 4px 0 var(--sakura-plum);padding:12px 15px;}
+.sakura-handheld .sakura-answer {border-color:#241c44;box-shadow:0 7px 0 #241c44,0 12px 20px #241c4424;outline-offset:4px;}
+.sakura-handheld .sakura-answer:focus-visible {outline:4px solid #bf4c87;}
+.sakura-handheld .sakura-answer:disabled {box-shadow:0 3px 0 #241c44;}
+.sakura-phone-result {background:#fffaf5;border:3px solid #d6a1c8;padding:24px 18px;border-radius:25px;box-shadow:0 7px 0 #241c44;position:relative;}
+.sakura-phone-result::before {content:"✿";font-size:2.4rem;color:#d27ca4;position:absolute;top:-24px;right:13px;transform:rotate(-15deg);pointer-events:none;}
+.sakura-join-panel {background:#fffaf5;border:3px solid #a58ab9;box-shadow:0 9px 0 #241c44,0 22px 55px #241c4438;}
+.sakura-join-panel input {background:#fff;color:#241c44;}
+.sakura-learning {background-image:linear-gradient(180deg,#fff5e9cc,#fff5e9 550px),url("/party/sakura-vista.svg");background-size:100% 650px,auto 500px;background-repeat:no-repeat;background-position:top center;}
+.sakura-learning .sample-path > button {position:relative;border-radius:17px;box-shadow:0 5px 0 #241c44;}
+.sakura-learning .sample-path > button::after {content:"▣";position:absolute;right:10px;top:5px;opacity:.2;font-size:1.35rem;}
+.sakura-learning .sample-path > button[aria-current="step"] {outline:4px solid #bd5897;}
+.private-lobby-banner {background:linear-gradient(115deg,#ffdfeb,#ebe6ff);border-color:#8c69a2;box-shadow:0 5px 0 #241c44;}
+@media(max-width:600px){.sakura-stage .sakura-host-question{padding:22px;min-height:180px;}.sakura-stage .sakura-host-podium{padding:17px;}.sakura-phone-header{gap:12px;flex-wrap:wrap;}}
+@media(prefers-reduced-motion:reduce){.sakura-stage::before{background-attachment:initial;}.sakura-handheld .sakura-answer,.sakura-learning .sample-path > button{transition:none;}}
