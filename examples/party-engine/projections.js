@@ -1,3 +1,4 @@
+import { projectSocial } from "./social-games.js";
 
 // Explicit public fields only: never serialize the complete match or a session record.
 export function projectParty(party, actor) {
@@ -98,5 +99,7 @@ export function projectParty(party, actor) {
         result,
       }));
   }
+  const social = projectSocial(party,actor);
+  if(social)v.social=social;
   return v;
 }
