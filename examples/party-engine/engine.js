@@ -214,6 +214,7 @@ export class Party {
     } else if (msg.type === "answer") {
       if (
         actor === "host" ||
+        this.mode !== "quiz" ||
         this.phase !== "question" ||
         this.answers.has(actor)
       )
@@ -223,7 +224,7 @@ export class Party {
       this.answers.set(actor, msg.value);
       if (this.answers.size === this.roster.length) this.closeRound();
     } else if (msg.type === "write") {
-      if (actor === "host" || this.phase !== "writing")
+      if (actor === "host" || this.mode !== "duel" || this.phase !== "writing")
         fail("Writing is closed.");
       const pair = this.pairs[msg.promptIndex],
         slot = `${msg.promptIndex}:${actor}`;
@@ -243,6 +244,7 @@ export class Party {
     } else if (msg.type === "vote") {
       if (
         actor === "host" ||
+        this.mode !== "duel" ||
         this.phase !== "voting" ||
         this.pairs[this.index].authors.includes(actor) ||
         this.votes.has(actor)
