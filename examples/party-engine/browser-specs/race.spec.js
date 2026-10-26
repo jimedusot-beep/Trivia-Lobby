@@ -85,7 +85,7 @@ test("Grand Prix: independent touch holds, cancel, keyboard release and assistan
     await p.getByLabel("Steering assistance", { exact: true }).uncheck();
     await expect.poll(async () => p.locator("#race-own-place").getAttribute("data-assist")).toBe("false");
     await p.getByRole("button", { name: "Use racing item", exact: true }).click();
-    expect(frames.some(m => m.type === "race_input" && m.item)).toBe(true);
+    await expect.poll(() => frames.some(m => m.type === "race_input" && m.item)).toBe(true);
     expect(f.errors).toEqual([]);
   } finally { await f.close(); }
 });

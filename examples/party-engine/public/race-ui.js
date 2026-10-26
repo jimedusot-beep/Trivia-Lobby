@@ -205,10 +205,10 @@ function mountController(a, root, api) {
   node("span", "Steering assistance", assistance);
   const hint = node("p", "Auto-accelerate is on. A / D to steer · Shift to drift · E for item.", root, "race-keyboard-hint");
   const connection = node("p", "Your phone is connected.", root, "race-controller-status"); connection.id = "race-controller-status";
-  const held = new Map(), keys = new Set(), cleanups = [], timeouts = new Set();
+  const held = new Map(), keys = new Map(), cleanups = [], timeouts = new Set();
   let seq = Math.max(0, (own?.seq ?? -1) + 1), finished = false, lastSent = -Infinity, itemPulse = false;
   const on = (target, type, fn, options) => { target.addEventListener(type, fn, options); cleanups.push(() => target.removeEventListener(type, fn, options)); };
-  const isHeld = key => [...held.values()].includes(key) || keys.has(key);
+  const isHeld = key => [...held.values()].includes(key) || [...keys.values()].includes(key);
   function send(force = false) {
     if (active !== a || finished || (document.hidden && !force)) return;
     const input = { steer: Number(isHeld("right")) - Number(isHeld("left")), drift: isHeld("drift"), item: isHeld("item") || itemPulse, assist: assist.checked };
@@ -233,8 +233,8 @@ function mountController(a, root, api) {
     });
   }
   const mapping = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "drift", ShiftRight: "drift", KeyE: "item" };
-  on(window, "keydown", e => { const key = mapping[e.code]; if (!key || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; e.preventDefault(); if (!e.repeat) { keys.add(key); if (key === "item") itemPulse = true; send(); } });
-  on(window, "keyup", e => { if (mapping[e.code]) { keys.delete(mapping[e.code]); send(); } });
+  on(window, "keydown", e => { const key = mapping[e.code]; if (!key || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; e.preventDefault(); if (!e.repeat) { keys.set(e.code, key); if (key === "item") itemPulse = true; send(); } });
+  on(window, "keyup", e => { if (mapping[e.code]) { keys.delete(e.code); send(); } });
   on(window, "blur", release); on(window, "pagehide", release);
   on(document, "visibilitychange", () => { if (document.hidden) release(); else send(); });
   on(assist, "change", () => send());
