@@ -231,7 +231,7 @@ function render() {
   }
   if (state.phase === "countdown") element("p", "Get ready!");
   if (state.question) {
-    element("h3", state.question.prompt);
+    element("h2", state.question.prompt);
     state.question.choices.forEach((choice, i) => {
       let tile;
       if (state.phase === "question" && !host)
@@ -258,7 +258,7 @@ function render() {
     element("p", `${state.received} of ${state.expected} responses locked.`);
     for (const a of state.assignments) {
       const box = element("article");
-      element("h3", a.prompt, box);
+      element("h2", a.prompt, box);
       if (a.locked) element("p", "Response locked.", box);
       else {
         const label = element(
@@ -289,7 +289,7 @@ function render() {
     }
   }
   if (state.prompt) {
-    element("h3", state.prompt);
+    element("h2", state.prompt);
     if (state.skipped)
       element(
         "p",
@@ -320,7 +320,7 @@ function render() {
     );
     if (state.phase === "acting") {
       if (c.canMark) {
-        const clue = element("h3", c.clue.text);
+        const clue = element("h2", c.clue.text);
         clue.id = "current-clue";
         clue.tabIndex = -1;
         element(
@@ -336,7 +336,7 @@ function render() {
         );
     }
     if (c.history) {
-      element("h3", "Turn summary");
+      element("h2", "Turn summary");
       const list = element("ul");
       for (const mark of c.history)
         element("li", `${mark.text} — ${mark.result}`, list);
