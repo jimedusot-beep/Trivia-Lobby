@@ -142,6 +142,7 @@ test("Color Clash: saved house settings, private hand, legal action and hand rec
     await f.start();
     const p = f.players[0];
     await expect(p.locator(".card-hand .color-card")).toHaveCount(7);
+    expect((await p.locator(".card-hand").boundingBox()).height).toBeLessThan(400);
     await expect(f.host.locator(".card-hand .color-card")).toHaveCount(0);
     await expect(p.locator("#content")).toContainText("Spark Bot 1");
     const before = await p.locator(".card-hand .color-card").allTextContents();

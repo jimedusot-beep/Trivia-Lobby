@@ -104,6 +104,32 @@
   gap: 0.4rem;
   padding: 0.8rem 0;
 }
+.open-game .card-hand .color-card {
+  width: clamp(68px, 24%, 104px);
+  flex: 0 0 clamp(68px, 24%, 104px);
+  min-width: 68px;
+  max-width: 104px;
+  margin: 0;
+}
+.open-game .card-hand .standard-card {
+  width: 76px;
+  flex: 0 0 76px;
+  max-width: 76px;
+  margin: 0;
+}
+.color-seats {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  gap: .4rem;
+  font-size: .9rem;
+}
+.color-seats li {
+  background: #eee8ff;
+  border-radius: 10px;
+  padding: .35rem .5rem;
+}
 .color-card {
   font-weight: 900;
   min-width: 72px;

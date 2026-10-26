@@ -371,6 +371,7 @@ export function renderPack(state, context) {
     top.className = "color-card discard-card";
     top.dataset.color = s.top.color;
     const seats = e("ul");
+    seats.className = "color-seats";
     for (const seat of s.seats)
       e(
         "li",
@@ -459,7 +460,8 @@ export function renderPack(state, context) {
         const o = e("option", name, promotion);
         o.value = value;
       }
-      promotion.hidden = table.kind !== "chess";
+      promotion.hidden = table.kind !== "chess" || !table.legal.some(m => m.promotion);
+      if (!promotion.hidden) e("p", "Choose the piece for your pawn promotion.", box);
       const move = (to) => {
         const request = { action: "move", table: table.index, to };
         if (table.kind === "chess" || table.kind === "checkers") {
