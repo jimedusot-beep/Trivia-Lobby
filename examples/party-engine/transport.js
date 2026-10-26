@@ -75,7 +75,10 @@ export function attachPartySocket(server, {
       }
       limits.set(ip, (limit = { count: 0, reset: now + 60000 }));
     }
-    if (++limit.count > 60) {
+    // A school or family Wi-Fi shares one public IP. Forty browser scenarios or
+    // several 20-person rooms can legitimately exceed 60 upgrades/minute.
+    // Retain a hard per-IP cap plus global socket/room caps to bound abuse.
+    if (++limit.count > 240) {
       socket.destroy();
       return;
     }
