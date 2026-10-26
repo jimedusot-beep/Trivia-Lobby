@@ -64,7 +64,8 @@ export function tickRace(p){
     r.updatedAt+=ms;
     remaining-=ms;
   }
-  r.nextTick=p.clock()+RACE_FRAME_MS;
+  // An input does not postpone the shared broadcast timer: only elapsed frames advance it.
+  while(r.nextTick<=p.clock())r.nextTick+=RACE_FRAME_MS;
   if([...r.racers.values()].every(v=>v.finishedAt!==null) || p.clock()>=(p.deadline??Infinity))
     finishRace(p);
 }
