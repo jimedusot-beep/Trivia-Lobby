@@ -6,6 +6,7 @@ import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 
 let invitationCode, invitationPhase;
 let preferredMode = "quiz";
+let preferredCategory = "actions";
 
 let ws,
   state,
@@ -17,6 +18,7 @@ let ws,
 // Works both at /party/ in the main app and at / in the standalone demo.
 const partyUrl = new URL("./", location.href);
 const credentialKey = `party-credential:${partyUrl.pathname}`;
+const preferenceKey = `party-host-choice:${partyUrl.pathname}`;
 const $ = (id) => document.getElementById(id);
 const status = (text) => {
   $("status").textContent = text;
@@ -24,7 +26,25 @@ const status = (text) => {
 try {
   credential = JSON.parse(sessionStorage.getItem(credentialKey));
 } catch {}
+try {
+  const saved = JSON.parse(sessionStorage.getItem(preferenceKey));
+  if (credential?.actor === "host" && saved?.code === credential.code) {
+    if (gameById(saved.mode)) preferredMode = saved.mode;
+    if (["actions", "animals"].includes(saved.category))
+      preferredCategory = saved.category;
+  }
+} catch {}
 $("code").value = new URLSearchParams(location.search).get("code") || "";
+function saveHostChoice(mode = preferredMode, category = preferredCategory) {
+  preferredMode = mode;
+  preferredCategory = category;
+  if (credential?.actor !== "host") return;
+  try {
+    sessionStorage.setItem(preferenceKey, JSON.stringify({
+      code: credential.code, mode, category,
+    }));
+  } catch {}
+}
 function save() {
   try {
     sessionStorage.setItem(credentialKey, JSON.stringify(credential));
@@ -51,6 +71,7 @@ function connect(hello) {
     if (m.type === "credential") {
       credential = { code: m.code, actor: m.actor, token: m.token };
       save();
+      saveHostChoice();
       status("Party ready.");
     }
     if (m.type === "ready") {
@@ -128,6 +149,7 @@ $("join").onsubmit = (e) => {
 $("leave").onclick = () => {
   credential = null;
   save();
+  try { sessionStorage.removeItem(preferenceKey); } catch {}
   ws.close();
   location.href = partyUrl.href;
 };
@@ -174,7 +196,7 @@ function render() {
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
   const selectedMode = $("mode")?.value || preferredMode;
-  const selectedCategory = $("charades-category")?.value || "actions";
+  const selectedCategory = $("charades-category")?.value || preferredCategory;
   const previousPhase = phaseKey;
   document.body.classList.add("party-playing");
   document.body.dataset.partyPhase = state.phase;
@@ -238,10 +260,19 @@ function render() {
       const showPack = () => {
         pack.hidden = packLabel.hidden = select.value !== "charades";
       };
-      select.onchange = () => { preferredMode = select.value; showPack(); };
-      const selection = element("p", `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} of 3–20 guests connected.`);
+      const selection = element("p");
       selection.className = "pick-game-selection";
+      const showSelection = () => {
+        selection.textContent = `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} of 3–20 guests connected.`;
+      };
+      select.onchange = () => {
+        saveHostChoice(select.value, pack.value);
+        showPack();
+        showSelection();
+      };
+      pack.onchange = () => saveHostChoice(select.value, pack.value);
       showPack();
+      showSelection();
       button(
         "Start match",
         () => action("start", select.value),
