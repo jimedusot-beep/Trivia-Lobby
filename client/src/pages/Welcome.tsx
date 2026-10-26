@@ -29,7 +29,7 @@ export default function Welcome() {
         </div>
         <LobbyPartyScene />
       </section>
-      <div className="home-marquee" aria-label="Ways to play"><span>QUIZ</span><i aria-hidden="true">✦</i><span>PROMPT DUEL</span><i aria-hidden="true">✦</i><span>CHARADES</span><i aria-hidden="true">✦</i><span>YOUR OWN IDEAS</span></div>
+      <div className="home-marquee" role="group" aria-label="Ways to play"><span>QUIZ</span><i aria-hidden="true">✦</i><span>PROMPT DUEL</span><i aria-hidden="true">✦</i><span>CHARADES</span><i aria-hidden="true">✦</i><span>YOUR OWN IDEAS</span></div>
       <section className="home-play-section" aria-labelledby="pick-your-play">
         <div className="home-section-heading"><div><span className="home-eyebrow">THERE’S A SPOT FOR EVERYONE</span><h2 id="pick-your-play">Pick your kind of good time.</h2></div><span className="home-doodle" aria-hidden="true">↙</span></div>
         <div className="home-play-grid">
