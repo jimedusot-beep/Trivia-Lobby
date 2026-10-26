@@ -6,6 +6,7 @@ import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
 import { renderPack, drawingBusy } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
+import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -77,6 +78,7 @@ function connect(hello) {
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === "race_frame") { receiveRaceFrame(m); return; }
+    if (m.type === "tap_frame") { receiveTapFrame(m); return; }
     if (m.type === "credential") {
       credential = { code: m.code, actor: m.actor, token: m.token };
       resumeSavedParty = true;
@@ -216,7 +218,9 @@ function button(text, fn, parent, disabled = false) {
 function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
   if (updateRaceState(state)) return;
+  if (updateTapState(state)) return;
   disposeRace();
+  disposeTap();
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
@@ -357,6 +361,7 @@ function render() {
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });

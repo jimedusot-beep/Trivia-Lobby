@@ -1,4 +1,4 @@
-import { openPartyLabGames, openPartyLabBaseline } from "./open-party-lab-games.js";
+import { openPartyLabGames, openPartyLabBaseline, triviaLobbyAlternatives } from "./open-party-lab-games.js";
 
 const search = document.getElementById("opl-search");
 const genre = document.getElementById("opl-genre");
@@ -49,6 +49,13 @@ function drawCatalog() {
     source.target = "_blank";
     source.rel = "noopener noreferrer";
     card.append(source);
+    const alternative = triviaLobbyAlternatives[game.id];
+    if (alternative) {
+      const note = make("p", "opl-native-note", `Trivia Lobby has its own ${alternative.label} alternative. This is not the upstream game or its assets.`);
+      const play = make("a", "opl-native", `Host ${alternative.label} in Trivia Lobby`);
+      play.href = `./?game=${encodeURIComponent(alternative.mode)}`;
+      card.append(note, play);
+    }
     grid.append(card);
   }
   count.textContent = `${matched.length} of ${openPartyLabGames.length} upstream games. Reference catalog; games must be played through Open Party Lab itself.`;
