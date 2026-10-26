@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useEffect, useState } from "react";
 
 export function LobbyBrand() {
   return <Link href="/" className="lobby-brand">
@@ -8,7 +9,12 @@ export function LobbyBrand() {
 }
 
 export function LobbyCelebration() {
-  return <div className="lobby-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>;
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 1100);
+    return () => clearTimeout(timer);
+  }, []);
+  return visible ? <div className="lobby-confetti" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div> : null;
 }
 
 /** Original tabletop artwork, drawn with native vectors rather than game assets. */
