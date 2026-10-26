@@ -29,12 +29,15 @@ export function attachPartySocket(server, {
       send(ws, { type: "state", state: record.party.view(id) });
     }
     const party = record.party;
-    const deadline =
-      party.deadline ??
+    const usualDeadline = party.deadline ??
       (party.hostWaitAt === null ? null : party.hostWaitAt + 60000);
+    // Racing uses a bounded shared tick, never one interval per racer.
+    const deadline = party.phase === "racing" && party.race
+      ? Math.min(usualDeadline ?? Infinity, party.race.nextTick)
+      : usualDeadline;
     scheduler.schedule(
       party.code,
-      `${party.matchId}:${party.revision}:${party.hostWaitAt}`,
+      `${party.matchId}:${party.revision}:${party.hostWaitAt}:${party.phase === "racing" ? party.race.nextTick : ""}`,
       deadline,
       () => {
         if (rooms.get(party.code) !== record) return;
