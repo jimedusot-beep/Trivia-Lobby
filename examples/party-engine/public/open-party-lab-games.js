@@ -30,3 +30,14 @@ export const openPartyLabGames = Object.freeze([
   { id: "blickwinkel", name: "Blickwinkel", genre: "Creative", description: "Photography and drawing tasks with voting", min: 1, max: 16, controller: "Photo and drawing", repository: "https://github.com/Hartwich/blickwinkel" },
   { id: "dungeon-guild", name: "Dungeon-Gilde", genre: "Adventure", description: "Cooperative dungeon-party prototype", min: 3, max: 6, controller: "Dungeon actions", repository: "https://github.com/Hartwich/dungeon-guild" },
 ].map((game) => Object.freeze(game)));
+
+// Only explicit, original Trivia Lobby equivalents already registered in its
+// guest engine. This is NOT a claim that upstream source games are imported.
+export const triviaLobbyAlternatives = Object.freeze({
+  "tap-race": { mode: "tap", label: "Tap Dash" },
+  "drift-racer": { mode: "race", label: "Party Grand Prix" },
+  "pantomime": { mode: "charades", label: "Charades" },
+  "imposter": { mode: "impostor", label: "Secret Impostor" },
+  "zeichnen-und-erraten": { mode: "draw", label: "Doodle Dash" },
+  "schaetzorama": { mode: "closest", label: "Closest Wins" },
+});
