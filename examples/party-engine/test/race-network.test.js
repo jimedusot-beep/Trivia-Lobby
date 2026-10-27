@@ -106,8 +106,14 @@ test("race-room admission is bounded and releases its slot when the host ends a 
 
 test("continuous input cannot bypass ordinary game action limits; racing spam closes its socket", async t => {
   const f = await server(t), r = await f.room(2), peer = r.players[0];
-  for (let i = 0; i < 62; i++) peer.send({ type: "race_input" });
-  await peer.until(m => m.type === "error" && /Too many/.test(m.message));
+  // Pace invalid lobby controls so this exercises the steady 60/10s protocol
+  // limit rather than the separate slow-database inbound queue overflow path.
+  for (let i = 0; i < 62; i++) {
+    const cursor = peer.messages.length;
+    peer.send({ type: "race_input" });
+    await peer.until(m => m.type === "error", cursor);
+  }
+  assert.ok(peer.messages.some(m => m.type === "error" && /Too many/.test(m.message)));
   await f.action(r.host, r.party, "start", "race");
   await r.host.until(m => m.type === "state" && m.state.phase === "playing");
   const closed = once(peer.ws, "close");
