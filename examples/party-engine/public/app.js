@@ -319,6 +319,11 @@ function render() {
       pack.onchange = () => saveHostChoice(select.value, pack.value);
       showPack();
       showSelection();
+      const hostTip = element(
+        "p",
+        "Hosting from one phone? This host screen doesn't count as a player. Use Share game in the invitation panel to invite others. Open guest invitation in new tab can check the join form, but isn't a substitute for two connected players.",
+      );
+      hostTip.className = "host-phone-tip";
       const settingsBox = element("div"); settingsBox.className = "pack-settings";
       const settingsSelect = (label, key, options, mode, fallback) => {
         const caption = element("label", label, settingsBox);
