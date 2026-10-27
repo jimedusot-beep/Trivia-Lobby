@@ -3,7 +3,7 @@
 // Open Party Lab source code, assets or word lists are redistributed.
 import { fail, requireFields } from "./shared.js";
 
-const CARDS = Object.freeze([
+const CARDS = [
   { word:"Friendly Robot", forbidden:["machine","metal","computer","helper"] },
   { word:"Moon Picnic", forbidden:["space","astronaut","sandwich","rocket"] },
   { word:"Haunted Library", forbidden:["ghost","books","scary","read"] },
@@ -21,6 +21,32 @@ const CARDS = Object.freeze([
   { word:"Secret Treehouse", forbidden:["branches","children","ladder","hide"] },
   { word:"Cloud Aquarium", forbidden:["sky","fish","glass","water"] },
 ]);
+// Make enough distinct, original cards for a whole 20-person, five-card round.
+// Combinations produce whimsical family-friendly phrases; each gets two forbidden
+// words from its modifier and two from its subject, without runtime generation.
+const TWISTS = [
+  ["Clockwork",["gears","spring"]],["Midnight",["night","dark"]],
+  ["Rainbow",["colors","arc"]],["Frozen",["ice","cold"]],
+  ["Undercover",["secret","disguise"]],["Jungle",["forest","vines"]],
+  ["Superhero",["cape","powers"]],["Enchanted",["spell","magic"]],
+  ["Tiny",["small","miniature"]],["Gigantic",["huge","giant"]],
+  ["Cosmic",["galaxy","stars"]],["Whispering",["quiet","voice"]],
+];
+const OBJECTS = [
+  ["Carnival",["fair","rides"]],["Train",["tracks","rail"]],
+  ["Garden",["flowers","plants"]],["Submarine",["ocean","underwater"]],
+  ["Museum",["art","exhibit"]],["Robot",["machine","metal"]],
+  ["Restaurant",["food","menu"]],["Mountain",["climb","peak"]],
+  ["Theater",["stage","actors"]],["Spaceship",["rocket","astronaut"]],
+  ["Zoo",["animals","cages"]],["Lighthouse",["beacon","coast"]],
+];
+const GENERATED_CARDS = TWISTS.flatMap(([modifier, bannedA]) =>
+  OBJECTS.map(([subject, bannedB]) => ({
+    word: `${modifier} ${subject}`, forbidden: [...bannedA,...bannedB],
+  }))
+);
+CARDS.push(...GENERATED_CARDS);
+export const FORBIDDEN_UNIQUE_CARD_COUNT = CARDS.length;
 export const FORBIDDEN_DURATION_MS = 45000;
 export const FORBIDDEN_CARDS_PER_TURN = 5;
 const cardFor = (p, cursor) => CARDS[(p.index * FORBIDDEN_CARDS_PER_TURN + cursor) % CARDS.length];
