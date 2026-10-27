@@ -20,7 +20,7 @@ const CARDS = [
   { word:"Miniature City", forbidden:["tiny","buildings","roads","people"] },
   { word:"Secret Treehouse", forbidden:["branches","children","ladder","hide"] },
   { word:"Cloud Aquarium", forbidden:["sky","fish","glass","water"] },
-]);
+];
 // Make enough distinct, original cards for a whole 20-person, five-card round.
 // Combinations produce whimsical family-friendly phrases; each gets two forbidden
 // words from its modifier and two from its subject, without runtime generation.
@@ -46,6 +46,7 @@ const GENERATED_CARDS = TWISTS.flatMap(([modifier, bannedA]) =>
   }))
 );
 CARDS.push(...GENERATED_CARDS);
+Object.freeze(CARDS);
 export const FORBIDDEN_UNIQUE_CARD_COUNT = CARDS.length;
 export const FORBIDDEN_DURATION_MS = 45000;
 export const FORBIDDEN_CARDS_PER_TURN = 5;
