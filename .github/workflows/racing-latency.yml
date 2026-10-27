@@ -1,0 +1,42 @@
+name: Opt-in live racing latency
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_url:
+        description: Existing Trivia Lobby app URL to measure
+        required: true
+        default: https://trivia-lobby.onrender.com
+        type: string
+      players:
+        description: Simulated controllers in one isolated guest room
+        required: true
+        default: '10'
+        type: choice
+        options: ['3', '10', '20']
+permissions:
+  contents: read
+concurrency:
+  group: live-racing-latency
+  cancel-in-progress: false
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install websockets==16.0
+      - name: Measure 45 seconds of real server racing updates
+        env:
+          MEASURE_URL: ${{ inputs.deployment_url }}
+          MEASURE_PLAYERS: ${{ inputs.players }}
+        run: python -B script/measure-racing.py --url "$MEASURE_URL" --players "$MEASURE_PLAYERS" --seconds 45 > racing-latency.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-racing-latency
+          path: racing-latency.json
+          if-no-files-found: ignore
+          retention-days: 14

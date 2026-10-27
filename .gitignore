@@ -13,6 +13,7 @@ vite.config.ts.*
 *.key
 playwright-report/
 test-results/
+__pycache__/
 *.dump
 *.dump.partial
 

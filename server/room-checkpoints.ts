@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { RoomCheckpointDiagnostics, type CheckpointDiagnosticsOptions } from "./room-checkpoint-diagnostics";
 
 export type RoomKind = "party" | "quiz";
 export type RoomCheckpoint = { state: any; version: number; expiresAt: number; savedAt: number };
@@ -53,29 +54,40 @@ export class MemoryRoomCheckpointStore implements RoomCheckpointStore {
 
 /** One database round trip per commit; the SQL function owns atomic fencing and budgets. */
 export class PostgresRoomCheckpointStore implements RoomCheckpointStore {
-  constructor(private pool: Pick<Pool, "query">) {}
+  private diagnostics: RoomCheckpointDiagnostics;
+  constructor(private pool: Pick<Pool, "query">, diagnostics: CheckpointDiagnosticsOptions = {}) {
+    this.diagnostics = new RoomCheckpointDiagnostics(diagnostics);
+  }
   async load(kind: RoomKind, code: string): Promise<RoomCheckpoint | null> {
-    const result = await this.pool.query(
-      "SELECT state, version, expires_at, updated_at FROM live_room_checkpoints WHERE kind=$1 AND code=$2 AND expires_at > clock_timestamp()",
-      [kind, code],
-    );
-    const row = result.rows[0];
-    return row ? { state: row.state, version: Number(row.version), expiresAt: new Date(row.expires_at).getTime(), savedAt: new Date(row.updated_at).getTime() } : null;
+    return this.diagnostics.run("load", kind, code, async () => {
+      const result = await this.pool.query(
+        "SELECT state, version, expires_at, updated_at FROM live_room_checkpoints WHERE kind=$1 AND code=$2 AND expires_at > clock_timestamp()",
+        [kind, code],
+      );
+      const row = result.rows[0];
+      return row ? { state: row.state, version: Number(row.version), expiresAt: new Date(row.expires_at).getTime(), savedAt: new Date(row.updated_at).getTime() } : null;
+    });
   }
   async save(kind: RoomKind, code: string, state: unknown, expiresAt: number, expectedVersion: number | null) {
-    const text = JSON.stringify(state);
-    if (Buffer.byteLength(text) > ROOM_CHECKPOINT_LIMITS.maxRoomBytes) throw new Error("Room checkpoint too large");
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) throw new Error("Checkpoint expiry is invalid");
-    const result = await this.pool.query(
-      "SELECT save_live_room_checkpoint($1,$2,$3::jsonb,$4::timestamptz,$5::bigint) AS version",
-      [kind, code, text, new Date(expiresAt), expectedVersion],
-    );
-    return Number(result.rows[0].version);
+    return this.diagnostics.run("save", kind, code, async () => {
+      const text = JSON.stringify(state);
+      if (Buffer.byteLength(text) > ROOM_CHECKPOINT_LIMITS.maxRoomBytes) throw new Error("Room checkpoint too large");
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) throw new Error("Checkpoint expiry is invalid");
+      const result = await this.pool.query(
+        "SELECT save_live_room_checkpoint($1,$2,$3::jsonb,$4::timestamptz,$5::bigint) AS version",
+        [kind, code, text, new Date(expiresAt), expectedVersion],
+      );
+      return Number(result.rows[0].version);
+    });
   }
   async delete(kind: RoomKind, code: string, expectedVersion?: number) {
-    await this.pool.query("DELETE FROM live_room_checkpoints WHERE kind=$1 AND code=$2 AND ($3::bigint IS NULL OR version=$3)", [kind, code, expectedVersion ?? null]);
+    return this.diagnostics.run("delete", kind, code, async () => {
+      await this.pool.query("DELETE FROM live_room_checkpoints WHERE kind=$1 AND code=$2 AND ($3::bigint IS NULL OR version=$3)", [kind, code, expectedVersion ?? null]);
+    });
   }
   async prune() {
-    await this.pool.query("DELETE FROM live_room_checkpoints WHERE expires_at <= clock_timestamp()");
+    return this.diagnostics.run("prune", "shared", undefined, async () => {
+      await this.pool.query("DELETE FROM live_room_checkpoints WHERE expires_at <= clock_timestamp()");
+    });
   }
 }

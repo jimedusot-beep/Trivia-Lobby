@@ -39,10 +39,12 @@ export function acceptRaceInput(p, actor, m) {
       m.type !== "race_input" || m.v !== 1 || !Number.isSafeInteger(m.seq) || m.seq < 0 || m.seq > 2147483647 ||
       typeof m.steer !== "number" || !Number.isFinite(m.steer) || Math.abs(m.steer) > 1 ||
       [m.drift, m.item, m.assist].some(x => typeof x !== "boolean")) fail("Invalid racing controls.");
-  if (p.mode !== "race" || p.phase !== "playing" || m.matchId !== p.matchId || m.heat !== p.index)
+  if (p.mode !== "race" || !["playing", "reveal"].includes(p.phase) || m.matchId !== p.matchId || m.heat !== p.index)
     fail("These controls belong to an old race.");
   const k = p.pack.karts.find(k => k.id === actor);
   if (!k || actor === "host" || !p.players.get(actor)?.connected) fail("Only a connected racer can drive their kart.");
+  // A valid input already in flight when results publish cannot affect the heat.
+  if (p.phase === "reveal") return false;
   if (m.seq <= k.seq) return false;
   k.seq = m.seq;
   // Preserve a quick tap that begins and ends between two 50 ms physics ticks.

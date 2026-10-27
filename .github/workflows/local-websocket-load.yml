@@ -19,6 +19,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Verify bounded racing probe metrics
+        run: python3 -B -m unittest discover -s tests -p test_racing_probe.py
       - name: Measure 10, 25, 50 and 100 local simulated clients
         shell: bash
         run: |

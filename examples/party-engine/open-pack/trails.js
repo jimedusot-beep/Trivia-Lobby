@@ -37,10 +37,11 @@ export function acceptTrailInput(p,actor,m) {
     m.v!==1||m.type!=="trails_input"||
     !Number.isSafeInteger(m.seq)||m.seq<0||m.seq>2147483647||
     !Number.isSafeInteger(m.heat)||![-1,1].includes(m.turn)) fail("Invalid trail controls.");
-  if(p.mode!=="trails"||p.phase!=="playing"||m.matchId!==p.matchId||
-    m.heat!==p.index||p.clock()>=p.deadline) fail("These controls belong to an expired trail.");
+  if(p.mode!=="trails"||!["playing","reveal"].includes(p.phase)||m.matchId!==p.matchId||
+    m.heat!==p.index||(p.phase==="playing"&&p.clock()>=p.deadline)) fail("These controls belong to an expired trail.");
   const rider=p.pack?.riders.find(r=>r.id===actor);
   if(actor==="host"||!rider||!p.players.get(actor)?.connected) fail("Only a connected rider can turn.");
+  if(p.phase==="reveal") return false;
   if(m.seq<=rider.seq) return false;
   rider.seq=m.seq;
   if(!rider.alive) return false;

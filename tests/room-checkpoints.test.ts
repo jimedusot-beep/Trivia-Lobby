@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MemoryRoomCheckpointStore } from "../server/room-checkpoints";
+import { MemoryRoomCheckpointStore, PostgresRoomCheckpointStore } from "../server/room-checkpoints";
 import { deliver, withDeferredDelivery } from "../examples/party-engine/durable-delivery.js";
 
 test("checkpoint reads are detached and stale writers cannot overwrite accepted state", async () => {
@@ -43,4 +43,81 @@ test("a failed checkpoint never releases a success frame or private projection",
     assert.deepEqual(frames, []);
   }, async () => { frames.push("saved"); });
   assert.deepEqual(frames, ["saved", "ack"]);
+});
+
+test("PostgreSQL failures are observable for both transports without exposing private details", async () => {
+  const logs: any[] = [];
+  const failure = Object.assign(new Error("postgres://secret@private/db SQL PRIVATE_ANSWER"), { code: "ECONNRESET" });
+  const pool = { query: async () => { throw failure; } };
+  for (const kind of ["party", "quiz"] as const) {
+    const store = new PostgresRoomCheckpointStore(pool as any, { emit: (level: string, event: unknown) => logs.push({ level, ...event as object }) } as any);
+    await assert.rejects(store.load(kind, "ABC234"), error => error === failure);
+    await assert.rejects(store.save(kind, "ABC234", { token: "PRIVATE_TOKEN", answer: "PRIVATE_ANSWER" }, Date.now() + 60000, null), error => error === failure);
+    await assert.rejects(store.delete(kind, "ABC234"), error => error === failure);
+    await assert.rejects(store.prune(), error => error === failure);
+  }
+  assert.equal(logs.length, 8, "each storage boundary must report its failure");
+  for (const event of logs) {
+    assert.equal(event.event, "room_checkpoint_failed");
+    assert.equal(event.level, "error");
+    assert.equal(event.errorCategory, "connection");
+    assert.equal(event.errorCode, "ECONNRESET");
+    assert(Number.isFinite(event.durationMs));
+  }
+  assert.deepEqual(logs.slice(0, 4).map(x => x.operation), ["load", "save", "delete", "prune"]);
+  assert.deepEqual(logs.filter(x => x.operation === "save").map(x => x.transport), ["party", "quiz"]);
+  assert.doesNotMatch(JSON.stringify(logs), /secret|private|PRIVATE_|ABC234|postgres:|SELECT|DELETE/);
+  assert.match(logs[0].roomRef, /^[a-f0-9]{16}$/);
+});
+
+test("slow checkpoints warn while returning the original successful result", async () => {
+  let now = 0;
+  const logs: any[] = [];
+  const pool = { query: async () => { now += 375; return { rows: [{ version: 7 }] }; } };
+  const store = new PostgresRoomCheckpointStore(pool as any, { clock: () => now, emit: (level: string, event: object) => logs.push({ level, ...event }) } as any);
+  assert.equal(await store.save("party", "ABC234", { score: 100 }, Date.now() + 60000, null), 7);
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].event, "room_checkpoint_slow");
+  assert.equal(logs[0].level, "warn");
+  assert.equal(logs[0].durationMs, 375);
+});
+
+test("repeated failures across room codes are bounded and report suppressed counts", async () => {
+  let now = 0;
+  const logs: any[] = [];
+  const failure = new Error("Room checkpoint conflict");
+  const store = new PostgresRoomCheckpointStore({ query: async () => { throw failure; } } as any,
+    { clock: () => now, emit: (_: string, event: object) => logs.push(event) } as any);
+  for (let i = 0; i < 100; i++) await assert.rejects(store.load("quiz", String(i)), error => error === failure);
+  assert.equal(logs.length, 1);
+  now = 30000;
+  await assert.rejects(store.load("quiz", "ABC234"), error => error === failure);
+  assert.equal(logs.length, 2);
+  assert.equal(logs[1].suppressed, 99);
+  assert.equal(logs[1].errorCategory, "conflict");
+});
+
+test("a failing diagnostics sink cannot change checkpoint success or the original rejection", async () => {
+  let now = 0;
+  let failure: Error | undefined;
+  const store = new PostgresRoomCheckpointStore({ query: async () => {
+    now += 500;
+    if (failure) throw failure;
+    return { rows: [{ version: 11 }] };
+  } } as any, { clock: () => now, emit: () => { throw new Error("log sink offline"); } } as any);
+  assert.equal(await store.save("party", "ABC234", {}, Date.now() + 60000, null), 11);
+  failure = new Error("real database failure");
+  await assert.rejects(store.load("party", "ABC234"), error => error === failure);
+});
+
+test("unknown provider codes and local checkpoint validation never leak raw errors", async () => {
+  const logs: any[] = [];
+  const store = new PostgresRoomCheckpointStore({ query: async () => { throw Object.assign(new Error("PRIVATE_ERROR"), { code: "PRIVATE_CODE" }); } } as any,
+    { emit: (_: string, event: object) => logs.push(event) } as any);
+  await assert.rejects(store.load("party", "ABC234"));
+  await assert.rejects(store.save("party", "ABC234", {}, 0, null), /expiry/);
+  assert.equal(logs[0].errorCategory, "unknown");
+  assert.equal(logs[0].errorCode, undefined);
+  assert.equal(logs[1].errorCategory, "invalid_expiry");
+  assert.doesNotMatch(JSON.stringify(logs), /PRIVATE/);
 });

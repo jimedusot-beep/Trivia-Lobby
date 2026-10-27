@@ -53,7 +53,9 @@ test("only bounded current-heat controls are accepted; inputs cannot supply a po
   assert.throws(() => g.input("not-a-player", 1), /racer/);
   assert.equal(g.p.players.get(id).score, 0);
   g.advance(60000);
-  assert.throws(() => g.input(id, 2), /old race/);
+  const results = JSON.stringify(g.p.view("host"));
+  assert.equal(g.input(id, 2), false, "valid in-flight controls are harmless during reveal");
+  assert.equal(JSON.stringify(g.p.view("host")), results);
 });
 
 test("phone frames contain only that controller's driving state; TV frames contain public positions", () => {
