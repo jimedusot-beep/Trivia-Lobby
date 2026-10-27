@@ -54,6 +54,37 @@ export function renderPack(state, context) {
     };
     return field;
   }
+  if (s.kind === "forbidden") {
+    root.classList.add("forbidden-game");
+    e("h2", "🗣️ Forbidden Word Frenzy");
+    e("p", `Turn ${s.turn} of ${s.totalTurns} · 45 seconds · ${s.completed} of ${s.totalCards} cards judged`);
+    e("p", `Clue giver: ${s.giver} · Referee: ${s.referee}`);
+    if (playing) {
+      if (s.card) {
+        const secret = e("section");
+        secret.className = "forbidden-secret";
+        e("p", "Private phone card — do not show the audience!", secret);
+        e("h3", s.card.word, secret);
+        e("p", "Do NOT say these words:", secret);
+        const words = e("ul", undefined, secret);
+        for (const word of s.card.forbidden) e("li", word, words);
+      } else if (!host) {
+        e("p", "Guess out loud! The clue giver must avoid the forbidden words.");
+      } else e("p", "Family members guess aloud. The referee privately marks correct, forbidden, or pass.");
+      if (s.canJudge) {
+        const controls=e("div");controls.className="forbidden-controls";
+        b("Correct! +20 to clue giver",()=>play({action:"correct"}),controls);
+        b("Forbidden word! −10",()=>play({action:"forbidden"}),controls);
+        b("Pass this card",()=>play({action:"pass"}),controls);
+      }
+    } else {
+      e("h3", "Turn results");
+      const history=e("ol");
+      for (const item of s.history ?? []) e("li", `${item.word}: ${item.result}`,history);
+      if (!s.history?.length) e("p", "No words judged in this turn.");
+    }
+    return;
+  }
   if (s.kind === "feud") {
     e("h2", s.title);
     const teams = e("div");
