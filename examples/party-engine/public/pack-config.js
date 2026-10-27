@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export const packGames = Object.freeze([
   {
+    id:"trails",name:"Light Trails Royale",icon:"⚡",color:"violet",
+    players:"2–20",min:2,max:20,rounds:"3 survival heats · 45 seconds max each",
+    rules:"Everyone steers a light trail with left and right phone taps. Avoid the walls and every existing trail. Last remaining rider wins the most points; the server controls all collisions.",
+    tag:"Arcade survivor",
+  },
+  {
     id: "tap", name: "Tap Dash", icon: "👆", color: "orange",
     players: "2–20", min: 2, max: 20,
     rounds: "3 heats · 12 seconds each",
