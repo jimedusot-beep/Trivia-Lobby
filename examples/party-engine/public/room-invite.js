@@ -87,8 +87,12 @@ export function mountRoomInvitation(container, { url, code, assignment = false }
   const input = node("input", "", content);
   input.id = assignment ? "assignment-link" : "invite-link"; input.type = "text"; input.readOnly = true; input.value = url;
   fieldLabel.htmlFor = input.id; input.addEventListener("focus", () => input.select());
-  const link = node("a", assignment ? "Open guest invitation" : "Join this party on your phone", content);
+  const link = node("a", assignment ? "Open guest invitation" : "Open guest invitation in new tab", content);
+  // A new, no-opener tab gets its own sessionStorage. Otherwise, opening an
+  // invitation from a hosting phone can silently resume the host identity
+  // rather than showing the guest nickname form.
   link.href = url; link.id = "invite";
+  link.target = "_blank"; link.rel = "noopener noreferrer";
   const controls = node("div", "", content); controls.className = "lobby-invite-actions";
   const notice = node("p", "", content); notice.className = "lobby-invite-notice"; notice.setAttribute("role", "status");
   const manualCopy = () => { input.focus(); input.select(); notice.textContent = "Copy the selected invitation link, or scan the QR code."; };
