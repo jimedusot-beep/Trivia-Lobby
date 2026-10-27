@@ -48,6 +48,12 @@ test("Odd One Out starter import, shuffled answers, explanation bonus and finish
   await expect(code).toHaveText(/^[A-HJ-NP-Z2-9]{6}$/);
   await host.getByLabel("Game mode",{exact:true}).selectOption("odd_one_out");
   await expect(host.getByLabel("Odd One Out round count")).toBeVisible();
+  // Consecutive input changes and reconnect must agree with the saved host settings.
+  await host.getByLabel("Odd One Out round count").fill("30");
+  await host.getByLabel("Shuffle answer positions").check();
+  await host.reload();
+  await expect(host.getByLabel("Odd One Out round count")).toHaveValue("30");
+  await expect(host.getByLabel("Shuffle answer positions")).toBeChecked();
   await host.getByLabel("Odd One Out round count").fill("1");
   await host.getByLabel("Shuffle answer positions").check();
 
