@@ -7,6 +7,7 @@ import { validateGuestQuiz } from "./custom-quiz.js";
 import { validateShow } from "./open-pack/feud.js";
 import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
 import { acceptTapInput, tapFrame } from "./open-pack/tap.js";
+import { acceptTrailInput, trailsFrame } from "./open-pack/trails.js";
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -97,6 +98,7 @@ export function attachPartySocket(server, {
       count = 0;
     let raceWindowStart = 0, raceCount = 0;
     let tapWindowStart = 0, tapCount = 0;
+    let trailWindowStart = 0, trailCount = 0;
     ws.alive = true;
     ws.on("pong", () => {
       ws.alive = true;
@@ -114,7 +116,8 @@ export function attachPartySocket(server, {
           throw new Error("Invalid message.");
         const raceInput = !!record && record.party.mode === "race" && record.party.phase === "playing" && m.type === "race_input";
         const tapInput = !!record && record.party.mode === "tap" && record.party.phase === "playing" && m.type === "tap_input";
-        fastInput = raceInput || tapInput;
+        const trailInput = !!record && record.party.mode === "trails" && record.party.phase === "playing" && m.type === "trails_input";
+        fastInput = raceInput || tapInput || trailInput;
         if (raceInput) {
           if (Date.now() - raceWindowStart >= 1000) { raceWindowStart = Date.now(); raceCount = 0; }
           if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
@@ -123,6 +126,10 @@ export function attachPartySocket(server, {
           if (Date.now() - tapWindowStart >= 1000) { tapWindowStart = Date.now(); tapCount = 0; }
           if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
           if (raw.length > 256) throw new Error("Tap controls are too large.");
+        } else if (trailInput) {
+          if (Date.now() - trailWindowStart >= 1000) {trailWindowStart=Date.now();trailCount=0;}
+          if (++trailCount > 15) {ws.close(1008,"Trail input limit");return;}
+          if (raw.length>256) throw new Error("Trail controls too large.");
         } else if (++count > 60) throw new Error("Too many messages; wait a moment.");
         if (!record) {
           validateHello(m);
@@ -182,7 +189,8 @@ export function attachPartySocket(server, {
               record.party.tick();
               if (record.party.revision !== previousRevision) publish(record);
               acceptTapInput(record.party, actor, m);
-            } else acceptRaceInput(record.party, actor, m);
+            } else if (trailInput) acceptTrailInput(record.party,actor,m);
+            else acceptRaceInput(record.party, actor, m);
             return;
           }
           if (m.type === "start" && m.value === "race" && [...rooms.values()].filter(r => r !== record && r.party.mode === "race" && !["lobby", "finished"].includes(r.party.phase)).length >= 4)
@@ -233,15 +241,15 @@ export function attachPartySocket(server, {
     const now = Date.now();
     for (const record of rooms.values()) {
       const p = record.party;
-      if (!["race", "tap"].includes(p.mode) || p.phase !== "playing") continue;
+      if (!["race", "tap", "trails"].includes(p.mode) || p.phase !== "playing") continue;
       const revision = p.revision;
       p.tick();
       if (p.revision !== revision) { publish(record); continue; }
-      if (now - (record.raceFrameAt || 0) < 100) continue;
+      if (now - (record.raceFrameAt || 0) < (p.mode === "trails" ? 150 : 100)) continue;
       record.raceFrameAt = now;
       for (const [id, ws] of record.sessions.connections())
         if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
-          send(ws, p.mode === "tap" ? tapFrame(p, id) : raceFrame(p, id));
+          send(ws, p.mode === "trails" ? trailsFrame(p,id) : p.mode === "tap" ? tapFrame(p, id) : raceFrame(p, id));
     }
   }, 50);
   function cleanup() {
