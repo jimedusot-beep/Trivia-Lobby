@@ -38,7 +38,8 @@ test("catalog keeps the upstream published player capacities, never advertises a
 test("upstream catalog IDs do not silently register unimplemented Trivia Lobby modes", () => {
   const local = new Set(guestGames.map((game) => game.id));
   for (const game of openPartyLabGames) assert(!local.has(game.id));
-  assert.equal(guestGames.length, 27, "Original 24 plus Grand Prix, Tap Dash and Forbidden Word Frenzy");
+  assert.equal(guestGames.length, 28, "Original 24 plus Grand Prix, Tap Dash, Forbidden Word Frenzy and Light Trails Royale");
+  assert(local.has("trails"), "The original Light Trails Royale mode is registered");
   assert(local.has("no-say"), "A native original forbidden-word game is registered");
   assert(local.has("tap"), "The new original 20-player Tap Dash must be registered");
   assert(local.has("race"), "The implemented Grand Prix remains separate from upstream research IDs");

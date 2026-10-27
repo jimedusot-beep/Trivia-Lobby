@@ -36,6 +36,7 @@ export const openPartyLabGames = Object.freeze([
 export const triviaLobbyAlternatives = Object.freeze({
   "tap-race": { mode: "tap", label: "Tap Dash" },
   "buzzwort": { mode: "no-say", label: "Forbidden Word Frenzy" },
+  "light-trails": { mode: "trails", label: "Light Trails Royale" },
   "drift-racer": { mode: "race", label: "Party Grand Prix" },
   "pantomime": { mode: "charades", label: "Charades" },
   "imposter": { mode: "impostor", label: "Secret Impostor" },

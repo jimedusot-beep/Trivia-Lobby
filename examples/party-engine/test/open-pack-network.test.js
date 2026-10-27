@@ -156,6 +156,11 @@ for (const mode of packIds)
           assert.equal(party.view("host").pack.racers.length, size);
           active.send({ v: 1, type: "tap_input", matchId: party.matchId, heat: party.index, seq: 0 });
           await active.wait(m => m.type === "tap_frame" && m.own?.taps === 1);
+        } else if (mode === "trails") {
+          assert.equal(snapshot.pack.riders, undefined, "Phone view excludes other riders and trails");
+          assert.equal(party.view("host").pack.riders.length, size);
+          active.send({v:1,type:"trails_input",matchId:party.matchId,heat:party.index,seq:0,turn:-1});
+          await active.wait(m=>m.type==="trails_frame" && m.own?.seq===0);
         } else if (mode === "race") {
           assert.equal(snapshot.pack.karts, undefined);
           assert.equal(party.view("host").pack.karts.length, size);
