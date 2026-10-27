@@ -1,0 +1,21 @@
+/* Original overhead Light Trails arena and phone controller. */
+.trails-game { margin: 1rem auto; max-width: 880px; text-align: center; color: #202344; }
+.trails-game h2 { color: #5238ae; font-size: clamp(1.8rem,5vw,2.8rem); }
+.trails-round { font-weight: 900; letter-spacing: .025em; }
+.trails-clock { display: block; font-size: clamp(2.8rem,9vw,5rem); color: #4c37ad; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.trails-alive { font-size: clamp(1rem,3vw,1.4rem); font-weight: 850; }
+.trails-canvas { display: block; width: 100%; height: auto; max-width: 672px; border: 6px solid #5b49b6; border-radius: 14px; background: #16213e; margin: .75rem auto; image-rendering: pixelated; }
+.trails-leaderboard, .trails-results { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,210px),1fr)); gap: .5rem; padding: 0; list-style: none; }
+.trails-leaderboard li, .trails-results li { background: white; border: 1px solid #d4c8e9; border-radius: 10px; padding: .5rem .7rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.trails-leaderboard li span:nth-child(2) { margin-right: auto; }
+.trails-leaderboard li span:first-child { font-size: 1.3rem; }
+.trails-results li { display: grid; gap: .2rem; text-align: left; }
+.trails-help { max-width: 42ch; margin: .5rem auto 1rem; font-weight: 700; }
+.trails-status { display: block; font-size: clamp(1.6rem,5vw,2.5rem); }
+.trails-controls { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; max-width: 650px; margin: 1.5rem auto; }
+.trails-turn { min-height: min(38vh,270px); border: 5px solid #f3e8ff; border-radius: 24px; background: #5138b7; color: #fff; font-size: clamp(1.2rem,4vw,2rem); font-weight: 900; cursor: pointer; touch-action: manipulation; user-select: none; }
+.trails-turn:nth-child(2) { background: #c74677; }
+.trails-turn:disabled { opacity: .45; cursor: not-allowed; }
+.trails-turn:focus-visible { outline: 4px solid #f2b335; outline-offset: 3px; }
+@media (max-width: 430px) { .trails-game { margin: .3rem auto; } .trails-controls { gap: .5rem; } .trails-turn { min-height: 30vh; } }
+@media (prefers-reduced-motion: reduce) { .trails-turn { transition: none; } }
