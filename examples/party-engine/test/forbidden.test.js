@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Party } from "../engine.js";
-import { acceptForbidden, FORBIDDEN_DURATION_MS, FORBIDDEN_CARDS_PER_TURN } from "../open-pack/forbidden.js";
+import { acceptForbidden, FORBIDDEN_DURATION_MS, FORBIDDEN_CARDS_PER_TURN, FORBIDDEN_UNIQUE_CARD_COUNT } from "../open-pack/forbidden.js";
 
 function start(size=3) {
   let now=1000, request=0;
@@ -23,6 +23,7 @@ test("Forbidden Word Frenzy keeps original secret card private in a 20-player QR
   assert.equal(p.mode,"no-say");
   assert.equal(p.pack.kind,"forbidden");
   assert.equal(FORBIDDEN_CARDS_PER_TURN,5);
+  assert(FORBIDDEN_UNIQUE_CARD_COUNT>=20*FORBIDDEN_CARDS_PER_TURN,"Every 20-player turn can have fresh unique prompts");
   assert.equal(FORBIDDEN_DURATION_MS,45000);
   assert(p.view(ids[0]).pack.card?.word);
   assert(p.view(ids[1]).pack.card?.forbidden?.length===4);
