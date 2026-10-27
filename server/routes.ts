@@ -16,10 +16,12 @@ import { gameReportSink, registerGameReportRoutes } from "./game-reports";
 import { registerAssignmentRoutes } from "./assignment-routes";
 import { apiAbuseLimit } from "./rate-limit";
 import { ODD_ONE_OUT_STARTER_TITLE, oddOneOutStarterCards } from "./odd-one-out-pack";
+import type { RoomCheckpointStore } from "./room-checkpoints";
 
 export async function registerRoutes(
   httpServer: Server,
-  app: Express
+  app: Express,
+  checkpointStore?: RoomCheckpointStore,
 ): Promise<Server> {
   
   // Require authenticated ownership for every deck/card request.
@@ -82,7 +84,7 @@ export async function registerRoutes(
   registerGameReportRoutes(app);
   registerAssignmentRoutes(app);
 
-  attachGameSocket(httpServer, storage, { extraQuestions:universalGameCards, reportSink:gameReportSink, authorizeHost: async (request) => {
+  attachGameSocket(httpServer, storage, { checkpointStore, extraQuestions:universalGameCards, reportSink:gameReportSink, authorizeHost: async (request) => {
     const user = await resolveUser(request.headers.cookie);
     return user?.id ?? null;
   } });

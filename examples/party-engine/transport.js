@@ -7,6 +7,9 @@ import { validateGuestQuiz } from "./custom-quiz.js";
 import { validateShow } from "./open-pack/feud.js";
 import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
 import { acceptTapInput, tapFrame } from "./open-pack/tap.js";
+import { snapshotParty, restoreParty } from "./party-checkpoint.js";
+import { deliver, withDeferredDelivery } from "./durable-delivery.js";
+class RecoveryStorageError extends Error {}
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -14,16 +17,79 @@ export function attachPartySocket(server, {
   expectedOrigin = process.env.PUBLIC_ORIGIN,
   partyOptions = {},
   schedulerOptions = {},
+  checkpointStore,
 } = {}) {
   const scheduler = new DeadlineScheduler({ clock: partyOptions.clock, ...schedulerOptions });
-  const rooms = new Map(), limits = new Map();
+  const rooms = new Map(), limits = new Map(), loading = new Map();
+  let closing = false;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 32768, perMessageDeflate: false });
   const send = (ws, data) => {
-    if (ws.readyState === WebSocket.OPEN) {
+    const frame = JSON.stringify(data);
+    deliver(() => { if (ws.readyState === WebSocket.OPEN) {
       if (ws.bufferedAmount > 65536) ws.close(1013, "Slow connection");
-      else ws.send(JSON.stringify(data));
-    }
+      else ws.send(frame);
+    } });
   };
+  function recordFor(party, sessions, version = null) {
+    return { party, sessions, version, queue: Promise.resolve(), saved: null, sockets: new Set() };
+  }
+  async function recover(code) {
+    if (rooms.has(code)) return rooms.get(code);
+    if (!checkpointStore) return undefined;
+    if (!loading.has(code)) {
+      const pending = (async () => {
+        const saved = await checkpointStore.load("party", code).catch(() => { throw new RecoveryStorageError(); });
+        if (!saved) return undefined;
+        if (saved.state?.v !== 1) throw new Error("Unsupported room recovery state.");
+        const record = recordFor(restoreParty(code, saved.state.party, partyOptions, saved.savedAt), ParticipantSessions.restore(saved.state.sessions), saved.version);
+        if (closing) return undefined;
+        if (rooms.size >= 200) throw new Error("Server is full.");
+        rooms.set(code, record);
+        return record;
+      })();
+      loading.set(code, pending);
+      pending.finally(() => loading.delete(code)).catch(() => {});
+    }
+    return loading.get(code);
+  }
+  function failRecovery(record, ws) {
+    if (record && rooms.get(record.party.code) === record) {
+      rooms.delete(record.party.code);
+      scheduler.cancel(record.party.code);
+      // Membership includes displaced owners until their deferred close commits.
+      const peers = [...record.sockets];
+      for (const socket of new Set([...peers, ws].filter(Boolean))) {
+        send(socket, { type: "error", message: "Room recovery could not be saved. Please reconnect." });
+        socket.close(1013, "Recovery storage unavailable");
+      }
+    } else if (ws) {
+      send(ws, { type: "error", message: "Room recovery is temporarily unavailable. Please reconnect." });
+      ws.close(1013, "Recovery storage unavailable");
+    }
+  }
+  function transact(record, operation, ws) {
+    const result = record.queue.then(async () => {
+      if (closing || rooms.get(record.party.code) !== record) return;
+      await withDeferredDelivery(async () => {
+        try { await operation(); }
+        catch (error) {
+          if (!ws) throw error;
+          send(ws, { type: "error", message: error instanceof SyntaxError ? "Invalid JSON." : error.message });
+          if (record.sessions.owns("host", ws) || [...record.sessions.connections()].some(([, socket]) => socket === ws)) publish(record);
+        }
+      }, async () => {
+        if (!checkpointStore) return;
+        const state = { v: 1, party: snapshotParty(record.party), sessions: record.sessions.snapshot() };
+        const serialized = JSON.stringify(state);
+        if (serialized === record.saved) return;
+        const remaining = 600000 - (record.party.clock() - record.party.touched);
+        record.version = await checkpointStore.save("party", record.party.code, state, Date.now() + remaining, record.version);
+        record.saved = serialized;
+      });
+    });
+    record.queue = result.catch(() => { failRecovery(record, ws); });
+    return record.queue;
+  }
   function publish(record) {
     if (rooms.get(record.party.code) !== record) return;
     record.sessions.prune(record.party.players);
@@ -40,8 +106,7 @@ export function attachPartySocket(server, {
       deadline,
       () => {
         if (rooms.get(party.code) !== record) return;
-        party.tick();
-        publish(record);
+        void transact(record, () => { party.tick(); publish(record); });
       },
     );
   }
@@ -102,108 +167,132 @@ export function attachPartySocket(server, {
       ws.alive = true;
     });
     ws.on("error", () => {});
+    let connectionQueue = Promise.resolve();
     ws.on("message", (raw) => {
-      let fastInput = false;
+      // Fast controls are transient input. Authoritative positions, accepted
+      // actions and championship points are committed on a bounded room tick.
+      if (record && record.party.phase === "playing" && ["race", "tap"].includes(record.party.mode)) {
+        let frame;
+        try { frame = JSON.parse(raw.toString()); } catch { frame = null; }
+        const isRace = record.party.mode === "race" && frame?.type === "race_input";
+        const isTap = record.party.mode === "tap" && frame?.type === "tap_input";
+        if (isRace || isTap) {
+          try {
+            if (rooms.get(record.party.code) !== record || !record.sessions.owns(actor, ws))
+              throw new Error("Connection replaced or room expired.");
+            const now = Date.now();
+            if (isRace) {
+              if (now - raceWindowStart >= 1000) { raceWindowStart = now; raceCount = 0; }
+              if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
+              if (raw.length > 512) throw new Error("Racing controls are too large.");
+              acceptRaceInput(record.party, actor, frame);
+            } else {
+              if (now - tapWindowStart >= 1000) { tapWindowStart = now; tapCount = 0; }
+              if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
+              if (raw.length > 256) throw new Error("Tap controls are too large.");
+              acceptTapInput(record.party, actor, frame);
+            }
+          } catch (error) { send(ws, { type: "error", message: error.message }); }
+          return;
+        }
+      }
+      connectionQueue = connectionQueue.then(async () => {
       try {
         if (Date.now() - windowStart > 10000) {
           windowStart = Date.now();
           count = 0;
         }
+        if (++count > 60) throw new Error("Too many messages; wait a moment.");
         const m = JSON.parse(raw.toString());
+        if (m?.type === "ping" && Object.keys(m).length === 1) {
+          send(ws, { type: "pong", serverNow: Date.now() }); return;
+        }
         if (!m || typeof m !== "object" || Array.isArray(m))
           throw new Error("Invalid message.");
-        const raceInput = !!record && record.party.mode === "race" && record.party.phase === "playing" && m.type === "race_input";
-        const tapInput = !!record && record.party.mode === "tap" && record.party.phase === "playing" && m.type === "tap_input";
-        fastInput = raceInput || tapInput;
-        if (raceInput) {
-          if (Date.now() - raceWindowStart >= 1000) { raceWindowStart = Date.now(); raceCount = 0; }
-          if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
-          if (raw.length > 512) throw new Error("Racing controls are too large.");
-        } else if (tapInput) {
-          if (Date.now() - tapWindowStart >= 1000) { tapWindowStart = Date.now(); tapCount = 0; }
-          if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
-          if (raw.length > 256) throw new Error("Tap controls are too large.");
-        } else if (++count > 60) throw new Error("Too many messages; wait a moment.");
         if (!record) {
           validateHello(m);
           let candidate, id;
           if (m.type === "create") {
             if (rooms.size >= 200) throw new Error("Server is full.");
             const code = roomCode(rooms);
-            candidate = {
-              party: new Party(code, {
+            if (checkpointStore && await checkpointStore.load("party", code).catch(() => { throw new RecoveryStorageError(); })) throw new Error("Room code is occupied. Please try again.");
+            candidate = recordFor(new Party(code, {
                 ...partyOptions,
                 ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
                 ...(Object.hasOwn(m, "show") ? { customShow: validateShow(m.show) } : {}),
-              }),
-              sessions: new ParticipantSessions(),
-            };
+              }), new ParticipantSessions());
             rooms.set(code, candidate);
             id = "host";
           } else {
-            candidate = rooms.get(m.code.toUpperCase());
+            candidate = await recover(m.code.toUpperCase());
             if (!candidate) throw new Error("Room expired or not found.");
             if (m.type === "join") {
-              candidate.party.tick();
-              publish(candidate);
-              id = candidate.party.join(m.name);
+              await transact(candidate, () => {
+                candidate.party.tick();
+                id = candidate.party.join(m.name);
+                record = candidate; actor = id;
+                const token = record.sessions.issue(actor, ws);
+                record.sockets.add(ws);
+                send(ws, { type: "credential", code: record.party.code, actor, token });
+                publish(record);
+              }, ws);
+              return;
             } else {
-              candidate.sessions.resume(m.actor, m.token, ws);
-              record = candidate;
-              actor = m.actor;
+              await transact(candidate, () => {
+                candidate.sessions.resume(m.actor, m.token, ws);
+                record = candidate;
+                actor = m.actor;
+                record.sockets.add(ws);
               // Apply any deadline that elapsed before reconnect. A resumed phone
               // cannot rewind a round or suppress an expired host grace period.
               record.party.tick();
               record.party.connected(actor, true);
               send(ws, { type: "ready", actor });
               publish(record);
+              }, ws);
               return;
             }
           }
           record = candidate;
           actor = id;
-          const token = record.sessions.issue(actor, ws);
+          await transact(record, () => { const token = record.sessions.issue(actor, ws);
+          record.sockets.add(ws);
           send(ws, {
             type: "credential",
             code: record.party.code,
             actor,
             token,
           });
-          publish(record);
+          publish(record); }, ws);
         } else {
+          await transact(record, () => {
           if (
             rooms.get(record.party.code) !== record ||
             !record.sessions.owns(actor, ws)
           )
             throw new Error("Connection replaced or room expired.");
-          if (fastInput) {
-            if (tapInput) {
-              const previousRevision = record.party.revision;
-              record.party.tick();
-              if (record.party.revision !== previousRevision) publish(record);
-              acceptTapInput(record.party, actor, m);
-            } else acceptRaceInput(record.party, actor, m);
-            return;
-          }
           if (m.type === "start" && m.value === "race" && [...rooms.values()].filter(r => r !== record && r.party.mode === "race" && !["lobby", "finished"].includes(r.party.phase)).length >= 4)
             throw new Error("Four races are already running. Try again after a race finishes.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
-          publish(record);
+          publish(record); }, ws);
         }
       } catch (e) {
+        if (e instanceof RecoveryStorageError) { failRecovery(record, ws); return; }
         send(ws, {
           type: "error",
           message: e instanceof SyntaxError ? "Invalid JSON." : e.message,
         });
-        if (!fastInput && record && record.sessions.owns(actor, ws)) publish(record);
       }
-    });
+    }).catch(() => failRecovery(record, ws)); });
     ws.on("close", () => {
-      if (record && record.sessions.disconnect(actor, ws)) {
-        record.party.connected(actor, false);
-        publish(record);
-      }
+      record?.sockets.delete(ws);
+      if (!closing && record) void transact(record, () => {
+        if (record.sessions.disconnect(actor, ws)) {
+          record.party.connected(actor, false);
+          publish(record);
+        }
+      });
     });
   });
   const timer = setInterval(() => {
@@ -213,9 +302,11 @@ export function attachPartySocket(server, {
         scheduler.cancel(code);
         rooms.delete(code);
         r.sessions.closeAll();
+        void checkpointStore?.delete("party", code, r.version).catch(() => {});
       }
     }
     for (const [ip, l] of limits) if (now >= l.reset) limits.delete(ip);
+    void checkpointStore?.prune().catch(() => {});
   }, 5000);
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
@@ -227,24 +318,28 @@ export function attachPartySocket(server, {
       ws.ping();
     }
   }, 15000);
-  // One bounded update loop for admitted live-action rooms. The TV receives
-  // public rankings; each phone receives only its own status, never identity tokens.
+  // One persisted simulation transaction per active room per 100 ms, rather
+  // than per 20 Hz controller. Frames are delivered only after durable commit.
+  // A slow database delays frames rather than creating an unbounded write queue.
   const raceTimer = setInterval(() => {
-    const now = Date.now();
     for (const record of rooms.values()) {
-      const p = record.party;
-      if (!["race", "tap"].includes(p.mode) || p.phase !== "playing") continue;
-      const revision = p.revision;
-      p.tick();
-      if (p.revision !== revision) { publish(record); continue; }
-      if (now - (record.raceFrameAt || 0) < 100) continue;
-      record.raceFrameAt = now;
-      for (const [id, ws] of record.sessions.connections())
-        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
-          send(ws, p.mode === "tap" ? tapFrame(p, id) : raceFrame(p, id));
+      if (record.raceBusy || !["race", "tap"].includes(record.party.mode) || record.party.phase !== "playing") continue;
+      record.raceBusy = true;
+      void transact(record, () => {
+        const party = record.party;
+        if (!["race", "tap"].includes(party.mode) || party.phase !== "playing") return;
+        const revision = party.revision;
+        party.tick();
+        if (party.revision !== revision) { publish(record); return; }
+        for (const [id, ws] of record.sessions.connections())
+          if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
+            send(ws, party.mode === "tap" ? tapFrame(party, id) : raceFrame(party, id));
+      }).finally(() => { record.raceBusy = false; });
     }
-  }, 50);
+  }, 100);
   function cleanup() {
+    if (closing) return;
+    closing = true;
     scheduler.close();
     clearInterval(timer);
     clearInterval(heartbeat);
@@ -261,6 +356,7 @@ export function attachPartySocket(server, {
     scheduler,
     async close() {
       cleanup();
+      await Promise.all([...rooms.values()].map(record => record.queue));
       await new Promise((resolve) => wss.close(resolve));
     },
   };

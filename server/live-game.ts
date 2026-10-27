@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, randomUUID, createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, randomInt, randomUUID, createHash, createHmac, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, Server } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { WS_EVENTS, type Card } from "@shared/schema";
@@ -13,19 +13,23 @@ import { canSubmitAnswer, publicPlayerView } from "./room-projections";
 import { gradeUniversalAnswer } from "@shared/universal-questions";
 import type { LiveCard, LiveKind } from "./live-question-adapter";
 import type { GameReportSink } from "./game-report-types";
+import type { RoomCheckpointStore } from "./room-checkpoints";
+import { deliver, withDeferredDelivery } from "../examples/party-engine/durable-delivery.js";
 
 const MAX_PLAYERS = 100;
 const QUESTION_MS = 30_000;
 const ROOM_TTL_MS = 10 * 60_000;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+type ResumeReceipt = { requestId: string; tokenHash: Buffer };
 type Player = {
   id: string; name: string; score: number; streak: number;
-  tokenHash: Buffer; ws: WebSocket; connected: boolean; teamId:number; coins:number; focus:number; guard:number;
+  tokenHash: Buffer; ws: WebSocket | null; connected: boolean; teamId:number; coins:number; focus:number; guard:number;
+  resumeReceipt?: ResumeReceipt;
 };
 type Room = {
   mode:GameMode; buzzedPlayerId:string|null; buzzTimer?:ReturnType<typeof setTimeout>;
   code: string; reportId: string; reportSink?: GameReportSink; reportChain: Promise<void>; reportFailed: boolean;
-  hostWs: WebSocket; hostTokenHash: Buffer; hostConnected: boolean;
+  hostWs: WebSocket | null; hostTokenHash: Buffer; hostConnected: boolean;
   players: Map<string, Player>; questions: LiveCard[]; state: RoomState;
   questionIndex: number; question?: PublicQuestion; deadlineTs: number;
   answers: Map<string, { answer: unknown; explanation:string; bonusAwarded:boolean; correct: boolean; responseMs: number; awarded: number; streak:number; coins:number; focus:number; guard:number }>;
@@ -33,7 +37,15 @@ type Room = {
   oddRoundCount:number;oddTimeLimitMs:number;oddShuffleQuestions:boolean;oddShuffleAnswers:boolean;
   oddCorrectDisplayLetter?:"A"|"B"|"C"|"D";
   timer?: ReturnType<typeof setTimeout>; touchedAt: number;
+  matchId: string; revision: number; version: number | null; saved?: string; failed?: boolean;
+  requests: Map<string, string>; queue: Promise<void>; run: (operation: () => void | Promise<void>) => Promise<void>;
+  buzzDeadlineTs?: number;
+  hostResumeReceipt?: ResumeReceipt;
+  pendingReports: Array<Parameters<GameReportSink["round"]>[0]>;
+  members: Set<WebSocket>;
 };
+const socketRooms = new WeakMap<WebSocket, Room>();
+const metadataSockets = new WeakSet<WebSocket>();
 
 export function makeRoomCode(occupied: ReadonlyMap<string, unknown>): string {
   for (let attempt = 0; attempt < 50; attempt++) {
@@ -49,12 +61,32 @@ function tokenMatches(candidate: string, expected: Buffer): boolean {
   const received = tokenHash(candidate);
   return timingSafeEqual(received, expected);
 }
-const isOpen = (ws: WebSocket) => ws.readyState === WebSocket.OPEN;
-function send(ws: WebSocket, type: string, payload: unknown) {
+const receiptJson = (receipt?: ResumeReceipt) => receipt && ({ requestId: receipt.requestId, tokenHash: receipt.tokenHash.toString("hex") });
+function readReceipt(value: any): ResumeReceipt | undefined {
+  if (!value) return undefined;
+  if (!/^[\w-]{8,80}$/.test(value.requestId) || !/^[a-f0-9]{64}$/.test(value.tokenHash)) throw new Error("Unsupported room credentials");
+  return { requestId: value.requestId, tokenHash: Buffer.from(value.tokenHash, "hex") };
+}
+function rotateCredential(token: string, requestId: string | undefined, current: Buffer, receipt: ResumeReceipt | undefined, domain: string) {
+  const replay = !!requestId && receipt?.requestId === requestId && tokenMatches(token, receipt.tokenHash);
+  if (!tokenMatches(token, current) && !replay) return null;
+  const nextToken = requestId ? createHmac("sha256", token).update(`trivia-resume-v1:${domain}:${requestId}`).digest("base64url") : mintToken();
+  if (replay && !tokenMatches(nextToken, current)) return null;
+  return { token: nextToken, receipt: replay ? receipt : requestId ? { requestId, tokenHash: current } : undefined };
+}
+const isOpen = (ws: WebSocket | null | undefined): ws is WebSocket => ws?.readyState === WebSocket.OPEN;
+function send(ws: WebSocket | null, type: string, payload: unknown) {
   if (!isOpen(ws)) return;
   // All outbound payloads conform to one shared schema. Never stringify internal players.
-  const message = serverMessageSchema.parse({ v: 1, type, payload });
-  ws.send(JSON.stringify(message));
+  const room = socketRooms.get(ws);
+  const message = serverMessageSchema.parse({ v: 1, type, payload,
+    ...(room && metadataSockets.has(ws) ? { matchId: room.matchId, revision: room.revision } : {}),
+  });
+  const frame = JSON.stringify(message);
+  deliver(() => { if (isOpen(ws)) {
+    if (ws.bufferedAmount > 65536) ws.close(1013, "Slow connection");
+    else ws.send(frame);
+  } });
 }
 function publicPlayers(room: Room): PublicPlayer[] {
   return [...room.players.values()].map(p => ({
@@ -67,6 +99,18 @@ function broadcast(room: Room, type: string, payload: unknown) {
 }
 function lobbyUpdate(room: Room) {
   broadcast(room, WS_EVENTS.LOBBY_UPDATE, { players: publicPlayers(room) });
+}
+function oddSettings(room: Room) {
+  return { roundCount: room.oddRoundCount, timeLimitMs: room.oddTimeLimitMs,
+    shuffleQuestions: room.oddShuffleQuestions, shuffleAnswers: room.oddShuffleAnswers };
+}
+function configured(room: Room) {
+  // Extra configuration fields are negotiated by modern hosts; legacy v1 frames stay unchanged.
+  send(room.hostWs, WS_EVENTS.GAME_CONFIGURED, { mode: room.mode,
+    ...(room.hostWs && metadataSockets.has(room.hostWs) ? { oddSettings: oddSettings(room) } : {}),
+  });
+  for (const player of room.players.values()) if (player.connected)
+    send(player.ws, WS_EVENTS.GAME_CONFIGURED, { mode: room.mode });
 }
 /** Aggregate-only signal restricted to the authenticated host's current socket. */
 function sendSubmissionProgress(room: Room) {
@@ -108,6 +152,7 @@ function snapshot(room: Room, ws: WebSocket, player?: Player) {
     ...(room.state === "reveal" || room.state === "leaderboard" || room.state === "finished"
       ? { answerResult: resultFor(room, player?.id), leaderboard: publicPlayers(room) } : {}),
     ...(!player && room.mode==="odd_one_out" && ["reveal","leaderboard","finished"].includes(room.state)?{oddReview:oddReview(room)}:{}),
+    ...(!player && metadataSockets.has(ws) ? { oddSettings: oddSettings(room) } : {}),
   });
   if (!player && room.state === "playing") sendSubmissionProgress(room);
 }
@@ -126,16 +171,38 @@ function saveRoundReport(room:Room) {
           correct:record?.correct ?? false,awarded:record?.awarded ?? 0,responseMs:record?.responseMs ?? null };
       }),
     };
-    room.reportChain = room.reportChain.then(() => room.reportSink!.round(round)).catch(() => {
+    room.pendingReports.push(round);
+    deliver(() => flushReports(room));
+  }
+}
+function flushReports(room: Room) {
+  if (!room.reportSink || !room.pendingReports.length) return;
+  room.reportChain = room.reportChain.then(async () => {
+    for (const round of [...room.pendingReports]) {
+      await room.reportSink!.round(round);
+      room.pendingReports = room.pendingReports.filter(pending => pending.questionIndex !== round.questionIndex);
+    }
+    room.reportFailed = false;
+  }).catch(() => {
       room.reportFailed = true;
       send(room.hostWs, WS_EVENTS.ERROR, { message: "This round could not be saved to the game report." });
-    });
+  });
+}
+async function finishReport(room: Room) {
+  await room.reportChain;
+  if (room.reportSink && !room.reportFailed) {
+    try { await room.reportSink.finished({ id: room.reportId, mode: room.mode, leaderboard: publicPlayers(room) }); }
+    catch {
+      room.reportFailed = true;
+      send(room.hostWs, WS_EVENTS.ERROR, { message: "Game finished, but its report could not be finalized." });
+    }
   }
 }
 function reveal(room: Room) {
   if (room.state !== "playing") return;
   if (room.timer) clearTimeout(room.timer);
   room.state = "reveal";
+  room.revision++;
   clearTimeout(room.buzzTimer);room.buzzedPlayerId=null;
   for(const [id,record] of room.answers){
     const player=room.players.get(id)!;player.score=Math.max(0,player.score+record.awarded);player.streak=record.streak;player.coins+=record.coins;player.focus=record.focus;player.guard=record.guard;
@@ -155,6 +222,7 @@ function reveal(room: Room) {
 }
 function startQuestion(room: Room, durationMs = QUESTION_MS) {
   room.state = "playing";
+  room.revision++;
   room.answers.clear();room.oddReviewFinalized=false;room.buzzedPlayerId=null;clearTimeout(room.buzzTimer);
   broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId:null});
   const card = room.questions[room.questionIndex];
@@ -190,29 +258,22 @@ function startQuestion(room: Room, durationMs = QUESTION_MS) {
   };
   broadcast(room, WS_EVENTS.QUESTION_START, room.question);
   sendSubmissionProgress(room);
-  room.timer = setTimeout(() => reveal(room), questionDuration);
+  room.timer = setTimeout(() => { void room.run(() => reveal(room)); }, questionDuration);
   room.timer.unref?.();
 }
 async function next(room: Room, durationMs: number) {
   if (room.state === "reveal") {
     if(room.mode==="odd_one_out"&&!room.oddReviewFinalized)return;
     room.state = "leaderboard";
+    room.revision++;
     broadcast(room, WS_EVENTS.LEADERBOARD, { leaderboard: publicPlayers(room) });
   } else if (room.state === "leaderboard") {
     if (room.questionIndex === room.questions.length - 1) {
       room.state = "finished";
-      if (room.reportSink) {
-        await room.reportChain;
-        if (!room.reportFailed) {
-          try {
-            await room.reportSink.finished({ id:room.reportId,mode:room.mode,leaderboard:publicPlayers(room) });
-          } catch {
-            room.reportFailed = true;
-            send(room.hostWs, WS_EVENTS.ERROR, { message: "Game finished, but its report could not be finalized." });
-          }
-        }
-      }
-      broadcast(room, WS_EVENTS.GAME_OVER, { leaderboard: publicPlayers(room) });
+      room.revision++;
+      deliver(() => { void finishReport(room).then(() => {
+        broadcast(room, WS_EVENTS.GAME_OVER, { leaderboard: publicPlayers(room) });
+      }).catch(() => {}); });
     } else {
       room.questionIndex++;
       startQuestion(room, durationMs);
@@ -220,8 +281,9 @@ async function next(room: Room, durationMs: number) {
   }
 }
 function allActiveAnswered(room: Room) {
-  const online = [...room.players.values()].filter(p => p.connected);
-  return online.length > 0 && online.every(p => room.answers.has(p.id));
+  // A temporary connection loss does not remove a participant from this question.
+  // Otherwise the first phone back after a restart could reveal everyone else's answers.
+  return room.players.size > 0 && [...room.players.keys()].every(id => room.answers.has(id));
 }
 function eligibleOddCard(card:LiveCard) {
  const answer=card.universal?.answer;
@@ -238,9 +300,100 @@ function eligible(card: LiveCard) {
 }
 
 /** In-memory match authority: per-room state, deadline, single answer, credentials. */
-export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<LiveCard[]>; reportSink?:GameReportSink } = {}) {
+export function attachGameSocket(server: Server, storage: IStorage, options: { questionMs?: number; authorizeHost?: (request: IncomingMessage) => Promise<string | null>; extraQuestions?:(deckId:number)=>Promise<LiveCard[]>; reportSink?:GameReportSink; checkpointStore?: RoomCheckpointStore; heartbeatMs?: number } = {}) {
   const durationMs = options.questionMs ?? QUESTION_MS;
   const rooms = new Map<string, Room>();
+  const loading = new Map<string, Promise<Room | undefined>>();
+  let closing = false;
+  const fields = ["mode", "buzzedPlayerId", "buzzDeadlineTs", "code", "reportId", "reportFailed", "questions", "state",
+    "questionIndex", "question", "deadlineTs", "oddReviewFinalized", "oddRoundCount", "oddTimeLimitMs",
+    "oddShuffleQuestions", "oddShuffleAnswers", "oddCorrectDisplayLetter", "touchedAt", "matchId", "revision", "pendingReports"] as const;
+  function checkpoint(room: Room) {
+    return { v: 1, room: Object.fromEntries(fields.map(key => [key, room[key]])),
+      hostTokenHash: room.hostTokenHash.toString("hex"),
+      hostResumeReceipt: receiptJson(room.hostResumeReceipt),
+      players: [...room.players.values()].map(({ ws, tokenHash, resumeReceipt, ...player }) => ({ ...player, tokenHash: tokenHash.toString("hex"), resumeReceipt: receiptJson(resumeReceipt) })),
+      answers: [...room.answers], requests: [...room.requests],
+    };
+  }
+  function failRecovery(room: Room, ws?: WebSocket) {
+    room.failed = true;
+    if (rooms.get(room.code) === room) rooms.delete(room.code);
+    clearTimeout(room.timer); clearTimeout(room.buzzTimer);
+    // Owners can change before commit. Retain every bound socket for failure cleanup.
+    const peers = [...room.members, ws];
+    for (const socket of new Set(peers.filter(isOpen))) {
+      send(socket, WS_EVENTS.ERROR, { message: "Room recovery could not be saved. Please reconnect." });
+      socket.close(1013, "Recovery storage unavailable");
+    }
+  }
+  function transact(room: Room, operation: () => void | Promise<void>, ws?: WebSocket) {
+    const next = room.queue.then(async () => {
+      if (closing || room.failed || rooms.get(room.code) !== room) return;
+      await withDeferredDelivery(operation, async () => {
+        if (!options.checkpointStore) return;
+        const data = checkpoint(room), serialized = JSON.stringify(data);
+        if (serialized === room.saved) return;
+        room.version = await options.checkpointStore.save("quiz", room.code, data, room.touchedAt + ROOM_TTL_MS, room.version);
+        room.saved = serialized;
+      });
+    });
+    room.queue = next.catch(() => failRecovery(room, ws));
+    return room.queue;
+  }
+  function bindRoom(data: Omit<Room, "queue" | "run" | "pendingReports" | "members"> & { pendingReports?: Room["pendingReports"] }): Room {
+    const room: Room = { ...data, members: new Set(), pendingReports: data.pendingReports ?? [], queue: Promise.resolve(), run: operation => transact(room, operation) };
+    return room;
+  }
+  function trackSocket(room: Room, ws: WebSocket) {
+    room.members.add(ws);
+    socketRooms.set(ws, room);
+  }
+  async function recover(code: string): Promise<Room | undefined> {
+    if (rooms.has(code)) return rooms.get(code);
+    if (!options.checkpointStore) return undefined;
+    if (!loading.has(code)) {
+      const pending = (async () => {
+        const saved = await options.checkpointStore!.load("quiz", code);
+        if (!saved) return undefined;
+        const data = saved.state;
+        if (data?.v !== 1 || data.room?.code !== code || !Array.isArray(data.players) || data.players.length > MAX_PLAYERS
+          || !Array.isArray(data.room.questions) || !data.room.questions.length || data.room.questions.length > 500
+          || !/^[a-f0-9]{64}$/.test(data.hostTokenHash) || !Array.isArray(data.answers) || !Array.isArray(data.requests)
+          || data.requests.length > 4096 || !["lobby", "playing", "reveal", "leaderboard", "finished"].includes(data.room.state))
+          throw new Error("Unsupported room recovery state");
+        const restoredFields = Object.fromEntries(fields.map(key => [key, data.room[key]]));
+        const players = new Map<string, Player>();
+        for (const player of data.players) {
+          if (!/^[a-f0-9]{64}$/.test(player.tokenHash)) throw new Error("Unsupported room credentials");
+          players.set(player.id, { ...player, tokenHash: Buffer.from(player.tokenHash, "hex"), resumeReceipt: readReceipt(player.resumeReceipt), ws: null, connected: false });
+        }
+        const room = bindRoom({ ...restoredFields, players, hostWs: null, hostConnected: false,
+          hostTokenHash: Buffer.from(data.hostTokenHash, "hex"), hostResumeReceipt: readReceipt(data.hostResumeReceipt), answers: new Map(data.answers), requests: new Map(data.requests),
+          reportSink: options.reportSink, reportChain: Promise.resolve(), version: saved.version,
+        } as Omit<Room, "queue" | "run" | "members">);
+        if (closing) return undefined;
+        if (rooms.size >= 500) throw new Error("Room capacity reached");
+        rooms.set(code, room);
+        flushReports(room);
+        if (room.state === "finished") void finishReport(room).catch(() => {});
+        if (room.state === "playing") {
+          room.timer = setTimeout(() => { void room.run(() => reveal(room)); }, Math.max(0, room.deadlineTs - Date.now()));
+          room.timer.unref?.();
+          if (room.buzzedPlayerId) {
+            room.buzzTimer = setTimeout(() => { void room.run(() => {
+              room.buzzedPlayerId = null; broadcast(room, WS_EVENTS.BUZZ_STATE, { playerId: null });
+            }); }, Math.max(0, (room.buzzDeadlineTs ?? 0) - Date.now()));
+            room.buzzTimer.unref?.();
+          }
+        }
+        return room;
+      })();
+      loading.set(code, pending);
+      pending.finally(() => loading.delete(code)).catch(() => {});
+    }
+    return loading.get(code);
+  }
   const createLimits = new Map<string, { count: number; resetAt: number }>();
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096, perMessageDeflate: false });
   // Claim only the private-deck quiz path. Other sockets share this HTTP listener.
@@ -255,17 +408,29 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
       if (now - room.touchedAt > ROOM_TTL_MS) {
         if (room.timer) clearTimeout(room.timer);
         clearTimeout(room.buzzTimer);rooms.delete(code);
+        void options.checkpointStore?.delete("quiz", code, room.version ?? undefined).catch(() => {});
         if (isOpen(room.hostWs)) room.hostWs.close(1001, "Room expired");
         for (const p of room.players.values()) if (isOpen(p.ws)) p.ws.close(1001, "Room expired");
       }
     }
     for (const [ip, limit] of createLimits) if (limit.resetAt < now) createLimits.delete(ip);
+    void options.checkpointStore?.prune().catch(() => {});
   }, 60_000);
   cleanup.unref?.();
+  const alive = new WeakSet<WebSocket>();
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (!alive.has(ws)) { ws.terminate(); continue; }
+      alive.delete(ws); ws.ping();
+    }
+  }, options.heartbeatMs ?? 15000);
+  heartbeat.unref?.();
 
   wss.on("connection", (ws, req) => {
     // Protocol/frame errors close this connection without crashing the match server.
     ws.on("error", () => {});
+    alive.add(ws);
+    ws.on("pong", () => alive.add(ws));
     const origin = req.headers.origin;
     if (origin) {
       try {
@@ -286,16 +451,25 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
     let recentCount = 0;
     let windowStart = Date.now();
 
-    const error = (message: string) => send(ws, WS_EVENTS.ERROR, { message });
-    ws.on("message", async (raw) => {
+    let rejected = false;
+    const error = (message: string) => { rejected = true; send(ws, WS_EVENTS.ERROR, { message }); };
+    let connectionQueue = Promise.resolve();
+    ws.on("message", (raw) => { connectionQueue = connectionQueue.then(async () => {
+      rejected = false;
       const now = Date.now();
       if (now - windowStart >= 10_000) { windowStart = now; recentCount = 0; }
       if (++recentCount > 40) { ws.close(1008, "Rate limit"); return; }
-      const parsed = clientMessageSchema.safeParse((() => {
+      const decoded = (() => {
         try { return JSON.parse(raw.toString()); } catch { return null; }
-      })());
+      })();
+      if (decoded?.type === "ping" && Object.keys(decoded).length === 1) {
+        ws.send(JSON.stringify({ type: "pong", serverNow: Date.now() })); return;
+      }
+      const parsed = clientMessageSchema.safeParse(decoded);
       if (!parsed.success) { error("Invalid protocol message"); return; }
       const msg = parsed.data;
+      if (msg.requestId) metadataSockets.add(ws);
+      const handle = async () => {
       try {
         if (msg.type === WS_EVENTS.CREATE_ROOM) {
           if (role) { error("Already in a room"); return; }
@@ -315,19 +489,21 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if (rooms.size >= 500) { error("Room capacity reached"); return; }
           if(!consumeRate(`host:${ownerId}`,5,60_000)){error("Room creation rate limit");return;}
           const code = makeRoomCode(rooms);
+          if (options.checkpointStore && await options.checkpointStore.load("quiz", code)) { error("Room code is occupied; try again"); return; }
           const reportId = randomUUID();
           if (options.reportSink) await options.reportSink.created({
             id:reportId, ownerId, deckId:msg.payload.deckId, deckTitle:deck?.title ?? "Untitled quiz",
           });
           const hostToken = mintToken();
-          room = {
+          room = bindRoom({
+            matchId: randomUUID(), revision: 0, version: null, requests: new Map(),
             oddReviewFinalized:false,oddRoundCount:20,oddTimeLimitMs:options.questionMs??45_000,oddShuffleQuestions:false,oddShuffleAnswers:false,mode:"classic",buzzedPlayerId:null,code,reportId,reportSink:options.reportSink,
             reportChain:Promise.resolve(),reportFailed:false,hostWs: ws, hostTokenHash: tokenHash(hostToken), hostConnected: true,
             players: new Map(), questions, state: "lobby", questionIndex: -1,
             deadlineTs: 0, answers: new Map(), touchedAt: now,
-          };
-          rooms.set(code, room); role = "host";
-          send(ws, WS_EVENTS.ROOM_CREATED, { roomCode: code, hostToken });
+          });
+          rooms.set(code, room); role = "host"; trackSocket(room, ws);
+          await transact(room, () => { send(ws, WS_EVENTS.ROOM_CREATED, { roomCode: code, hostToken }); snapshot(room!, ws); }, ws);
           return;
         }
         if (msg.type === WS_EVENTS.JOIN_ROOM) {
@@ -344,47 +520,58 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             tokenHash: tokenHash(token), ws, connected: true, teamId:target.players.size%2+1,coins:60,focus:0,guard:0,
           };
           target.players.set(id, player);
-          room = target; role = "player"; playerId = id; target.touchedAt = now;
+          room = target; role = "player"; playerId = id; target.touchedAt = now; trackSocket(target, ws);
           send(ws, WS_EVENTS.ROOM_JOINED, { roomCode: target.code, playerId: id, token });
           snapshot(target, ws, player); lobbyUpdate(target);
           return;
         }
         if (msg.type === WS_EVENTS.REJOIN_ROOM) {
           if (role) { error("Already in a room"); return; }
-          if (!consumeRate(`rejoin:${ip}`, 30, 60_000)) { error("Reconnect rate limit"); return; }
+          // Twenty phones share one household IP and may each reconnect more than once.
+          if (!consumeRate(`rejoin:${ip}`, 120, 60_000)) { error("Reconnect rate limit"); return; }
           const target = rooms.get(msg.payload.roomCode);
           const player = target?.players.get(msg.payload.playerId);
-          if (!target || !player || !tokenMatches(msg.payload.token, player.tokenHash)) {
+          const rotated = target && player && rotateCredential(msg.payload.token, msg.requestId, player.tokenHash, player.resumeReceipt, `${target.matchId}:${player.id}`);
+          if (!target || !player || !rotated) {
             error("Invalid reconnect credentials"); return;
           }
-          const newToken = mintToken();
+          const newToken = rotated.token;
           const prior = player.ws;
           player.ws = ws; player.connected = true; player.tokenHash = tokenHash(newToken);
-          room = target; role = "player"; playerId = player.id; target.touchedAt = now;
+          player.resumeReceipt = rotated.receipt;
+          room = target; role = "player"; playerId = player.id; target.touchedAt = now; trackSocket(target, ws);
           send(ws, WS_EVENTS.ROOM_JOINED, { roomCode: target.code, playerId: player.id, token: newToken });
           snapshot(target, ws, player); lobbyUpdate(target); sendSubmissionProgress(target);
-          if (prior !== ws) prior.close(1000, "Session replaced");
+          if (prior !== ws) deliver(() => prior?.close(1000, "Session replaced"));
           return;
         }
         if (msg.type === WS_EVENTS.RESUME_HOST) {
           if (role) { error("Already in a room"); return; }
           const target = rooms.get(msg.payload.roomCode);
-          if (!target || !tokenMatches(msg.payload.hostToken, target.hostTokenHash)) {
+          const rotated = target && rotateCredential(msg.payload.hostToken, msg.requestId, target.hostTokenHash, target.hostResumeReceipt, `${target.matchId}:host`);
+          if (!target || !rotated) {
             error("Invalid host credentials"); return;
           }
-          const newToken = mintToken();
+          const newToken = rotated.token;
           const prior = target.hostWs;
           target.hostWs = ws; target.hostConnected = true; target.hostTokenHash = tokenHash(newToken);
-          target.touchedAt = now; room = target; role = "host";
+          target.hostResumeReceipt = rotated.receipt;
+          target.touchedAt = now; room = target; role = "host"; trackSocket(target, ws);
           send(ws, WS_EVENTS.HOST_RESUMED, { roomCode: target.code, hostToken: newToken });
           snapshot(target, ws);
-          if (prior !== ws) prior.close(1000, "Host session replaced");
+          if (prior !== ws) deliver(() => prior?.close(1000, "Host session replaced"));
           return;
         }
         if (!room || !role || !isOpen(ws)) { error("Join a room first"); return; }
         room.touchedAt = now;
         if (msg.payload.roomCode && msg.payload.roomCode !== room.code) {
           error("Room mismatch"); return;
+        }
+        if (msg.type === WS_EVENTS.CONFIRM_SESSION) {
+          if (role === "host" && room.hostWs === ws) room.hostResumeReceipt = undefined;
+          else if (role === "player" && playerId && room.players.get(playerId)?.ws === ws) room.players.get(playerId)!.resumeReceipt = undefined;
+          else error("Connection replaced or not authorized");
+          return;
         }
         if(msg.type===WS_EVENTS.CONFIGURE_GAME){
           if(role!=="host"||room.hostWs!==ws||room.state!=="lobby"){error("Host can select the mode only in the lobby");return;}
@@ -396,7 +583,9 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
             room.oddShuffleQuestions=msg.payload.shuffleQuestions??room.oddShuffleQuestions;
             room.oddShuffleAnswers=msg.payload.shuffleAnswers??room.oddShuffleAnswers;
           }
-          room.mode=msg.payload.mode;broadcast(room,WS_EVENTS.GAME_CONFIGURED,{mode:room.mode});lobbyUpdate(room);return;
+          // Revision identifies the gameplay phase. Ordered lobby edits from the
+          // current host compose without invalidating the next keystroke in flight.
+          room.mode=msg.payload.mode;configured(room);lobbyUpdate(room);return;
         }
         if(msg.type===WS_EVENTS.AWARD_ODD_BONUS){
           if(role!=="host"||room.hostWs!==ws||room.mode!=="odd_one_out"||room.state!=="reveal"||room.oddReviewFinalized||room.questionIndex!==msg.payload.questionIndex){error("Bonus review is unavailable");return;}
@@ -426,7 +615,8 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
           if(room.buzzedPlayerId){error("Another player has the buzzer");return;}
           room.buzzedPlayerId=playerId;broadcast(room,WS_EVENTS.BUZZ_STATE,{playerId});
           const questionIndex=room.questionIndex,activeRoom=room;
-          room.buzzTimer=setTimeout(()=>{if(activeRoom.state==="playing"&&activeRoom.questionIndex===questionIndex){activeRoom.buzzedPlayerId=null;broadcast(activeRoom,WS_EVENTS.BUZZ_STATE,{playerId:null});}},5000);
+          room.buzzDeadlineTs = now + 5000;
+          room.buzzTimer=setTimeout(()=>{void activeRoom.run(() => {if(activeRoom.state==="playing"&&activeRoom.questionIndex===questionIndex){activeRoom.buzzedPlayerId=null;broadcast(activeRoom,WS_EVENTS.BUZZ_STATE,{playerId:null});}});},5000);
           room.buzzTimer.unref?.();return;
         }
         if (msg.type === WS_EVENTS.START_GAME) {
@@ -509,16 +699,55 @@ export function attachGameSocket(server: Server, storage: IStorage, options: { q
         console.error("Game socket handler failed", err instanceof Error ? err.name : "UnknownError");
         error(err instanceof Error && err.message.startsWith("Wager") ? err.message : "Game request failed");
       }
-    });
+      };
+      const handshake = [WS_EVENTS.CREATE_ROOM, WS_EVENTS.JOIN_ROOM, WS_EVENTS.REJOIN_ROOM, WS_EVENTS.RESUME_HOST].includes(msg.type as any);
+      if (msg.type === WS_EVENTS.CREATE_ROOM) { await handle(); return; }
+      const target = room ?? ("roomCode" in msg.payload && msg.payload.roomCode ? await recover(msg.payload.roomCode) : undefined);
+      if (!target) { await handle(); return; }
+      await transact(target, async () => {
+        if (target.state === "playing" && Date.now() >= target.deadlineTs) reveal(target);
+        if (!handshake) {
+          const owns = role === "host" ? target.hostWs === ws : !!playerId && target.players.get(playerId)?.ws === ws;
+          if (!owns) { error("Connection replaced or not authorized"); return; }
+          const key = `${role === "host" ? "host" : playerId}:${msg.requestId}`;
+          const fingerprint = JSON.stringify(msg), previous = msg.requestId ? target.requests.get(key) : undefined;
+          if (previous) {
+            if (previous !== fingerprint) { error("Request ID conflict"); return; }
+            send(ws, WS_EVENTS.ACTION_ACK, { requestId: msg.requestId!, accepted: true });
+            snapshot(target, ws, role === "player" ? target.players.get(playerId!) : undefined);
+            return;
+          }
+          if ((msg.matchId !== undefined && msg.matchId !== target.matchId) || (msg.revision !== undefined && msg.revision !== target.revision)) {
+            error("Your screen is out of date. Synchronizing the current round.");
+            snapshot(target, ws, role === "player" ? target.players.get(playerId!) : undefined); return;
+          }
+          await handle();
+          if (msg.requestId && !rejected) {
+            target.requests.set(key, fingerprint);
+            const own = [...target.requests.keys()].filter(id => id.startsWith(`${role === "host" ? "host" : playerId}:`));
+            if (own.length > 256) target.requests.delete(own[0]);
+            if (target.requests.size > 4096) target.requests.delete(target.requests.keys().next().value!);
+            send(ws, WS_EVENTS.ACTION_ACK, { requestId: msg.requestId, accepted: true });
+          }
+        } else await handle();
+      }, ws);
+    }).catch(() => {
+      if (room) failRecovery(room, ws);
+      else { send(ws, WS_EVENTS.ERROR, { message: "Room recovery is temporarily unavailable. Please reconnect." }); ws.close(1013, "Recovery storage unavailable"); }
+    }); });
     ws.on("close", () => {
-      if (!room) return;
-      if (role === "host" && room.hostWs === ws) room.hostConnected = false;
+      room?.members.delete(ws);
+      if (!room || closing) return;
+      const disconnectedRoom = room;
+      void disconnectedRoom.run(() => {
+      if (role === "host" && disconnectedRoom.hostWs === ws) disconnectedRoom.hostConnected = false;
       if (role === "player" && playerId) {
-        const player = room.players.get(playerId);
-        if (player?.ws === ws) { player.connected = false; lobbyUpdate(room); sendSubmissionProgress(room); }
+        const player = disconnectedRoom.players.get(playerId);
+        if (player?.ws === ws) { player.connected = false; lobbyUpdate(disconnectedRoom); sendSubmissionProgress(disconnectedRoom); }
       }
+      });
     });
   });
-  wss.on("close",()=>{server.off("upgrade",upgrade);clearInterval(cleanup);for(const room of rooms.values()){clearTimeout(room.timer);clearTimeout(room.buzzTimer);}rooms.clear();});
+  wss.on("close",()=>{closing=true;server.off("upgrade",upgrade);clearInterval(cleanup);clearInterval(heartbeat);for(const room of rooms.values()){clearTimeout(room.timer);clearTimeout(room.buzzTimer);}rooms.clear();});
   return wss;
 }
