@@ -50,7 +50,7 @@ export function restoreParty(code, state, options, savedAt) {
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
   // Never discard an active open-pack game or reset its score on recovery.
-  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
+  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "no-say", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
     && (!party.pack || typeof party.pack !== "object" || Array.isArray(party.pack)))
     throw new Error("Unsupported room recovery state.");
   if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
@@ -64,9 +64,21 @@ export function restoreParty(code, state, options, savedAt) {
   if (party.mode === "tap" && party.pack?.kind === "tap" &&
       (!Array.isArray(party.pack.racers) || party.pack.racers.length !== party.players.size))
     throw new Error("Unsupported Tap Dash recovery state.");
-  // Grand Prix uses 'pack'; the original Turbo/Wave arcade racers use a
-  // separate Map-backed 'race'. Reject incomplete active snapshots rather
-  // than resurrecting a live race at the starting line.
+  if (party.mode === "no-say" && ["playing","reveal"].includes(party.phase)) {
+    const s=party.pack;
+    if (!s || s.kind!=="forbidden" || !Array.isArray(party.roster) ||
+        !party.roster.includes(s.giver) || !party.roster.includes(s.referee) ||
+        s.giver===s.referee ||
+        !Number.isSafeInteger(s.cursor) || s.cursor<0 || s.cursor>5 ||
+        !Array.isArray(s.history) || s.history.length>5 ||
+        !Number.isSafeInteger(s.finishedCards) || s.finishedCards!==s.history.length)
+      throw new Error("Unsupported Forbidden Word Frenzy recovery state.");
+  }
+  const hostWasConnected = party.hostConnected;
+  party.hostConnected = false;
+  for (const player of party.players.values()) player.connected = false;
+  // Original Turbo Circuit / Wave Sprint live Map-backed simulation cannot
+  // be resumed with a synthetic empty race after a checkpoint recovery.
   if (["turbo", "wave"].includes(party.mode) &&
       ["racing", "reveal", "finished"].includes(party.phase) &&
       (!party.race || party.race.mode !== party.mode ||
@@ -75,9 +87,6 @@ export function restoreParty(code, state, options, savedAt) {
         !Number.isFinite(party.race.updatedAt) ||
         !Number.isFinite(party.race.nextTick)))
     throw new Error("Unsupported arcade racing recovery state.");
-  const hostWasConnected = party.hostConnected;
-  party.hostConnected = false;
-  for (const player of party.players.values()) player.connected = false;
   // A healthy host may have been idle since the last checkpoint. That write time
   // is not its disconnect time. Preserve an existing absence, or start recovery grace now.
   if (!party.deadline && party.phase !== "finished" && party.hostWaitAt === null)

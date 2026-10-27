@@ -46,7 +46,7 @@ test("Tap Dash: existing QR invite controls a native shared-screen race and serv
 test("upstream catalog links only explicitly mapped original Trivia Lobby alternatives", async ({ page }) => {
   await page.goto("/open-party-lab.html");
   await expect(page.locator(".opl-source")).toHaveCount(21);
-  await expect(page.locator(".opl-native")).toHaveCount(6);
+  await expect(page.locator(".opl-native")).toHaveCount(8);
   await expect(page.locator(".opl-game").filter({ hasText: "Tap Race" }).locator(".opl-native"))
     .toHaveAttribute("href", "./?game=tap");
   await expect(page.locator(".opl-game").filter({ hasText: "Drift Racer" }).locator(".opl-native"))

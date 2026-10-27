@@ -2,7 +2,7 @@ import { projectBonus } from "./bonus-games.js";
 import { projectSocial } from "./social-games.js";
 import { projectPack } from "./open-pack/index.js";
 import { projectChampionship } from "./championship.js";
-import { projectRace } from "./racing.js";
+import { projectRace as projectArcadeRace } from "./racing.js";
 
 // Explicit public fields only: never serialize the complete match or a session record.
 export function projectParty(party, actor) {
@@ -109,9 +109,9 @@ export function projectParty(party, actor) {
   if(social)v.social=social;
   const bonus = projectBonus(party,actor);
   if(bonus)v.bonus=bonus;
+  const race = projectArcadeRace(party, actor);
+  if (race) v.race = race;
   const pack = projectPack(party, actor);
   if(pack)v.pack=pack;
-  const race = projectRace(party, actor);
-  if(race)v.race=race;
   return v;
 }

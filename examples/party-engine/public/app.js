@@ -8,6 +8,7 @@ import { mountInvitationEntry } from "./invitation-entry.js";
 import { renderPack, drawingBusy } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
 import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
+import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
 import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
 
 let invitationCode, invitationPhase;
@@ -72,6 +73,7 @@ function connect(hello) {
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
   let resumed = false;
+  let seenState = false;
   connection = createRecoveringConnection(socketUrl.href, {
     onOpen(socket) {
       resumed = false;
@@ -86,7 +88,7 @@ function connect(hello) {
     },
     onStatus(next) {
       roomReady = next === "connected";
-      if (!roomReady) { releaseRaceControls(); disposeTap(); }
+      if (!roomReady) { releaseRaceControls(); disposeTap(); disposeTrails(); }
       if (!roomReady && state) render();
     },
     onMessage(e, socket) {
@@ -94,6 +96,7 @@ function connect(hello) {
       try { m = JSON.parse(e.data); } catch { return; }
       if (m.type === "race_frame") { receiveRaceFrame(m); return; }
       if (m.type === "tap_frame") { receiveTapFrame(m); return; }
+      if (m.type === "trails_frame") { receiveTrailsFrame(m); return; }
       if (m.type === "credential") {
         credential = { code: m.code, actor: m.actor, token: m.token };
         resumeSavedParty = true;
@@ -105,8 +108,14 @@ function connect(hello) {
       if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
         const resuming = !roomReady;
+        const initialState = !seenState;
+        seenState = true;
         state = m.state; offset = state.serverNow - Date.now();
-        connection.ready(); status(resumed ? "Reconnected." : "Party ready."); render();
+        connection.ready();
+        // The first successful join (or a reconnect) gets a readiness message.
+        // Later state broadcasts must not erase action ACKs or actionable errors.
+        if (initialState || resuming) status(resumed ? "Reconnected." : "Party ready.");
+        render();
         if (pending) {
           if (resuming) socket.send(JSON.stringify(pending));
           clearTimeout(retryTimer);
@@ -129,7 +138,7 @@ function connect(hello) {
     },
     onClose(event, retrying) {
       clearTimeout(retryTimer);
-      releaseRaceControls(); disposeTap();
+      releaseRaceControls(); disposeTap(); disposeTrails();
       status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
       if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
       if (state) render();
@@ -223,8 +232,10 @@ function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
   if (updateRaceState(state)) return;
   if (updateTapState(state)) return;
+  if (updateTrailsState(state)) return;
   disposeRace();
   disposeTap();
+  disposeTrails();
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
@@ -367,6 +378,7 @@ function render() {
   if (state.race) renderArcadeRace(state,{element,button,action,actor:()=>credential?.actor});
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });

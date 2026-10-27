@@ -7,8 +7,8 @@ test("the optional Open Party Lab library links native alternatives without clai
   await expect(page).toHaveURL(/open-party-lab\.html$/);
   await expect(page.getByRole("heading", { name: /Open Party Lab/i, level: 1 })).toBeVisible();
   await expect(page.locator(".opl-game")).toHaveCount(21);
-  await expect(page.getByText("Six entries link to", { exact: false })).toBeVisible();
-  await expect(page.locator(".opl-native")).toHaveCount(6);
+  await expect(page.getByText("Eight entries link to", { exact: false })).toBeVisible();
+  await expect(page.locator(".opl-native")).toHaveCount(8);
   await expect(page.locator(".opl-game").filter({hasText: "Drift Racer"})).toContainText("1–4 upstream players");
   await expect(page.locator(".opl-game").filter({hasText: "Imposter"})).toContainText("3–20 upstream players");
   await expect(page.locator(".opl-game button")).toHaveCount(0);

@@ -7,9 +7,10 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
-import { raceModes, openRace, tickRace, acceptRace } from "./racing.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
+import { advanceTrails, trailsReconnected } from "./open-pack/trails.js";
+import { raceModes, openRace as openArcadeRace, tickRace as tickArcadeRace, acceptRace as acceptArcadeRace } from "./racing.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -87,7 +88,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
-    if (connected && id !== "host") raceReconnected(this, id);
+    if (id !== "host") { if (connected) raceReconnected(this,id); trailsReconnected(this,id); }
     this.updateHostWait();
   }
   updateHostWait() {
@@ -109,8 +110,9 @@ export class Party {
     this.updateHostWait();
   }
   tick() {
-    if (this.phase === "racing") tickRace(this);
+    if (this.phase === "racing") tickArcadeRace(this);
     advanceRace(this);
+    advanceTrails(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
       if (this.phase === "playing" && packIds.includes(this.mode)) tickPack(this);
       else if (this.phase === "countdown") this.open();
@@ -127,7 +129,7 @@ export class Party {
     }
   }
   open() {
-    if (raceModes.includes(this.mode)) { openRace(this); return; }
+    if (raceModes.includes(this.mode)) { openArcadeRace(this); return; }
     if (packIds.includes(this.mode)) { openPack(this); return; }
     if (this.mode === "charades") {
       this.turn = makeTurn(this.roster[this.index], this.category);
@@ -239,7 +241,7 @@ export class Party {
       }));
       this.enter("countdown", this.countdownMs);
     } else if (msg.type === "play") {
-      if (raceModes.includes(this.mode)) acceptRace(this, actor, msg.value);
+      if (raceModes.includes(this.mode)) acceptArcadeRace(this, actor, msg.value);
       else acceptPack(this, actor, msg.value);
     } else if (msg.type === "respond") {
       if (bonusModes.includes(this.mode)) acceptBonus(this,actor,msg);

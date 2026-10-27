@@ -22,35 +22,24 @@ Approved match flow implemented as a separate runnable example. It does not modi
 | `test/server.test.js`               | Real HTTP and WebSocket multi-client integration                                               |
 | `package.json`, `package-lock.json` | Standalone dependencies and startup scripts                                                    |
 
-## Local startup (Step 6)
+## Run a full family game night on your own Wi-Fi
 
-Install Node.js 22 or newer and Git first. Use a new directory to avoid altering an existing checkout:
+**Use the current `main` branch, not the retired guest-party feature branch.**
+The maintained, beginner-friendly [Windows laptop and Raspberry Pi LAN setup guide](../../docs/LOCAL_WIFI_GAME_NIGHT.md) explains the QR join link, private LAN address, firewall, reconnects, shutdown, updates and physical 20-phone test checklist.
+
+Quick start (Node.js 22+ and Git required):
 
 ```sh
-git clone --branch feature/guest-party-engine https://github.com/jimedusot-beep/Trivia-Lobby.git Trivia-Lobby-party-demo
-cd Trivia-Lobby-party-demo/examples/party-engine
+git clone --branch main https://github.com/jimedusot-beep/Trivia-Lobby.git
+cd Trivia-Lobby/examples/party-engine
 npm ci
 npm test
 npm start
 ```
 
-Open **http://localhost:3001** and click **Create host screen**. Open three separate player tabs at the same address, or use three phones with the LAN command below. Enter the displayed code and a different nickname in each. The host display does not count as a player. All players need to reach the same running server.
+By default the server listens on loopback (`http://localhost:3001`). To host phones on the same home Wi-Fi, use `HOST=0.0.0.0 PORT=3001 npm start` on Linux/Raspberry Pi, or PowerShell environment variables on Windows as described in the guide. Open the host using its **LAN IP address** (for example `http://192.168.1.27:3001`) before showing the QR code so phones do not receive a non-working `localhost` link.
 
-To play on phones on your own Wi-Fi, stop the server with Ctrl+C and run:
-
-```sh
-HOST=0.0.0.0 PORT=3001 npm start
-```
-
-Open `http://YOUR-COMPUTER-LAN-IP:3001` on the host and phones; replace the IP with your computer's actual LAN address. Permit port 3001 through your local firewall if needed. Use the join link shown on the host screen. Windows PowerShell: set `$env:HOST="0.0.0.0"` and `$env:PORT="3001"` before `npm start`.
-
-For a VPS, the same clone/install/start commands work with Node 22+. The default listens on loopback. With an existing HTTPS reverse proxy and a real domain, start the backend with:
-
-```sh
-PUBLIC_ORIGIN=https://party.example.com HOST=127.0.0.1 PORT=3001 npm start
-```
-
-Replace the example domain. Forward that HTTPS origin to port 3001, including WebSocket upgrades for `/socket`; retain the original Host header. `PUBLIC_ORIGIN` must exactly match the browser origin, without a trailing slash. Keep it running with your VPS process manager. This is a startup example, not an automatic deployment or domain/TLS provisioning script.
+Guest rooms and the room championship are in-memory. A server restart loses the room; Render deployment is independent of this LAN server.
 
 ## Six more family party modes (stacked PR)
 
