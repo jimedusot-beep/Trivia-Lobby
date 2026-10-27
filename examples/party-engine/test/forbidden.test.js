@@ -83,4 +83,5 @@ test("turn ends on 45 second deadline, rotates roles, and finishes after every p
   assert.equal(p.phase,"finished");
   assert.equal(p.index,3);
   assert.equal(p.players.size,3);
+  assert.equal(p.view("host").championship.gamesPlayed,1,"Completed native game contributes to Game Night Championship");
 });
