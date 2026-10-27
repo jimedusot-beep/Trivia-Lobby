@@ -87,7 +87,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
-    if (connected && id !== "host") { raceReconnected(this, id); trailsReconnected(this,id); }
+    if (id !== "host") { if (connected) raceReconnected(this,id); trailsReconnected(this,id); }
     this.updateHostWait();
   }
   updateHostWait() {
