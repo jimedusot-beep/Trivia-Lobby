@@ -213,3 +213,21 @@ test("an elapsed-round guest replacement failure disconnects the displaced phone
   assert.equal(state.phase, "reveal");
   assert(state.players.every((player: any) => player.score === 0));
 });
+
+test("countdown recovery retains the selected pack rules instead of defaulting", () => {
+  for (const [mode, settings] of [["colors", { bots: 2, stacking: true, turnSeconds: 60 }], ["table", { preset: "whist" }]] as const) {
+    let now = Date.now();
+    const party = new Party("ABC234", { clock: () => now, countdownMs: 3000 });
+    for (let i = 0; i < 4; i++) party.join(`Settings ${i}`);
+    party.handle("host", { v: 1, type: "start", requestId: `settings-${mode}`, matchId: null, revision: 0, value: mode, settings });
+    assert.equal(party.phase, "countdown");
+    const restored = restoreParty("ABC234", JSON.parse(JSON.stringify(snapshotParty(party))), { clock: () => now }, now);
+    assert.deepEqual(restored.packSettings, settings);
+    now += 3001; restored.tick();
+    if (mode === "colors") {
+      assert.equal(restored.pack.stacking, true);
+      assert.equal(restored.pack.turnMs, 60000);
+      assert.equal(restored.pack.seats.length, 6);
+    } else assert.equal(restored.pack.preset, "whist");
+  }
+});
