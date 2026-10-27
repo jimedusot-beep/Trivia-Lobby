@@ -24,12 +24,13 @@ export function acceptTapInput(p, actor, message) {
       message.v !== 1 || message.type !== "tap_input" ||
       !Number.isSafeInteger(message.seq) || message.seq < 0 || message.seq > 2147483647 ||
       !Number.isSafeInteger(message.heat)) fail("Invalid tap controls.");
-  if (p.mode !== "tap" || p.phase !== "playing" ||
+  if (p.mode !== "tap" || !["playing", "reveal"].includes(p.phase) ||
       p.matchId !== message.matchId || message.heat !== p.index ||
-      p.clock() >= p.deadline) fail("This tap round has expired.");
+      (p.phase === "playing" && p.clock() >= p.deadline)) fail("This tap round has expired.");
   const racer = p.pack?.racers.find(entry => entry.id === actor);
   if (actor === "host" || !racer || !p.players.get(actor)?.connected)
     fail("Only a connected player may tap.");
+  if (p.phase === "reveal") return false;
   if (message.seq <= racer.seq) return false;
   racer.seq = message.seq;
   const now = p.clock();

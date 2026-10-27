@@ -174,7 +174,7 @@ export function attachPartySocket(server, {
     ws.on("message", (raw) => {
       // Fast controls are transient input. Authoritative positions, accepted
       // actions and championship points are committed on a bounded room tick.
-      if (record && record.party.phase === "playing" && ["race", "tap", "trails"].includes(record.party.mode)) {
+      if (record && ["playing", "reveal"].includes(record.party.phase) && ["race", "tap", "trails"].includes(record.party.mode)) {
         let frame;
         try { frame = JSON.parse(raw.toString()); } catch { frame = null; }
         const isRace = record.party.mode === "race" && frame?.type === "race_input";

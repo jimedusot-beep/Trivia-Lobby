@@ -61,7 +61,9 @@ test("tap input rejects forgery, old heats, unrealistic volume, host actions and
   step(TAP_DURATION_MS);
   party.tick();
   assert.equal(party.phase, "reveal");
-  assert.throws(() => tap(actors[0], 4), /expired/);
+  const results = JSON.stringify(party.view("host"));
+  assert.equal(tap(actors[0], 4), false, "valid in-flight taps are harmless during reveal");
+  assert.equal(JSON.stringify(party.view("host")), results);
 });
 
 test("zero taps receive zero points; tied positive counts share place and championship awards", () => {
