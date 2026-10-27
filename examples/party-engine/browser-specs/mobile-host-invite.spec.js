@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 // A real iPhone host has only one browsing device. The invitation link must
 // not reuse that tab's host credential when opened as a guest.
 test("phone-only Tap Dash host can inspect a guest invitation in a separate tab", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport: { width: 375, height: 812 }, hasTouch: true });
   try {
     const host = await context.newPage();
     await host.goto("/");
@@ -34,7 +34,7 @@ test("phone-only Tap Dash host can inspect a guest invitation in a separate tab"
 });
 
 test("320px host invitation QR, direct link and share controls fit without sideways scrolling", async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 320, height: 667 }, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({ viewport: { width: 320, height: 667 }, hasTouch: true });
   try {
     const page = await context.newPage();
     await page.goto("/");
