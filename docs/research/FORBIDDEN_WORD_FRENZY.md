@@ -17,7 +17,7 @@
 
 ## Limitations
 
-This is a family-trust game. The referee listens and judges whether a word was spoken; there is no automated audio analysis or semantic speech matching. Room capacity and UI support are not proof of a measured 20-physical-device test. The 16 custom prompts rotate as needed and are intentionally a small starter pack for validation. Do not advertise it as a direct port of Buzzwort or the upstream game's exact rules.
+This is a family-trust game. The referee listens and judges whether a word was spoken; there is no automated audio analysis or semantic speech matching. Room capacity and UI support are not proof of a measured 20-physical-device test. The game has 160 original phrase-and-forbidden-word cards (16 curated and 144 composed), providing 100 unique cards across 20 players with five cards apiece. Do not advertise it as a direct port of Buzzwort or the upstream game's exact rules.
 
 ## Verification gates
 
