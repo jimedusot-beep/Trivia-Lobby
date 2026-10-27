@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Party } from "../engine.js";
 import { acceptForbidden, FORBIDDEN_DURATION_MS, FORBIDDEN_CARDS_PER_TURN, FORBIDDEN_UNIQUE_CARD_COUNT } from "../open-pack/forbidden.js";
+import { snapshotParty, restoreParty } from "../party-checkpoint.js";
 
 function start(size=3) {
   let now=1000, request=0;
@@ -85,4 +86,32 @@ test("turn ends on 45 second deadline, rotates roles, and finishes after every p
   assert.equal(p.index,3);
   assert.equal(p.players.size,3);
   assert.equal(p.view("host").championship.gamesPlayed,1,"Completed native game contributes to Game Night Championship");
+});
+
+test("checkpoint restoration keeps the same forbidden clue private and resumes the authenticated referee",()=>{
+  const {p,ids}=start(20);
+  const options={clock:p.clock,countdownMs:1};
+  const before=p.view(ids[0]).pack.card.word;
+  const snapshot=JSON.parse(JSON.stringify(snapshotParty(p)));
+  const restored=restoreParty(p.code,snapshot,options,p.clock());
+  assert.equal(restored.phase,"playing");
+  assert.equal(restored.pack.kind,"forbidden");
+  assert.equal(restored.roster.length,20);
+  assert.equal(restored.players.get(ids[1]).connected,false);
+  assert.equal(restored.view(ids[0]).pack.card.word,before);
+  assert.equal(restored.view("host").pack.card,undefined);
+  assert.equal(restored.view(ids[2]).pack.card,undefined);
+  restored.connected(ids[1],true);
+  acceptForbidden(restored,ids[1],{action:"correct"});
+  assert.equal(restored.players.get(ids[0]).score,20);
+  assert.equal(restored.pack.cursor,1);
+  const again=restoreParty(p.code,JSON.parse(JSON.stringify(snapshotParty(restored))),options,p.clock());
+  assert.equal(again.pack.cursor,1);
+  assert.equal(again.players.get(ids[0]).score,20);
+  const forged=JSON.parse(JSON.stringify(snapshot));
+  forged.pack.cursor=99;
+  assert.throws(()=>restoreParty(p.code,forged,options,p.clock()),/Unsupported Forbidden Word/);
+  const missing=JSON.parse(JSON.stringify(snapshot));
+  delete missing.pack;
+  assert.throws(()=>restoreParty(p.code,missing,options,p.clock()),/Unsupported room recovery/);
 });
