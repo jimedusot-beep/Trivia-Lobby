@@ -327,7 +327,7 @@ export function attachPartySocket(server, {
       record.raceBusy = true;
       void transact(record, () => {
         const party = record.party;
-        if (party.mode !== "race" || party.phase !== "playing") return;
+        if (!["race", "tap"].includes(party.mode) || party.phase !== "playing") return;
         const revision = party.revision;
         party.tick();
         if (party.revision !== revision) { publish(record); return; }

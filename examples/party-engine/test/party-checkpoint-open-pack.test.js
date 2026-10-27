@@ -135,6 +135,9 @@ test("Game Night Championship standings and duplicate-award guards survive a res
   assert.equal(completeChampionshipGame(restored), false, "already rewarded match remains idempotent");
   assert.equal(restored.championship.entries.get(id).points, first.points);
   action(restored, "host", "lobby");
+  // A restarted room has disconnected sockets until credentials resume.
+  restored.connected("host", true);
+  for (const playerId of g.players) restored.connected(playerId, true);
   action(restored, "host", "start", "quiz");
   assert.equal(restored.championship.entries.get(id).points, first.points, "points carry into next game");
   const after = restoreParty(restored.code, JSON.parse(JSON.stringify(snapshotParty(restored))), g.options, 14000);
