@@ -10,7 +10,7 @@ for(const mode of ["turbo","wave"]){
    }
    const host=await page(1200);
    try{
-     await host.locator('[data-game="'+mode+'"] button').click();
+     await host.locator('[data-game="'+mode+'"] .pick-game-button').click();
      await expect(host.locator("#heading")).toContainText("lobby");
      const invite=await host.locator("#invite-link").inputValue();
      const racers=[];
@@ -36,15 +36,15 @@ for(const mode of ["turbo","wave"]){
      await p.waitForTimeout(220);
      await p.getByRole("button",{name:"⚡ BOOST!"}).click();
      await expect(p.getByRole("button",{name:/Boost recharging/})).toBeDisabled();
-     await expect(host.locator(".race-host-legend")).toContainText("Racer 0");
-     await expect(host.locator(".race-course circle")).toHaveCount(3);
+     await expect(host.locator(".arcade-race-host-legend")).toContainText("Racer 0");
+     await expect(host.locator(".arcade-race-course circle")).toHaveCount(3);
      expect(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
      host.once("dialog",d=>d.accept());
      await host.getByRole("button",{name:"End race and publish results"}).click();
      await expect(host.locator("#heading")).toContainText("reveal");
-     await expect(p.locator(".race-results p")).toHaveCount(3);
+     await expect(p.locator(".arcade-race-results p")).toHaveCount(3);
      await p.reload();
-     await expect(p.locator(".race-results p")).toHaveCount(3);
+     await expect(p.locator(".arcade-race-results p")).toHaveCount(3);
      await host.getByRole("button",{name:"Next",exact:true}).click();
      await expect(host.locator("#heading")).toContainText("finished");
    }finally{await Promise.all(contexts.map(c=>c.close()));}

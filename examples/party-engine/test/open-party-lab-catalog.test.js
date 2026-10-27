@@ -38,7 +38,9 @@ test("catalog keeps the upstream published player capacities, never advertises a
 test("upstream catalog IDs do not silently register unimplemented Trivia Lobby modes", () => {
   const local = new Set(guestGames.map((game) => game.id));
   for (const game of openPartyLabGames) assert(!local.has(game.id));
-  assert.equal(guestGames.length, 26, "Grand Prix and Tap Dash are original native modes alongside the original 24");
+  assert.equal(guestGames.length, 28, "Grand Prix, Tap Dash, Turbo Circuit and Wave Sprint are distinct original native modes alongside the original 24");
   assert(local.has("tap"), "The new original 20-player Tap Dash must be registered");
   assert(local.has("race"), "The implemented Grand Prix remains separate from upstream research IDs");
+  assert(local.has("turbo"), "Original Turbo Circuit is a distinct playable native mode");
+  assert(local.has("wave"), "Original Wave Sprint is a distinct playable native mode");
 });
