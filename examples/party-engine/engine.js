@@ -9,6 +9,7 @@ import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack,
 import { defaultShow } from "./open-pack/feud.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
+import { advanceTrails, trailsReconnected } from "./open-pack/trails.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -86,7 +87,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
-    if (connected && id !== "host") raceReconnected(this, id);
+    if (connected && id !== "host") { raceReconnected(this, id); trailsReconnected(this,id); }
     this.updateHostWait();
   }
   updateHostWait() {
@@ -109,6 +110,7 @@ export class Party {
   }
   tick() {
     advanceRace(this);
+    advanceTrails(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
       if (this.phase === "playing" && packIds.includes(this.mode)) tickPack(this);
       else if (this.phase === "countdown") this.open();
