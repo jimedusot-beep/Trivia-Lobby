@@ -2,17 +2,20 @@ name: Guest party engine
 on:
   pull_request:
     branches: [main]
-    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
   push:
     branches: [main, feature/guest-party-engine]
-    paths: ["examples/party-engine/**", ".github/workflows/party-engine.yml"]
 concurrency:
   group: party-engine-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   engine-and-browsers:
+    name: guest-browsers (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     env:
       PARTY_CROSS_BROWSER: '1'
     defaults:
@@ -32,11 +35,20 @@ jobs:
         run: |
           printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
-          npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:browser
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run test:browser -- --project=${{ matrix.browser }}
+        env:
+          RACE_SCREENSHOT_DIR: test-results/grand-prix-preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: grand-prix-preview-${{ matrix.browser }}
+          path: examples/party-engine/test-results/grand-prix-preview/
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: party-engine-browser-failure
+          name: party-engine-browser-failure-${{ matrix.browser }}
           path: examples/party-engine/test-results/
           retention-days: 7

@@ -36,6 +36,8 @@ import {
   projectBackgammon,
 } from "./tabletop.js";
 import { fail, integer, requireFields, hostOnly } from "./shared.js";
+import { openRace, finishRace, nextRace, projectRace } from "./race.js";
+import { openTap, finishTap, nextTap, projectTap } from "./tap.js";
 export { packIds, packMin };
 export function validatePackSettings(mode, settings = {}) {
   requireFields(
@@ -70,7 +72,9 @@ export function validatePackSettings(mode, settings = {}) {
   return { ...settings };
 }
 export function openPack(p) {
-  if (p.mode === "feud") openFeud(p);
+  if (p.mode === "tap") openTap(p);
+  else if (p.mode === "race") openRace(p);
+  else if (p.mode === "feud") openFeud(p);
   else if (p.mode === "draw") openDrawing(p);
   else if (p.mode === "colors") openColors(p);
   else if (boardKinds.includes(p.mode)) openBoards(p);
@@ -87,7 +91,9 @@ export function acceptPack(p, actor, v) {
     p.enter("finished");
     return;
   }
-  if (p.mode === "feud") acceptFeud(p, actor, v);
+  if (p.mode === "tap") fail("Use the Tap Dash phone controller.");
+  else if (p.mode === "race") fail("Use the racing controller to drive.");
+  else if (p.mode === "feud") acceptFeud(p, actor, v);
   else if (p.mode === "draw") acceptDrawing(p, actor, v);
   else if (p.mode === "colors") acceptColors(p, actor, v);
   else if (boardKinds.includes(p.mode)) acceptBoard(p, actor, v);
@@ -95,14 +101,18 @@ export function acceptPack(p, actor, v) {
   else acceptBackgammon(p, actor, v);
 }
 export function tickPack(p) {
-  if (p.mode === "feud") tickFeud(p);
+  if (p.mode === "tap") finishTap(p);
+  else if (p.mode === "race") finishRace(p);
+  else if (p.mode === "feud") tickFeud(p);
   else if (p.mode === "draw") tickDrawing(p);
   else if (p.mode === "colors") tickColors(p);
   else if (boardKinds.includes(p.mode)) tickBoards(p);
   else p.enter("reveal");
 }
 export function nextPack(p) {
-  if (p.mode === "feud") nextFeud(p);
+  if (p.mode === "tap") nextTap(p);
+  else if (p.mode === "race") nextRace(p);
+  else if (p.mode === "feud") nextFeud(p);
   else if (p.mode === "draw") nextDrawing(p);
   else p.enter("finished");
 }
@@ -113,6 +123,8 @@ export function projectPack(p, actor) {
     ["lobby", "countdown"].includes(p.phase)
   )
     return null;
+  if (p.mode === "tap") return projectTap(p, actor);
+  if (p.mode === "race") return projectRace(p, actor);
   if (p.mode === "feud") return projectFeud(p, actor);
   if (p.mode === "draw") return projectDrawing(p, actor);
   if (p.mode === "colors") return projectColors(p, actor);

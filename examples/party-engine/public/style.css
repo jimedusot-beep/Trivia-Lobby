@@ -125,3 +125,52 @@ body[data-party-phase="countdown"] #content { font: 600 2rem var(--font-display)
 .timeline-list label { font-weight:900; }
 .timeline-list select { max-width:100%; }
 @media(min-width:700px) {.family-bingo-square {min-height:84px;}}
+
+/* Sakura Arcade guest home, large-screen game show and touch controller. */
+body.public-party { background-color:var(--sakura-cream); background-image:linear-gradient(180deg,#fff5e9a3 0%,#fff5e9e8 500px,#fff5e9 850px),url("/party/sakura-vista.svg"); background-size:100% 850px,auto 560px; background-repeat:no-repeat; background-position:top center; }
+.page-nav { border-color:var(--sakura-border); background:#fffaf6f5; backdrop-filter:blur(8px); box-shadow:0 5px 0 var(--sakura-plum); }
+.party-intro { position:relative; }
+.party-intro::before,.party-intro::after { content:"✿"; position:absolute; pointer-events:none; font-size:2.5rem; color:#ca75a5; opacity:.66; }
+.party-intro::before {left:5%;top:18%;}.party-intro::after {right:5%;bottom:4%;transform:rotate(25deg);}
+.party-intro h1 > span {color:var(--sakura-indigo);}
+.mode-preview > span { border-color:var(--sakura-plum); background:#ffd8e8; box-shadow:0 3px 0 #241c44; }
+.mode-preview > span:nth-child(2) { background:#c9e1ff; }.mode-preview > span:nth-child(3) { background:#ffdb88; }
+.entry-grid > article { background:#fffaf8ed; border-color:var(--sakura-border); box-shadow:0 6px 0 var(--sakura-plum); position:relative; overflow:hidden; }
+.entry-grid > article:first-child { background:linear-gradient(165deg,#fbe0ec,#fff2e8); }
+.entry-grid > article:nth-child(2) { background:linear-gradient(165deg,#e4edff,#fdf0e8); }
+.entry-grid > article::after { content:"✿"; position:absolute; bottom:-26px;right:15px; font-size:8rem; opacity:.075; pointer-events:none; }
+.entry-grid > article > * {position:relative;z-index:1;}
+#join button { background:var(--sakura-jade); border-color:var(--sakura-plum); color:var(--sakura-plum); }
+#join button:hover:enabled {background:#b2e5ce;}
+#code { border-radius:14px; background:#fffaf5; box-shadow:inset 0 3px 0 #eee0ef; letter-spacing:.16em; }
+#status { background:#e5f6ec; color:#1b5038; border-color:#9dcfb0; }
+#game.sakura-game-stage { background:linear-gradient(150deg,#fffaf6 75%,#ffe9f0); border-color:var(--sakura-border); box-shadow:0 8px 0 var(--sakura-plum),0 22px 40px #241c4422; }
+.game-topline { border-bottom:3px dashed #d9bad8; }
+#heading { color:var(--sakura-plum); }
+#roster > li { background:#fff8fc; border:2px solid #dfcbdf; border-radius:14px; box-shadow:inset 0 2px 0 #fff; }
+#roster > li:nth-child(4n+2) { background:#f0f5ff; }#roster > li:nth-child(4n+3) {background:#edf9f1;}#roster > li:nth-child(4n) {background:#fff5e0;}
+.player-token { background:var(--sakura-pink); border-color:var(--sakura-plum); border-radius:14px; }
+#roster > li:nth-child(3n+2) .player-token { background:var(--lobby-sky); }
+#roster > li:nth-child(3n) .player-token { background:var(--lobby-gold); }
+.answer-tile,#choices > button { border-color:var(--sakura-plum); box-shadow:0 4px 0 var(--sakura-plum); }
+.answer-tile:focus-visible,#choices > button:focus-visible {outline:4px solid #bf4c87;outline-offset:3px;}
+.answer-tile[data-answer-tone="0"],#choices > button:nth-child(1) { background:#e1ecff; }
+.answer-tile[data-answer-tone="1"],#choices > button:nth-child(2) { background:#ffe1eb; }
+.answer-tile[data-answer-tone="2"],#choices > button:nth-child(3) { background:#fff0cb; }
+.answer-tile[data-answer-tone="3"],#choices > button:nth-child(4) { background:#e1f5e8; }
+#timer { background:#ffdf99; border-color:var(--sakura-plum); }
+#timer[data-urgent="true"] {background:#faacc5;color:#241c44;}
+body[data-party-phase="finished"] #game { background:linear-gradient(135deg,#fff9e7,#fbe1ef 64%,#e5e0ff); }
+body[data-party-phase="finished"] #heading::after { content:" ✿"; color:#ba6396; }
+.lobby-confetti > i { box-shadow:0 1px 0 #ffffff90; }
+@media(max-width:600px){body.public-party {background-size:100% 790px,auto 420px;} .party-intro::before,.party-intro::after {display:none;} #game.sakura-game-stage{padding:18px;} #roster{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(prefers-reduced-motion:reduce){.party-intro::before,.party-intro::after {animation:none;}}
+
+/* Cross-game standings stay visible on TV and phone; public room data only. */
+.championship { margin: 1.3rem 0; padding: 1rem; border: 2px solid var(--lobby-ink); border-radius: 18px; background: #fff8e9; }
+.championship > h2 { margin: .2rem 0 .6rem; }
+.championship-standings { display: grid; gap: .45rem; padding: 0; margin: .7rem 0; list-style: none; }
+.championship-standings li { border: 1px solid #dbbdd2; border-radius: 12px; background: white; display: flex; flex-wrap: wrap; gap: .25rem 1rem; justify-content: space-between; padding: .55rem .75rem; }
+.championship-standings span { font-variant-numeric: tabular-nums; }
+.championship-recent { padding-left: 1.4rem; }
+@media (max-width: 425px) { .championship { padding: .65rem; } .championship-standings li { display: grid; } }

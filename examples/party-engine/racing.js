@@ -18,7 +18,7 @@ export function openRace(p){
   const now=p.clock();
   const racers=new Map(p.roster.map((id,i)=>[id,{
     id, lane:i%3, distance:0, speed:0, gas:false, boostUntil:0, boostReady:now,
-    finishedAt:null, obstacleIndex:0, hits:0, lastInput:-Infinity,
+    finishedAt:null, obstacleIndex:0, hits:0, lastInput:-1e12,
   }]));
   p.race={mode:p.mode, racers, startAt:now, updatedAt:now, nextTick:now+RACE_FRAME_MS,
     obstacles:tracks[p.mode].obstacles, finished:false, standings:[]};

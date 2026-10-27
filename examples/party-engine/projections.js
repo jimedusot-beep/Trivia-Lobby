@@ -1,6 +1,7 @@
 import { projectBonus } from "./bonus-games.js";
 import { projectSocial } from "./social-games.js";
 import { projectPack } from "./open-pack/index.js";
+import { projectChampionship } from "./championship.js";
 import { projectRace } from "./racing.js";
 
 // Explicit public fields only: never serialize the complete match or a session record.
@@ -22,6 +23,7 @@ export function projectParty(party, actor) {
     role: actor === "host" ? "host" : "player",
     quizTitle: party.quizTitle,
     quizLength: party.quiz.length,
+    championship: projectChampionship(party),
     players: [...party.players.values()]
       .map(({ id, name, connected, score, correct }) => ({
         id,

@@ -27,19 +27,19 @@ function sourcePdf() {
   return Buffer.from(pdf);
 }
 
-function inbox(ws) {
+function inbox(ws, party = false) {
   const queue = [], waiting = [];
   ws.on("message", raw => {
     const message = JSON.parse(raw.toString());
     const i = waiting.findIndex(entry => entry.type === message.type);
     if (i < 0) queue.push(message);
-    else waiting.splice(i, 1)[0].done(message.payload);
+    else waiting.splice(i, 1)[0].done(party ? message : message.payload);
   });
   return {
-    send(type, payload = {}) { ws.send(JSON.stringify({ v: 1, type, payload })); },
+    send(type, payload = {}) { ws.send(JSON.stringify(party ? { ...payload, type } : { v: 1, type, payload })); },
     async take(type) {
       const i = queue.findIndex(entry => entry.type === type);
-      if (i >= 0) return queue.splice(i, 1)[0].payload;
+      if (i >= 0) { const frame = queue.splice(i, 1)[0]; return party ? frame : frame.payload; }
       return new Promise((resolve, reject) => {
         const entry = { type, done: payload => { clearTimeout(timer); resolve(payload); } };
         const timer = setTimeout(() => {
@@ -113,6 +113,13 @@ test("built production runtime migrates a fresh database and retains private con
     await once(ws, "open");
     return messages;
   };
+  const openParty = async () => {
+    const ws = new WebSocket(base.replace("http:", "ws:") + "/party/socket", { headers: { Origin: base } });
+    sockets.add(ws); const messages = inbox(ws, true); await once(ws, "open"); return messages;
+  };
+  const partyState = async (client, predicate) => {
+    for (;;) { const { state } = await client.take("state"); if (predicate(state)) return state; }
+  };
 
   // Invalid configuration fails before a listener or migration is opened, without
   // printing database credentials. This is the same compiled startup entry point.
@@ -130,6 +137,7 @@ test("built production runtime migrates a fresh database and retains private con
   assert.match(output, /Applied 0006_persistent_learning_history.sql/);
   assert.match(output, /Applied 0007_live_game_reports.sql/);
   assert.match(output, /Applied 0008_self_paced_assignments.sql/);
+  assert.match(output, /Applied 0009_live_room_checkpoints.sql/);
   const home = await request("/");
   assert.equal(home.status, 200);
   const html = await home.text();
@@ -229,11 +237,12 @@ test("built production runtime migrates a fresh database and retains private con
   assert.equal((await hostResults.json()).attempts[0].score, 100);
   assert.equal((await request("/api/assignments/" + assignmentId)).status, 401, "Guest results remain owner-private");
 
-  const host = await open(freshCookie), player = await open();
+  let host = await open(freshCookie), player = await open();
   host.send("create_room", { deckId: deck.id });
-  const { roomCode } = await host.take("room_created");
+  const privateHostCredential = await host.take("room_created");
+  const { roomCode } = privateHostCredential;
   player.send("join_room", { roomCode, playerName: "Production player" });
-  await player.take("room_joined");
+  const privatePlayerCredential = await player.take("room_joined");
   host.send("start_game", { roomCode });
   const question = await player.take("question_start");
   assert.equal(question.prompt, "Two plus two?");
@@ -243,6 +252,33 @@ test("built production runtime migrates a fresh database and retains private con
   const result = await player.take("answer_result");
   assert.equal(result.isCorrect, true);
   assert.equal(result.awarded, 100);
+  const partyHost = await openParty(); partyHost.send("create"); const partyHostCredential = await partyHost.take("credential");
+  const partyPlayers = [], partyCredentials = [];
+  for (let i = 0; i < 3; i++) {
+    const guest = await openParty(); guest.send("join", { code: partyHostCredential.code, name: `Production party ${i}` });
+    partyCredentials.push(await guest.take("credential")); partyPlayers.push(guest);
+  }
+  const partyLobby = await partyState(partyHost, state => state.players.length === 3);
+  partyHost.send("start", { v: 1, requestId: randomUUID(), matchId: partyLobby.matchId, revision: partyLobby.revision, value: "quiz" });
+  const partyQuestion = await partyState(partyHost, state => state.phase === "question");
+  assert.equal(partyQuestion.question.correct, undefined);
+  for (const guest of partyPlayers) {
+    guest.send("answer", { v: 1, requestId: randomUUID(), matchId: partyQuestion.matchId, revision: partyQuestion.revision, value: 1 });
+    await guest.take("ack");
+  }
+  assert((await partyState(partyHost, state => state.phase === "reveal")).players.every(player => player.score === 100));
+  await stop(); await start();
+  host = await open(freshCookie); host.send("resume_host", privateHostCredential); await host.take("host_resumed");
+  assert.equal((await host.take("sync_snapshot")).state, "reveal");
+  player = await open(); player.send("rejoin_room", privatePlayerCredential); await player.take("room_joined");
+  const recoveredQuiz = await player.take("sync_snapshot");
+  assert.equal(recoveredQuiz.score, 100); assert.equal(recoveredQuiz.answerResult.awarded, 100);
+  const recoveredPartyHost = await openParty(); recoveredPartyHost.send("resume", partyHostCredential); await recoveredPartyHost.take("ready");
+  for (const credential of partyCredentials) {
+    const guest = await openParty(); guest.send("resume", credential); await guest.take("ready");
+    const state = await partyState(guest, state => state.phase === "reveal");
+    assert(state.players.every(player => player.score === 100)); assert.equal(state.matchId, partyQuestion.matchId);
+  }
   host.send("next_question", { roomCode });
   await host.take("leaderboard");
   host.send("next_question", { roomCode });

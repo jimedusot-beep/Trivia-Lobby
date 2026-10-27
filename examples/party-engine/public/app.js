@@ -1,11 +1,14 @@
 import { celebrate } from "./party-ui.js";
+import { createRecoveringConnection } from "./connection-recovery.js";
 import { guestInvitation, mountRoomInvitation } from "./room-invite.js";
 import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
-import { renderRace } from "./race-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
 import { renderPack, drawingBusy } from "./pack-ui.js";
+import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
+import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
+import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -13,6 +16,7 @@ let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
 let preferredSettings = {};
 
+let connection, roomReady = false;
 let ws,
   state,
   credential,
@@ -64,70 +68,74 @@ function save() {
 }
 function connect(hello) {
   clearTimeout(retryTimer);
+  connection?.stop();
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(socketUrl);
-  const socket = ws;
-  ws.onopen = () => {
-    if (socket !== ws) { socket.close(); return; }
-    status("Connected.");
-    if (credential && resumeSavedParty) ws.send(JSON.stringify({ type: "resume", ...credential }));
-    else if (hello) ws.send(JSON.stringify(hello));
-  };
-  ws.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.type === "credential") {
-      credential = { code: m.code, actor: m.actor, token: m.token };
-      resumeSavedParty = true;
-      if (m.actor !== "host")
-        history.replaceState(null, "", guestInvitation(location.href, m.code));
-      save();
-      saveHostChoice();
-      if (m.actor === "host" && gameById(launchGame)) history.replaceState(null, "", partyUrl.pathname);
-      status("Party ready.");
-    }
-    if (m.type === "ready") {
-      status("Reconnected.");
-      if (pending) ws.send(JSON.stringify(pending));
-    }
-    if (m.type === "state") {
-      state = m.state;
-      offset = state.serverNow - Date.now();
-      render();
-      if (pending) {
-        clearTimeout(retryTimer);
-        retryTimer = setTimeout(() => {
-          if (pending && ws.readyState === 1) ws.send(JSON.stringify(pending));
-        }, 2000);
+  let resumed = false;
+  connection = createRecoveringConnection(socketUrl.href, {
+    onOpen(socket) {
+      resumed = false;
+      ws = socket;
+      if (credential && resumeSavedParty) {
+        status("Restoring your party…");
+        socket.send(JSON.stringify({ type: "resume", ...credential }));
+      } else {
+        connection.ready(); status("Connected.");
+        if (hello) { socket.send(JSON.stringify(hello)); hello = null; }
       }
-    }
-    if (m.type === "ack") {
-      pending = null;
-      clearTimeout(retryTimer);
-      status("Submission accepted.");
-      render();
-    }
-    if (m.type === "error") {
-      pending = null;
-      clearTimeout(retryTimer);
-      status(m.message);
-      if (!state) entry.showError(m.message);
-      if (!state && credential && resumeSavedParty) {
-        credential = null;
-        resumeSavedParty = false;
-        save();
-        ws.close();
+    },
+    onStatus(next) {
+      roomReady = next === "connected";
+      if (!roomReady) { releaseRaceControls(); disposeTap(); }
+      if (!roomReady && state) render();
+    },
+    onMessage(e, socket) {
+      let m;
+      try { m = JSON.parse(e.data); } catch { return; }
+      if (m.type === "race_frame") { receiveRaceFrame(m); return; }
+      if (m.type === "tap_frame") { receiveTapFrame(m); return; }
+      if (m.type === "credential") {
+        credential = { code: m.code, actor: m.actor, token: m.token };
+        resumeSavedParty = true;
+        if (m.actor !== "host") history.replaceState(null, "", guestInvitation(location.href, m.code));
+        save(); saveHostChoice();
+        if (m.actor === "host" && gameById(launchGame)) history.replaceState(null, "", partyUrl.pathname);
+        status("Joining your party…");
       }
+      if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
+      if (m.type === "state") {
+        const resuming = !roomReady;
+        state = m.state; offset = state.serverNow - Date.now();
+        connection.ready(); status(resumed ? "Reconnected." : "Party ready."); render();
+        if (pending) {
+          if (resuming) socket.send(JSON.stringify(pending));
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(() => { if (pending && roomReady && ws.readyState === 1) ws.send(JSON.stringify(pending)); }, 2000);
+        }
+      }
+      if (m.type === "ack" && m.requestId === pending?.requestId) {
+        pending = null; clearTimeout(retryTimer); status("Submission accepted."); render();
+      }
+      if (m.type === "error") {
+        const temporary = /recovery.*(saved|unavailable)|temporarily unavailable/i.test(m.message);
+        if (!temporary) { pending = null; clearTimeout(retryTimer); }
+        status(m.message);
+        if (!state) entry.showError(m.message);
+        if (!temporary && !state && credential && resumeSavedParty) {
+          credential = null; resumeSavedParty = false; save(); connection.stop();
+        }
+        if (state) render();
+      }
+    },
+    onClose(event, retrying) {
+      clearTimeout(retryTimer);
+      releaseRaceControls(); disposeTap();
+      status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
+      if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
       if (state) render();
-    }
-  };
-  ws.onclose = () => {
-    // Before the first game, no credential exists. Reconnect the *public*
-    // socket too, otherwise a transient disconnect permanently traps guests.
-    if (socket !== ws) return;
-    status("Disconnected. Reconnecting…");
-    retryTimer = setTimeout(() => connect(), 1100);
-  };
+    },
+  });
+  ws = connection.socket;
 }
 function hello(message) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
@@ -169,11 +177,11 @@ $("leave").onclick = () => {
   credential = null;
   save();
   try { sessionStorage.removeItem(preferenceKey); } catch {}
-  ws.close();
+  connection?.stop();
   location.href = partyUrl.href;
 };
 function action(type, value, promptIndex) {
-  if (pending || ws.readyState !== 1) {
+  if (pending || !roomReady || ws?.readyState !== 1) {
     status("Wait for the connection or current submission.");
     return;
   }
@@ -213,6 +221,10 @@ function button(text, fn, parent, disabled = false) {
 }
 function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
+  if (updateRaceState(state)) return;
+  if (updateTapState(state)) return;
+  disposeRace();
+  disposeTap();
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
@@ -352,8 +364,10 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.race) renderRace(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
+  if (state.race) renderArcadeRace(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
   });
@@ -477,6 +491,31 @@ function render() {
       `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
       row,
     );
+  }
+  // One party-wide championship survives every individual game and its score reset.
+  const championshipBox = $("championship");
+  championshipBox.replaceChildren();
+  const championship = state.championship;
+  if (championship) {
+    element("h2", "🏆 Game Night Championship", championshipBox);
+    element("p", `${championship.gamesPlayed} completed games · One shared family leaderboard. Standings survive switching games in this room.`, championshipBox);
+    if (championship.standings.length) {
+      const ranking = element("ol", undefined, championshipBox);
+      ranking.className = "championship-standings";
+      for (const [i, player] of championship.standings.entries()) {
+        const row = element("li", undefined, ranking);
+        element("strong", `#${i + 1} ${player.name}`, row);
+        element("span", `${player.points} points · ${player.wins} wins · ${player.games} games`, row);
+      }
+    } else element("p", "Finish the first game to start collecting championship points.", championshipBox);
+    if (championship.recent.length) {
+      const heading = element("h3", "Recent games", championshipBox);
+      const recentList = element("ul", undefined, championshipBox);
+      recentList.className = "championship-recent";
+      for (const game of championship.recent) {
+        element("li", `${gameById(game.mode)?.name || game.mode}: ${game.winners.length ? game.winners.join(", ") : "No points awarded"}`, recentList);
+      }
+    }
   }
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();

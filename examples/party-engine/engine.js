@@ -8,6 +8,8 @@ import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, s
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
 import { raceModes, openRace, tickRace, acceptRace } from "./racing.js";
+import { newChampionship, completeChampionshipGame } from "./championship.js";
+import { advanceRace, raceReconnected } from "./open-pack/race.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -23,6 +25,8 @@ export class Party {
       charadesMs = 60000,
       customQuiz,
       customShow,
+      raceMs = 60000,
+      raceLaps = 3,
     } = {},
   ) {
     Object.assign(this, {
@@ -33,12 +37,15 @@ export class Party {
       voteMs,
       countdownMs,
       charadesMs,
+      raceMs,
+      raceLaps,
     });
     // The host can supply a bounded original guest quiz at room creation.
     this.quiz = customQuiz?.questions ?? demoQuiz;
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.show = customShow ?? defaultShow;
     this.players = new Map();
+    this.championship = newChampionship();
     this.hostConnected = true;
     this.phase = "lobby";
     this.mode = "quiz";
@@ -80,6 +87,7 @@ export class Party {
       const p = this.players.get(id);
       if (p) p.connected = connected;
     }
+    if (connected && id !== "host") raceReconnected(this, id);
     this.updateHostWait();
   }
   updateHostWait() {
@@ -92,6 +100,7 @@ export class Party {
       this.hostWaitAt = this.clock();
   }
   enter(phase, ms = null) {
+    if (phase === "finished" && this.phase !== "finished") completeChampionshipGame(this);
     this.phase = phase;
     this.revision++;
     this.deadline = ms === null ? null : this.clock() + ms;
@@ -101,6 +110,7 @@ export class Party {
   }
   tick() {
     if (this.phase === "racing") tickRace(this);
+    advanceRace(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
       if (this.phase === "playing" && packIds.includes(this.mode)) tickPack(this);
       else if (this.phase === "countdown") this.open();
@@ -210,6 +220,7 @@ export class Party {
       this.mode = msg.value;
       this.packSettings = settings;
       this.pack = null;
+      this.race = null;
       this.endedByHost = false;
       this.category = msg.category ?? "actions";
       this.matchId = randomUUID();
@@ -228,7 +239,7 @@ export class Party {
       }));
       this.enter("countdown", this.countdownMs);
     } else if (msg.type === "play") {
-      if (raceModes.includes(this.mode)) acceptRace(this,actor,msg.value);
+      if (raceModes.includes(this.mode)) acceptRace(this, actor, msg.value);
       else acceptPack(this, actor, msg.value);
     } else if (msg.type === "respond") {
       if (bonusModes.includes(this.mode)) acceptBonus(this,actor,msg);

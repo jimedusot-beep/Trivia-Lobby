@@ -25,65 +25,95 @@ export const guestGames = Object.freeze([
 export const gameById = id => guestGames.find(g=>g.id===id);
 export function mountGamePicker(container, { onHost, onChoose, selected = "quiz", asHost = false } = {}) {
   container.replaceChildren();
-  const filters = document.createElement("div");
-  filters.className = "pick-game-filters";
+  const make = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const cardModes = ["colors", "table"], boardModes = ["four", "chess", "checkers", "reversi", "mancala", "backgammon"];
+  const groupFor = id => cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : "party";
+  const play = id => { if (asHost) onChoose?.(id); else onHost?.(id); };
+
+  const spotlight = make("section", "pick-game-spotlight");
+  spotlight.setAttribute("aria-label", "Selected game preview");
+  spotlight.setAttribute("aria-live", "polite");
+  const previewIcon = make("span", "pick-spotlight-icon"); previewIcon.setAttribute("aria-hidden", "true");
+  const previewCopy = make("div", "pick-spotlight-copy");
+  const previewLabel = make("span", "sakura-eyebrow", "✿ FEATURED GAME");
+  const previewName = make("h3"); const previewMeta = make("p", "pick-spotlight-meta");
+  const previewRules = make("p", "pick-spotlight-rules");
+  previewCopy.append(previewLabel, previewName, previewMeta, previewRules);
+  const previewAction = make("button", "pick-spotlight-button");
+  previewAction.type = "button";
+  spotlight.append(previewIcon, previewCopy, previewAction);
+  const cards = new Map();
+  let previewId = selected;
+  const showPreview = id => {
+    const game = gameById(id);
+    if (!game) return;
+    previewId = id;
+    previewIcon.textContent = game.icon;
+    previewName.textContent = game.name;
+    previewMeta.textContent = game.players + " players · " + game.rounds + " · " + game.tag;
+    previewRules.textContent = game.rules;
+    previewAction.textContent = (asHost ? "Choose " : "Host ") + game.name + "  →";
+    previewAction.setAttribute("aria-label", (asHost ? "Choose " : "Host ") + game.name);
+    previewAction.onclick = () => play(game.id);
+    spotlight.dataset.tone = game.color;
+    for (const [cardId, card] of cards) {
+      const preview = card.querySelector(".pick-game-preview-button");
+      card.dataset.preview = String(cardId === id);
+      if (preview) preview.setAttribute("aria-pressed", String(cardId === id));
+    }
+  };
+  const filters = make("div", "pick-game-filters");
   filters.setAttribute("role", "group");
   filters.setAttribute("aria-label", "Game categories");
-  const status = document.createElement("p");
+  const status = make("p", "pick-game-status");
   status.setAttribute("aria-live", "polite");
-  const cardModes = ["colors", "table"], boardModes = ["four", "chess", "checkers", "reversi", "mancala", "backgammon"];
+  const grid = make("div", "pick-game-grid");
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
     ["cards", "Cards & dice"], ["boards", "Board games"],
   ];
   const chooseCategory = category => {
-    let visible = 0;
-    for (const card of grid.children) {
-      const id = card.dataset.game;
-      const group = cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : "party";
-      card.hidden = category !== "all" && category !== group;
-      if (!card.hidden) visible++;
+    let visible = 0, firstVisible = null;
+    for (const [id, card] of cards) {
+      card.hidden = category !== "all" && category !== groupFor(id);
+      if (!card.hidden) { visible++; firstVisible ??= id; }
     }
     for (const filter of filters.children) filter.setAttribute("aria-pressed", String(filter.dataset.category === category));
-    status.textContent = `${visible} games to choose from.`;
+    status.textContent = visible + " games to choose from. Select Preview to read the rules.";
+    if (firstVisible && cards.get(previewId)?.hidden) showPreview(firstVisible);
   };
-  for (const [category, label] of choices) {
-    const filter = document.createElement("button");
-    filter.type = "button"; filter.textContent = label; filter.dataset.category = category;
+  for (const [category,label] of choices) {
+    const filter = make("button", null, label);
+    filter.type = "button"; filter.dataset.category = category;
     filter.addEventListener("click", () => chooseCategory(category));
     filters.append(filter);
   }
-  const grid = document.createElement("div");
-  grid.className = "pick-game-grid";
   for (const game of guestGames) {
-    const card = document.createElement("article");
-    card.className = "pick-game-card";
-    card.dataset.tone = game.color;
-    card.dataset.game = game.id;
+    const card = make("article", "pick-game-card");
+    card.dataset.tone = game.color; card.dataset.game = game.id;
     if (selected === game.id && asHost) card.dataset.selected = "true";
-    const title = document.createElement("h3");
-    title.textContent = `${game.icon}  ${game.name}`;
-    const marker = document.createElement("span");
-    marker.className = "pick-game-tag";
-    marker.textContent = game.tag;
-    const people = document.createElement("p");
-    people.className = "pick-game-players";
-    people.textContent = `${game.players} players · ${game.rounds}`;
-    const rules = document.createElement("p");
-    rules.className = "pick-game-rules";
-    rules.textContent = game.rules;
-    const host = document.createElement("button");
+    const title = make("h3", null, game.icon + "  " + game.name);
+    const marker = make("span", "pick-game-tag", game.tag);
+    const people = make("p", "pick-game-players", game.players + " players · " + game.rounds);
+    const rules = make("p", "pick-game-rules", game.rules);
+    const actions = make("div", "pick-game-actions");
+    const preview = make("button", "pick-game-preview-button", "Preview");
+    preview.type = "button";preview.setAttribute("aria-label", "Preview " + game.name);
+    preview.addEventListener("click", () => showPreview(game.id));
+    const host = make("button", "pick-game-button", (asHost ? "Choose " : "Host ") + game.name);
     host.type = "button";
-    host.className = "pick-game-button";
-    host.textContent = asHost ? `Choose ${game.name}` : `Host ${game.name}`;
-    host.setAttribute("aria-label", `${asHost ? "Choose" : "Host"} ${game.name}, ${game.players} players`);
-    host.addEventListener("click", () => {
-      if (asHost) onChoose?.(game.id);
-      else onHost?.(game.id);
-    });
-    card.append(marker, title, people, rules, host);
-    grid.append(card);
+    host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
+    host.addEventListener("click", () => play(game.id));
+    actions.append(preview, host);
+    card.append(marker, title, people, rules, actions);
+    grid.append(card);cards.set(game.id,card);
   }
-  container.append(filters, status, grid);
+  container.append(spotlight, filters, status, grid);
+  showPreview(cards.has(selected) ? selected : guestGames[0].id);
   chooseCategory("all");
 }

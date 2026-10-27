@@ -24,6 +24,9 @@ export default function Host() {
     const next={...oddSettings,...patch};setOddSettings(next);
     if(gameState.roomCode&&gameState.phase==="lobby")emit(WS_EVENTS.CONFIGURE_GAME,{roomCode:gameState.roomCode,mode:"odd_one_out",...next});
   };
+  useEffect(() => {
+    if (gameState.oddSettings) setOddSettings(gameState.oddSettings);
+  }, [gameState.oddSettings]);
   const [presenting, setPresenting] = useState(false);
   const reducedMotion = useReducedMotion();
   const lastCountdownCue = useRef("");
@@ -102,15 +105,17 @@ export default function Host() {
   };
 
   if (!connected) return (
-    <div className="h-screen flex items-center justify-center bg-background">
-      <div className="animate-pulse text-2xl font-bold text-primary">Connecting to server...</div>
+    <div className="min-h-screen flex flex-col gap-4 items-center justify-center p-6 bg-background">
+      <p role="status" className="text-2xl font-bold text-primary">Connecting to your room…</p>
+      {lastError && <p role="alert" className="max-w-md text-center">{lastError}</p>}
+      <Link href="/" className="underline">Return to decks</Link>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-4 md:p-8 flex flex-col">
+    <div className="min-h-screen sakura-stage text-white p-4 md:p-8 flex flex-col">
       {/* Top Bar */}
-      <div className="flex flex-wrap gap-3 justify-between items-center mb-8">
+      <div className="sakura-host-header flex flex-wrap gap-3 justify-between items-center mb-8">
          <Button asChild variant="ghost" className="text-white hover:bg-white/10"><Link href="/">
              <ArrowLeft className="mr-2 h-4 w-4" /> Quit Game
            </Link></Button>
@@ -175,7 +180,7 @@ export default function Host() {
                   key={p.playerId}
                   initial={reducedMotion ? false : { scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="bg-white/10 backdrop-blur-xs p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
+                  className="sakura-host-player bg-white/10 backdrop-blur-xs p-4 rounded-xl text-xl font-bold border border-white/20 shadow-lg"
                 >
                   <span className="block font-bold">{p.name}</span>
                   <span className={"block text-sm " + (p.connected?"text-green-300":"text-amber-200")}>{p.connected?"Connected":"Disconnected"}</span>
@@ -229,7 +234,7 @@ export default function Host() {
                     />
                  </div>
 
-                 <Card className="bg-white text-slate-900 p-12 rounded-3xl shadow-2xl text-center min-h-[300px] flex items-center justify-center">
+                 <Card className="sakura-host-question bg-white text-slate-900 p-12 rounded-3xl shadow-2xl text-center min-h-[300px] flex items-center justify-center">
                    <h2 className="text-4xl md:text-5xl font-bold leading-tight">
                      {gameState.currentQuestion.prompt}
                    </h2>
@@ -283,7 +288,7 @@ export default function Host() {
                      <Button className="w-full" disabled={gameState.oddReview.finalized} onClick={()=>emit(WS_EVENTS.FINALIZE_ODD_REVIEW,{roomCode:gameState.roomCode,questionIndex:gameState.oddReview?.questionIndex})}>{gameState.oddReview.finalized?"Review finalized":"Finish bonus review"}</Button>
                    </section>
                  )}
-                 <div className="bg-white/10 rounded-3xl p-8 max-w-2xl mx-auto backdrop-blur-md">
+                 <div className="sakura-host-podium bg-white/10 rounded-3xl p-8 max-w-2xl mx-auto backdrop-blur-md">
                    <h3 className="text-2xl font-bold mb-6 flex items-center justify-center">
                      <Trophy className="mr-2 text-yellow-400" /> Leaderboard
                    </h3>

@@ -1,0 +1,52 @@
+/* The optional upstream catalog is a separate, honest reference surface:
+   not game cards with Trivia Lobby Host actions. */
+.opl-page .opl-hero { max-width: 850px; margin: 1.8rem auto 1rem; text-align: center; }
+.opl-hero h1 { font-size: clamp(2.2rem, 6vw, 4rem); line-height: 1.1; margin: .65rem 0; }
+.opl-hero h1 span { color: #a9b3ff; }
+.opl-hero p { margin: 1rem auto; max-width: 650px; font-size: 1.06rem; line-height: 1.6; }
+.opl-notice, .opl-guide, .opl-library { margin: 1.5rem auto; max-width: 1160px; }
+.opl-notice { padding: 1.25rem 1.5rem; border-radius: 18px; background: #29214a; border: 2px solid #b6a5ff; color: white; }
+.opl-notice h2 { margin: .25rem 0; font-size: 1.3rem; color: #fff; }
+.opl-notice p { max-width: 100ch; line-height: 1.55; }
+.opl-guide { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; padding: 1.5rem; border-radius: 20px; background: #f5f6ff; color: #202139; }
+.opl-guide h2, .opl-guide h3, .opl-list-heading h2 { margin: 0 0 .75rem; }
+.opl-guide ol { padding-left: 1.6rem; }
+.opl-guide li { line-height: 1.6; margin: .7rem 0; }
+.opl-guide a, .opl-source { color: #2446bd; font-weight: 700; }
+.opl-small { font-size: .9rem; line-height: 1.5; }
+.opl-connect { align-self: start; display: grid; gap: .65rem; background: #fff; border: 1px solid #b9c0dd; border-radius: 16px; padding: 1.25rem; }
+.opl-connect label { font-weight: 700; }
+.opl-connect input, .opl-filters input, .opl-filters select { box-sizing: border-box; width: 100%; min-height: 44px; border: 2px solid #9b9fc2; border-radius: 10px; padding: .7rem; background: #fff; color: #171a33; font: inherit; }
+.opl-connect input:focus-visible, .opl-filters input:focus-visible, .opl-filters select:focus-visible { outline: 3px solid #6b4af1; outline-offset: 2px; }
+.opl-connect button { min-height: 48px; font-weight: 800; border-radius: 12px; background: #563ed5; color: #fff; }
+#opl-host-feedback { font-size: .88rem; line-height: 1.4; margin: .25rem 0; }
+.opl-library { padding: 1rem 0 2.5rem; }
+.opl-list-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .75rem; }
+.opl-list-heading p { margin: .25rem 0 .85rem; font-size: .9rem; }
+.opl-filters { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(190px, 1fr); gap: 1rem; align-items: end; padding: 1.2rem; border-radius: 16px; background: #f5f6ff; color: #23233b; }
+.opl-filters label { font-weight: 700; display: grid; gap: .3rem; }
+.opl-filters .opl-check { display: flex; align-items: center; gap: .65rem; padding-bottom: .65rem; font-size: .92rem; }
+.opl-filters .opl-check input { min-height: 18px; width: 20px; height: 20px; accent-color: #563ed5; }
+#opl-count { margin: 1rem 0; font-weight: 700; }
+.opl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 265px), 1fr)); gap: 1rem; }
+.opl-game { display: flex; flex-direction: column; gap: .55rem; padding: 1.15rem; border: 1px solid #c6c1e5; border-radius: 16px; background: #fff; color: #22233e; box-shadow: 0 3px 10px #24214a15; overflow-wrap: anywhere; }
+.opl-game-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; align-items: center; font-size: .82rem; }
+.opl-tag { background: #e8e5ff; color: #3927a5; padding: .25rem .55rem; border-radius: 25px; font-weight: 750; }
+.opl-limit { font-size: .8rem; font-weight: 700; color: #404365; }
+.opl-game h3 { margin: .25rem 0 0; font-size: 1.3rem; }
+.opl-game .opl-description { margin: 0; line-height: 1.45; }
+.opl-game .opl-controls { margin: .3rem 0; color: #515373; font-size: .9rem; }
+.opl-source { margin-top: auto; padding-top: .5rem; }
+@media (max-width: 750px) {
+  .opl-guide, .opl-filters { grid-template-columns: 1fr; }
+  .opl-notice, .opl-guide, .opl-library { margin: 1rem .25rem; }
+  .opl-filters .opl-check { padding: .35rem 0; }
+  .opl-hero { padding: 0 .25rem; }
+}
+@media (prefers-reduced-motion: reduce) { .opl-game { transition: none; } }
+
+/* An original Trivia Lobby mode, not the upstream executable. */
+.opl-game .opl-native-note { font-size: .85rem; line-height: 1.45; color: #3b3763; margin: .3rem 0 0; }
+.opl-native { display: inline-block; border-radius: 12px; padding: .75rem .85rem; text-align: center; background: #5236c7; color: #fff; font-weight: 800; text-decoration: none; }
+.opl-native:hover, .opl-native:focus-visible { background: #352194; color: #fff; }
+.opl-native:focus-visible { outline: 3px solid #ffae63; outline-offset: 2px; }

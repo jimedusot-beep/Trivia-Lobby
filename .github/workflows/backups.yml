@@ -1,24 +1,36 @@
 name: Encrypted recovery backup
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '13 7 * * *'
 permissions:
   contents: read
+concurrency:
+  group: encrypted-backup-${{ github.event.pull_request.number || 'production' }}
+  cancel-in-progress: false
 jobs:
-  backup:
-    # Explicit operator enablement after secrets, bucket policy and restore rehearsal.
-    if: vars.BACKUPS_ENABLED == 'true'
+  recovery-postgres18:
+    # Disposable fixtures only: validates the actual production database major
+    # version and this container's client tools without production secrets.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    container: postgres:18-bookworm
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_DB: trivia_recovery_ci
+          POSTGRES_USER: trivia
+          POSTGRES_PASSWORD: trivia_ci_only
+        options: >-
+          --health-cmd "pg_isready -U trivia -d trivia_recovery_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
-      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-      S3_BUCKET: ${{ secrets.SOURCE_S3_BUCKET }}
-      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+      DATABASE_URL: postgresql://trivia:trivia_ci_only@postgres:5432/trivia_recovery_ci
+      TEST_DATABASE_URL: postgresql://trivia:trivia_ci_only@postgres:5432/trivia_recovery_ci
+      PRIVATE_STORAGE_DIR: /tmp/trivia-recovery-ci-originals
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,10 +38,46 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Install PostgreSQL 16 client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-16
+      - run: pg_dump --version && pg_restore --version
+      - run: npm run db:migrate
+      - name: Recover encrypted database and exact original bytes with inherited Neon settings
+        run: npm run backup:drill
+  backup:
+    needs: recovery-postgres18
+    # Manual bootstrap proves recovery before the operator enables the schedule.
+    if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.BACKUPS_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    # The live Neon source is PostgreSQL 18. Older pg_dump refuses newer servers.
+    container: postgres:18-bookworm
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      S3_BUCKET: ${{ secrets.SOURCE_S3_BUCKET }}
+      AWS_ENDPOINT_URL_S3: ${{ secrets.SOURCE_S3_ENDPOINT }}
+      S3_FORCE_PATH_STYLE: ${{ vars.SOURCE_S3_FORCE_PATH_STYLE }}
+      AWS_REGION: ${{ vars.SOURCE_AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SOURCE_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SOURCE_AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.SOURCE_AWS_SESSION_TOKEN }}
+      BACKUP_REQUIRE_OFFSITE: '1'
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_FORCE_PATH_STYLE: ${{ vars.BACKUP_S3_FORCE_PATH_STYLE }}
+      BACKUP_AWS_REGION: ${{ vars.BACKUP_AWS_REGION }}
+      BACKUP_AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+      BACKUP_AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+      BACKUP_AWS_SESSION_TOKEN: ${{ secrets.BACKUP_AWS_SESSION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify PostgreSQL 18 recovery tools
+        run: pg_dump --version && pg_restore --version
       - name: Create encrypted snapshot and upload to private recovery bucket
         run: node --import tsx script/backup.ts create /tmp/trivia-backup.enc
       - name: Remove temporary encrypted artifact

@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export const packGames = Object.freeze([
   {
+    id: "tap", name: "Tap Dash", icon: "👆", color: "orange",
+    players: "2–20", min: 2, max: 20,
+    rounds: "3 heats · 12 seconds each",
+    rules: "Turn your phone into a giant tap button. Everyone races for 12 seconds; tied finishes share their place and points. Scores carry across all three heats. Same QR room and scoreboard as Trivia Lobby.",
+    tag: "Phones are controllers",
+  },
+  {
+    id: "race", name: "Party Grand Prix", icon: "🏎️", color: "teal",
+    players: "2–20", min: 2, max: 20,
+    rounds: "3 heats · up to 60 seconds each",
+    rules: "Put the overhead track on a TV or computer. Scan the QR to turn each phone into a controller. Automatic acceleration, steering assistance, drift boosts and four items. Three laps per heat; everyone earns championship points. A computer helps disconnected racers.",
+    tag: "Phones are controllers",
+  },
+  {
     id: "feud",
     name: "Family Showdown",
     icon: "🔔",

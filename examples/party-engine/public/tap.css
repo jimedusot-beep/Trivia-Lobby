@@ -1,0 +1,19 @@
+/* Native phone/TV Tap Dash; original assets, no external streaming. */
+.tap-dash { max-width: 1100px; margin: 1rem auto; text-align: center; color: #1d243b; }
+.tap-title { font-size: clamp(2rem,5vw,3rem); color: #522db0; margin: .25rem 0; }
+.tap-heat { font-weight: 800; letter-spacing: .02em; }
+.tap-panel { border-radius: 24px; border: 3px solid #5449ac; background: #f7f1ff; padding: clamp(1rem,4vw,2rem); box-shadow: 0 8px 28px #31216a25; }
+.tap-clock { display: block; font-size: clamp(2.8rem,9vw,5rem); color: #573db4; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.tap-hint { font-weight: 650; font-size: clamp(1rem,2.5vw,1.35rem); }
+.tap-leaderboard, .tap-results { margin: 1rem 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
+.tap-racer, .tap-results li { border-radius: 12px; background: #fff; border: 1px solid #d4ccf0; text-align: left; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .75rem 1rem; position: relative; overflow: hidden; font-variant-numeric: tabular-nums; }
+.tap-racer > span:first-child, .tap-racer > strong { z-index: 1; position: relative; }
+.tap-bar { position: absolute; inset: 0 auto 0 0; z-index: 0; background: #efc1f1; transition: width .12s linear; border-radius: 12px; pointer-events: none; }
+.tap-count { display: block; font-size: clamp(4rem,20vw,7rem); font-variant-numeric: tabular-nums; line-height: 1.1; color: #2b598f; }
+.tap-position { font-size: 1.4rem; font-weight: 800; }
+.tap-button { display: grid; place-items: center; margin: 1rem auto .25rem; width: min(100%, 360px); min-height: min(36vh, 260px); border: 5px solid #ffe7e8; border-radius: 45px; color: #fff; background: linear-gradient(145deg, #fc787a, #e53669); font: 950 clamp(3rem,16vw,5rem) Fredoka, sans-serif; box-shadow: 0 16px 0 #972658; touch-action: manipulation; user-select: none; cursor: pointer; }
+.tap-button:active { transform: translateY(8px); box-shadow: 0 8px 0 #972658; }
+.tap-button:focus-visible { outline: 5px solid #184995; outline-offset: 5px; }
+.tap-results li { font-size: clamp(.95rem,2vw,1.2rem); }
+@media (max-width: 450px) { .tap-dash { margin: .35rem auto; } .tap-panel { padding: .75rem; } .tap-button { min-height: 31vh; } }
+@media (prefers-reduced-motion: reduce) { .tap-racer, .tap-bar, .tap-button { transition: none; } }

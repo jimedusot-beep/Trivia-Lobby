@@ -3,11 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#6146df" />
+    <meta name="theme-color" content="#241c44" />
     <title>Trivia Lobby · Play without an account</title>
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./pack.css" />
     <link rel="stylesheet" href="./race.css" />
+    <link rel="stylesheet" href="./arcade-race.css" />
+    <link rel="stylesheet" href="./tap.css" />
     <link rel="icon" type="image/svg+xml" href="./lobby-spark.svg" />
     <script src="./app.js" type="module"></script>
   </head>
@@ -15,7 +17,7 @@
     <main>
       <header>
         <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./create.html">Make a quiz</a><a href="./learn.html">My courses</a></div></nav>
-        <div id="party-intro" class="party-intro"><span class="lobby-kicker">Your people. Your party.</span><h1>One code. <span>Everyone plays.</span></h1><p>2–20 players · nicknames welcome · no account needed</p><div class="mode-preview" role="group" aria-label="Available activities"><span><b aria-hidden="true">?</b> Quiz</span><span><b aria-hidden="true">“</b> Prompt Duel</span><span><b aria-hidden="true">✦</b> Charades</span><span>Majority Rules</span><span>Family Bingo</span><span>Bracket Battle</span></div></div>
+        <div id="party-intro" class="party-intro"><span class="lobby-kicker">✿ Sakura Arcade · Your people. Your party.</span><h1>One code. <span>Everyone plays.</span></h1><p>2–20 players · nicknames welcome · no account needed</p><div class="mode-preview" role="group" aria-label="Available activities"><span><b aria-hidden="true">?</b> Quiz</span><span><b aria-hidden="true">“</b> Prompt Duel</span><span><b aria-hidden="true">✦</b> Charades</span><span>Majority Rules</span><span>Family Bingo</span><span>Bracket Battle</span></div></div>
       </header>
       <p id="status" role="status" aria-live="polite">Connecting…</p>
       <section id="entry" class="entry-grid" aria-label="Host or join a party">
@@ -46,15 +48,16 @@
           The host is a separate display. Open player tabs or phones to join.
         </p></article>
       </section>
-      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">GAME NIGHT STARTS HERE</span><h2 id="pick-games-title">Pick a Game</h2><p>Read the rules and player counts. Choose <strong>Host</strong> for your favorite game. No email or password—invite everyone by room code or QR.</p></div><div id="game-picker"></div></section>
+      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">✿ SAKURA ARCADE · GAME LIBRARY</span><h2 id="pick-games-title">Pick a Game</h2><p>Read the rules and player counts. Choose <strong>Host</strong> for your favorite game. No email or password—invite everyone by room code or QR.</p></div><div id="game-picker"></div><p class="opl-library-entry"><strong>More games:</strong> <a href="./open-party-lab.html">Browse all 21 Open Party Lab games</a> · separate, self-hosted companion collection; not part of this room.</p></section>
       <details class="house-notes"><summary>Before the first round</summary><p>Demo games use original sample questions. A custom quiz is shared with this temporary party and its players, not stored in the private server library. Private decks and documents remain protected. Rooms and scores end when the server restarts.</p></details>
-      <section id="game" hidden>
+      <section id="game" class="sakura-game-stage" hidden>
         <div class="game-topline"><h1 id="heading" tabindex="-1"></h1><img class="game-mascot" src="./lobby-spark.svg" alt="" width="68" height="68" /></div>
         <details id="party-invitation" class="lobby-invite-panel" hidden><summary>Invite friends · QR &amp; sharing</summary><div id="invitation-card"></div></details>
         <p id="timer" aria-live="off"></p>
         <div id="content"></div>
-        <h2>Players & points</h2>
+        <h2 id="roster-title">Players & points</h2>
         <ol id="roster"></ol>
+        <section id="championship" class="championship" aria-label="Game Night Championship" aria-live="polite"></section>
         <button id="leave">Leave this device</button>
       </section>
       <footer class="open-source-footer"><a href="./sources.html">Game credits, licenses &amp; source code</a></footer>
