@@ -1,0 +1,23 @@
+/* Original, asset-free party racing UI. Optimized for 390px phones and host TVs. */
+.arcade-race-heading{font:800 clamp(1.35rem,4vw,2.2rem) var(--font-display,system-ui);margin-bottom:8px}
+.arcade-race-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start;margin:14px 0}
+.arcade-race-course{display:block;width:100%;max-width:460px;height:auto;margin:0 auto;border:4px solid #192649;border-radius:22px;background:#edf6ff}
+.arcade-race-road{fill:#5d606d}
+.arcade-race-water{fill:#1686bb}
+.arcade-race-lane-line{stroke:#e6f5ff;stroke-dasharray:10 9}
+.arcade-race-finish{fill:#fff5ca;stroke:#181d33;stroke-width:2}
+.arcade-race-track-label{font:bold 12px system-ui;fill:#142044}
+.arcade-race-number{font:bold 11px system-ui;fill:#11203e;pointer-events:none}
+.arcade-race-hazard{font:bold 20px system-ui;fill:#ffe58c}
+.arcade-race-racer{transition:opacity .15s linear}
+.arcade-race-self circle{filter:drop-shadow(0 0 5px #ffec72)}
+.arcade-race-controls,.arcade-race-host-legend,.arcade-race-results{border:2px solid #152347;border-radius:17px;background:#fffaf0;padding:14px;min-width:0}
+.arcade-race-controls button{display:block;width:100%;min-height:54px;padding:10px;border-radius:12px;margin:8px 0;font-size:1rem}
+.arcade-race-lane-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.arcade-race-lane-actions button{padding:7px 2px;font-size:.82rem}
+.arcade-race-lane-actions button[aria-pressed=true]{background:#ffe17f;border-color:#152347}
+.arcade-race-boost{background:#fff0aa!important;color:#142044!important}
+.arcade-race-host-legend{max-height:410px;overflow:auto}
+.arcade-race-host-legend p,.arcade-race-results p{margin:5px 0;overflow-wrap:anywhere}
+.arcade-race-results{margin:16px 0}
+@media(min-width:720px){.arcade-race-layout{grid-template-columns:minmax(0,1fr) minmax(240px,.8fr)}.arcade-race-course{margin:0}}

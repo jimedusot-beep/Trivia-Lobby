@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
   "players", "championship", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
-  "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "pack", "category", "pairs", "turn", "answers", "responses",
+  "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "pack", "race", "category", "pairs", "turn", "answers", "responses",
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
 function encode(value) {
@@ -47,7 +47,7 @@ export function restoreParty(code, state, options, savedAt) {
   for (const key of fields) if (Object.hasOwn(state, key)) party[key] = decode(state[key]);
   if (!(party.players instanceof Map) || party.players.size > 20 || !(party.requests instanceof Map)
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
-    || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "reveal", "finished"].includes(party.phase))
+    || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
   // Never discard an active open-pack game or reset its score on recovery.
   if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "no-say", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
@@ -77,6 +77,16 @@ export function restoreParty(code, state, options, savedAt) {
   const hostWasConnected = party.hostConnected;
   party.hostConnected = false;
   for (const player of party.players.values()) player.connected = false;
+  // Original Turbo Circuit / Wave Sprint live Map-backed simulation cannot
+  // be resumed with a synthetic empty race after a checkpoint recovery.
+  if (["turbo", "wave"].includes(party.mode) &&
+      ["racing", "reveal", "finished"].includes(party.phase) &&
+      (!party.race || party.race.mode !== party.mode ||
+        !(party.race.racers instanceof Map) ||
+        party.race.racers.size !== party.players.size ||
+        !Number.isFinite(party.race.updatedAt) ||
+        !Number.isFinite(party.race.nextTick)))
+    throw new Error("Unsupported arcade racing recovery state.");
   // A healthy host may have been idle since the last checkpoint. That write time
   // is not its disconnect time. Preserve an existing absence, or start recovery grace now.
   if (!party.deadline && party.phase !== "finished" && party.hostWaitAt === null)

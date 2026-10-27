@@ -91,19 +91,20 @@ export function attachPartySocket(server, {
     record.queue = result.catch(() => { failRecovery(record, ws); });
     return record.queue;
   }
-  function publish(record) {
+  function publish(record, { broadcast = true } = {}) {
     if (rooms.get(record.party.code) !== record) return;
     record.sessions.prune(record.party.players);
-    for (const [id, ws] of record.sessions.connections()) {
+    if (broadcast) for (const [id, ws] of record.sessions.connections()) {
       send(ws, { type: "state", state: record.party.view(id) });
     }
     const party = record.party;
-    const deadline =
-      party.deadline ??
-      (party.hostWaitAt === null ? null : party.hostWaitAt + 60000);
+    const normalDeadline = party.deadline ?? (party.hostWaitAt === null ? null : party.hostWaitAt + 60000);
+    const deadline = party.phase === "racing" && party.race
+      ? Math.min(normalDeadline ?? Infinity, party.race.nextTick)
+      : normalDeadline;
     scheduler.schedule(
       party.code,
-      `${party.matchId}:${party.revision}:${party.hostWaitAt}`,
+      `${party.matchId}:${party.revision}:${party.hostWaitAt}:${party.phase === "racing" ? party.race.nextTick : ""}`,
       deadline,
       () => {
         if (rooms.get(party.code) !== record) return;
@@ -283,7 +284,7 @@ export function attachPartySocket(server, {
             throw new Error("Four races are already running. Try again after a race finishes.");
           const result = record.party.handle(actor, m);
           send(ws, { type: "ack", ...result });
-          publish(record); }, ws);
+          publish(record, { broadcast: record.party.phase !== "racing" }); }, ws);
         }
       } catch (e) {
         if (e instanceof RecoveryStorageError) { failRecovery(record, ws); return; }

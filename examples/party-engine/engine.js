@@ -10,6 +10,7 @@ import { defaultShow } from "./open-pack/feud.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
 import { advanceTrails, trailsReconnected } from "./open-pack/trails.js";
+import { raceModes, openRace as openArcadeRace, tickRace as tickArcadeRace, acceptRace as acceptArcadeRace } from "./racing.js";
 const fail = (message) => {
   throw new Error(message);
 };
@@ -109,6 +110,7 @@ export class Party {
     this.updateHostWait();
   }
   tick() {
+    if (this.phase === "racing") tickArcadeRace(this);
     advanceRace(this);
     advanceTrails(this);
     if (this.deadline !== null && this.clock() >= this.deadline) {
@@ -127,6 +129,7 @@ export class Party {
     }
   }
   open() {
+    if (raceModes.includes(this.mode)) { openArcadeRace(this); return; }
     if (packIds.includes(this.mode)) { openPack(this); return; }
     if (this.mode === "charades") {
       this.turn = makeTurn(this.roster[this.index], this.category);
@@ -201,7 +204,7 @@ export class Party {
     if (msg.type === "start") {
       if (actor !== "host" || this.phase !== "lobby")
         fail("Only the host can start from the lobby.");
-      if (!["quiz", "duel", "charades", ...socialModes, ...bonusModes, ...packIds].includes(msg.value))
+      if (!["quiz", "duel", "charades", ...socialModes, ...bonusModes, ...packIds, ...raceModes].includes(msg.value))
         fail("Unknown game mode.");
       // Validate before pruning: a rejected start must not revoke a disconnected
       // participant's reconnect access while the party is still in the lobby.
@@ -219,6 +222,7 @@ export class Party {
       this.mode = msg.value;
       this.packSettings = settings;
       this.pack = null;
+      this.race = null;
       this.endedByHost = false;
       this.category = msg.category ?? "actions";
       this.matchId = randomUUID();
@@ -237,7 +241,8 @@ export class Party {
       }));
       this.enter("countdown", this.countdownMs);
     } else if (msg.type === "play") {
-      acceptPack(this, actor, msg.value);
+      if (raceModes.includes(this.mode)) acceptArcadeRace(this, actor, msg.value);
+      else acceptPack(this, actor, msg.value);
     } else if (msg.type === "respond") {
       if (bonusModes.includes(this.mode)) acceptBonus(this,actor,msg);
       else acceptSocial(this,actor,msg);
@@ -302,6 +307,7 @@ export class Party {
       if (actor !== "host" || this.phase !== "reveal")
         fail("Only the host can advance after reveal.");
       if (packIds.includes(this.mode)) { nextPack(this); }
+      else if (raceModes.includes(this.mode)) { this.enter("finished"); }
       else {
       const total =
         bonusModes.includes(this.mode) ? bonusRoundCount[this.mode] :

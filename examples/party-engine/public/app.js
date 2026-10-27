@@ -9,6 +9,7 @@ import { renderPack, drawingBusy } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
 import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
+import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -374,6 +375,7 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.race) renderArcadeRace(state,{element,button,action,actor:()=>credential?.actor});
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
