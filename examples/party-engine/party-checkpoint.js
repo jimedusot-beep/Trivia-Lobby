@@ -50,7 +50,7 @@ export function restoreParty(code, state, options, savedAt) {
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
   // Never discard an active open-pack game or reset its score on recovery.
-  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
+  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "no-say", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
     && (!party.pack || typeof party.pack !== "object" || Array.isArray(party.pack)))
     throw new Error("Unsupported room recovery state.");
   if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
@@ -64,6 +64,16 @@ export function restoreParty(code, state, options, savedAt) {
   if (party.mode === "tap" && party.pack?.kind === "tap" &&
       (!Array.isArray(party.pack.racers) || party.pack.racers.length !== party.players.size))
     throw new Error("Unsupported Tap Dash recovery state.");
+  if (party.mode === "no-say" && ["playing","reveal"].includes(party.phase)) {
+    const s=party.pack;
+    if (!s || s.kind!=="forbidden" || !Array.isArray(party.roster) ||
+        !party.roster.includes(s.giver) || !party.roster.includes(s.referee) ||
+        s.giver===s.referee ||
+        !Number.isSafeInteger(s.cursor) || s.cursor<0 || s.cursor>5 ||
+        !Array.isArray(s.history) || s.history.length>5 ||
+        !Number.isSafeInteger(s.finishedCards) || s.finishedCards!==s.history.length)
+      throw new Error("Unsupported Forbidden Word Frenzy recovery state.");
+  }
   const hostWasConnected = party.hostConnected;
   party.hostConnected = false;
   for (const player of party.players.values()) player.connected = false;

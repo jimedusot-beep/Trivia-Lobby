@@ -35,6 +35,7 @@ export const openPartyLabGames = Object.freeze([
 // guest engine. This is NOT a claim that upstream source games are imported.
 export const triviaLobbyAlternatives = Object.freeze({
   "tap-race": { mode: "tap", label: "Tap Dash" },
+  "buzzwort": { mode: "no-say", label: "Forbidden Word Frenzy" },
   "drift-racer": { mode: "race", label: "Party Grand Prix" },
   "pantomime": { mode: "charades", label: "Charades" },
   "imposter": { mode: "impostor", label: "Secret Impostor" },
