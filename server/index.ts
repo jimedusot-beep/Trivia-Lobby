@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { attachGuestParty } from "./guest-party";
+import { PostgresRoomCheckpointStore } from "./room-checkpoints";
 
 const app = express();
 const httpServer = createServer(app);
@@ -61,8 +62,10 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  attachGuestParty(httpServer, app);
-  await registerRoutes(httpServer, app);
+  const { pool } = await import("./db");
+  const checkpoints = new PostgresRoomCheckpointStore(pool);
+  attachGuestParty(httpServer, app, checkpoints);
+  await registerRoutes(httpServer, app, checkpoints);
 
   // Unknown API paths must return JSON 404 in both dev (Vite) and production.
   // Register this before the SPA fallback so missing endpoints never return HTML.

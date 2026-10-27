@@ -7,6 +7,12 @@ export const packGames = Object.freeze([
     tag:"Arcade survivor",
   },
   {
+    id:"no-say",name:"Forbidden Word Frenzy",icon:"🗣️",color:"orange",
+    players:"3–20",min:3,max:20,rounds:"One 45-second speaking turn per player",
+    rules:"One phone reveals a secret word and forbidden clues. A different family member referees, while everyone else guesses aloud. No microphone or stream is needed. The server keeps the score.",
+    tag:"Word challenge",
+  },
+  {
     id: "tap", name: "Tap Dash", icon: "👆", color: "orange",
     players: "2–20", min: 2, max: 20,
     rounds: "3 heats · 12 seconds each",

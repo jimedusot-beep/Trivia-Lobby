@@ -157,8 +157,8 @@ for (const mode of packIds)
           active.send({ v: 1, type: "tap_input", matchId: party.matchId, heat: party.index, seq: 0 });
           await active.wait(m => m.type === "tap_frame" && m.own?.taps === 1);
         } else if (mode === "trails") {
-          assert.equal(snapshot.pack.riders, undefined,"Phone view excludes other riders and trails");
-          assert.equal(party.view("host").pack.riders.length,size);
+          assert.equal(snapshot.pack.riders, undefined, "Phone view excludes other riders and trails");
+          assert.equal(party.view("host").pack.riders.length, size);
           active.send({v:1,type:"trails_input",matchId:party.matchId,heat:party.index,seq:0,turn:-1});
           await active.wait(m=>m.type==="trails_frame" && m.own?.seq===0);
         } else if (mode === "race") {
@@ -194,6 +194,15 @@ for (const mode of packIds)
             party.view(players[2].credential.actor).pack.word,
             undefined,
           );
+        } else if (mode === "no-say") {
+          const refereeId = players[1].credential.actor;
+          assert.equal(snapshot.pack.role, "giver");
+          assert(snapshot.pack.card?.word, "Clue-giver phone receives the secret");
+          assert(party.view(refereeId).pack.card?.word, "Referee phone receives the same secret");
+          assert.equal(party.view("host").pack.card, undefined);
+          assert.equal(party.view(players[2].credential.actor).pack.card, undefined);
+          await send(players[1].s, refereeId, "play", { action: "correct" });
+          assert.equal(party.players.get(id).score, 20);
         } else if (mode === "colors") {
           assert.equal(snapshot.pack.hand.length, 7);
           assert.equal(party.view("host").pack.hand.length, 0);

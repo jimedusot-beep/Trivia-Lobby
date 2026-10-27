@@ -38,6 +38,7 @@ import {
 import { fail, integer, requireFields, hostOnly } from "./shared.js";
 import { openRace, finishRace, nextRace, projectRace } from "./race.js";
 import { openTap, finishTap, nextTap, projectTap } from "./tap.js";
+import { openForbidden, acceptForbidden, tickForbidden, nextForbidden, projectForbidden } from "./forbidden.js";
 import { openTrails, finishTrails, nextTrails, projectTrails } from "./trails.js";
 export { packIds, packMin };
 export function validatePackSettings(mode, settings = {}) {
@@ -74,6 +75,7 @@ export function validatePackSettings(mode, settings = {}) {
 }
 export function openPack(p) {
   if (p.mode === "trails") openTrails(p);
+  else if (p.mode === "no-say") openForbidden(p);
   else if (p.mode === "tap") openTap(p);
   else if (p.mode === "race") openRace(p);
   else if (p.mode === "feud") openFeud(p);
@@ -94,6 +96,7 @@ export function acceptPack(p, actor, v) {
     return;
   }
   if (p.mode === "trails") fail("Use the Light Trails phone controller.");
+  else if (p.mode === "no-say") acceptForbidden(p, actor, v);
   else if (p.mode === "tap") fail("Use the Tap Dash phone controller.");
   else if (p.mode === "race") fail("Use the racing controller to drive.");
   else if (p.mode === "feud") acceptFeud(p, actor, v);
@@ -105,6 +108,7 @@ export function acceptPack(p, actor, v) {
 }
 export function tickPack(p) {
   if (p.mode === "trails") finishTrails(p);
+  else if (p.mode === "no-say") tickForbidden(p);
   else if (p.mode === "tap") finishTap(p);
   else if (p.mode === "race") finishRace(p);
   else if (p.mode === "feud") tickFeud(p);
@@ -115,6 +119,7 @@ export function tickPack(p) {
 }
 export function nextPack(p) {
   if (p.mode === "trails") nextTrails(p);
+  else if (p.mode === "no-say") nextForbidden(p);
   else if (p.mode === "tap") nextTap(p);
   else if (p.mode === "race") nextRace(p);
   else if (p.mode === "feud") nextFeud(p);
@@ -129,6 +134,7 @@ export function projectPack(p, actor) {
   )
     return null;
   if (p.mode === "trails") return projectTrails(p, actor);
+  if (p.mode === "no-say") return projectForbidden(p, actor);
   if (p.mode === "tap") return projectTap(p, actor);
   if (p.mode === "race") return projectRace(p, actor);
   if (p.mode === "feud") return projectFeud(p, actor);
