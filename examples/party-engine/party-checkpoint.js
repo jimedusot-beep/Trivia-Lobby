@@ -3,7 +3,7 @@ import { Chess } from "chess.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
-  "players", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
+  "players", "championship", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
   "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "pack", "category", "pairs", "turn", "answers", "responses",
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
@@ -50,11 +50,20 @@ export function restoreParty(code, state, options, savedAt) {
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
   // Never discard an active open-pack game or reset its score on recovery.
-  if (["playing", "reveal"].includes(party.phase) && ["race", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
+  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
     && (!party.pack || typeof party.pack !== "object" || Array.isArray(party.pack)))
     throw new Error("Unsupported room recovery state.");
   if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
     throw new Error("Unsupported racing recovery state.");
+  // Restore the same season-within-room standings and completed-match IDs.
+  // A newly initialized championship is valid for older version-1 checkpoints.
+  if (!(party.championship?.entries instanceof Map) || party.championship.entries.size > 20 ||
+      !Array.isArray(party.championship.games) || party.championship.games.length > 40 ||
+      !(party.championship.completed instanceof Set) || party.championship.completed.size > 80)
+    throw new Error("Unsupported championship recovery state.");
+  if (party.mode === "tap" && party.pack?.kind === "tap" &&
+      (!Array.isArray(party.pack.racers) || party.pack.racers.length !== party.players.size))
+    throw new Error("Unsupported Tap Dash recovery state.");
   const hostWasConnected = party.hostConnected;
   party.hostConnected = false;
   for (const player of party.players.values()) player.connected = false;

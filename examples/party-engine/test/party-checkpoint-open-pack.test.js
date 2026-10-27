@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { Party } from "../engine.js";
 import { acceptRaceInput } from "../open-pack/race.js";
+import { acceptTapInput } from "../open-pack/tap.js";
+import { completeChampionshipGame } from "../championship.js";
 import { snapshotParty, restoreParty } from "../party-checkpoint.js";
 
 let number = 0;
@@ -88,4 +90,53 @@ test("Chess restart replays legal moves and preserves the live engine and board 
   assert.equal(recovered.fen(), original);
   assert.deepEqual(recovered.history(), table.game.chess.history());
   assert.ok(r.view("host").pack.tables[0].legal.length);
+});
+
+test("Tap Dash preserves 20 player taps and accepts controls after restart without replay", () => {
+  const g = game("tap", 20);
+  assert.equal(g.p.phase, "playing");
+  const id = g.players[0];
+  const input = seq => ({ v: 1, type: "tap_input", matchId: g.p.matchId, heat: 0, seq });
+  assert.equal(acceptTapInput(g.p, id, input(0)), true);
+  g.jump(80);
+  assert.equal(acceptTapInput(g.p, id, input(1)), true);
+  const restored = restoreParty(g.p.code, JSON.parse(JSON.stringify(snapshotParty(g.p))), g.options, 1081);
+  assert.equal(restored.pack.kind, "tap");
+  assert.equal(restored.pack.racers.length, 20);
+  assert.equal(restored.pack.racers.find(r => r.id === id).taps, 2);
+  assert.equal(restored.view(id).pack.own.taps, 2);
+  restored.connected(id, true);
+  assert.equal(acceptTapInput(restored, id, input(1)), false, "replay ignored");
+  g.jump(80);
+  assert.equal(acceptTapInput(restored, id, input(2)), true);
+  g.jump(13000);
+  restored.tick();
+  assert.equal(restored.phase, "reveal");
+  const scores = [...restored.players.values()].map(player => player.score);
+  restored.tick();
+  assert.deepEqual([...restored.players.values()].map(player => player.score), scores);
+});
+
+test("Game Night Championship standings and duplicate-award guards survive a restart", () => {
+  const g = game("tap", 3);
+  const id = g.players[0];
+  assert.equal(acceptTapInput(g.p, id, { v: 1, type: "tap_input", matchId: g.p.matchId, heat: 0, seq: 1 }), true);
+  g.jump(13000); g.p.tick();
+  assert.equal(g.p.phase, "reveal");
+  g.p.enter("finished");
+  assert.equal(g.p.championship.games.length, 1);
+  const first = g.p.championship.entries.get(id);
+  assert.ok(first && first.points > 0);
+  const saved = JSON.parse(JSON.stringify(snapshotParty(g.p)));
+  const restored = restoreParty(g.p.code, saved, g.options, 14000);
+  assert.equal(restored.championship.games.length, 1);
+  assert.equal(restored.championship.entries.get(id).points, first.points);
+  assert.equal(restored.championship.completed.has(g.p.matchId), true);
+  assert.equal(completeChampionshipGame(restored), false, "already rewarded match remains idempotent");
+  assert.equal(restored.championship.entries.get(id).points, first.points);
+  action(restored, "host", "lobby");
+  action(restored, "host", "start", "quiz");
+  assert.equal(restored.championship.entries.get(id).points, first.points, "points carry into next game");
+  const after = restoreParty(restored.code, JSON.parse(JSON.stringify(snapshotParty(restored))), g.options, 14000);
+  assert.equal(after.championship.entries.get(id).points, first.points);
 });

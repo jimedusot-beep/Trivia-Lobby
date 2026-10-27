@@ -6,6 +6,7 @@ import { validateHello } from "./protocol.js";
 import { validateGuestQuiz } from "./custom-quiz.js";
 import { validateShow } from "./open-pack/feud.js";
 import { acceptRaceInput, raceFrame } from "./open-pack/race.js";
+import { acceptTapInput, tapFrame } from "./open-pack/tap.js";
 import { snapshotParty, restoreParty } from "./party-checkpoint.js";
 import { deliver, withDeferredDelivery } from "./durable-delivery.js";
 class RecoveryStorageError extends Error {}
@@ -160,6 +161,7 @@ export function attachPartySocket(server, {
       windowStart = Date.now(),
       count = 0;
     let raceWindowStart = 0, raceCount = 0;
+    let tapWindowStart = 0, tapCount = 0;
     ws.alive = true;
     ws.on("pong", () => {
       ws.alive = true;
@@ -167,20 +169,29 @@ export function attachPartySocket(server, {
     ws.on("error", () => {});
     let connectionQueue = Promise.resolve();
     ws.on("message", (raw) => {
-      // Steering is transient intent rather than one database write per phone frame.
-      // Server-owned simulation, accepted actions and scores are checkpointed in transact().
-      if (record && record.party.mode === "race" && record.party.phase === "playing") {
+      // Fast controls are transient input. Authoritative positions, accepted
+      // actions and championship points are committed on a bounded room tick.
+      if (record && record.party.phase === "playing" && ["race", "tap"].includes(record.party.mode)) {
         let frame;
         try { frame = JSON.parse(raw.toString()); } catch { frame = null; }
-        if (frame?.type === "race_input") {
+        const isRace = record.party.mode === "race" && frame?.type === "race_input";
+        const isTap = record.party.mode === "tap" && frame?.type === "tap_input";
+        if (isRace || isTap) {
           try {
             if (rooms.get(record.party.code) !== record || !record.sessions.owns(actor, ws))
               throw new Error("Connection replaced or room expired.");
             const now = Date.now();
-            if (now - raceWindowStart >= 1000) { raceWindowStart = now; raceCount = 0; }
-            if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
-            if (raw.length > 512) throw new Error("Racing controls are too large.");
-            acceptRaceInput(record.party, actor, frame);
+            if (isRace) {
+              if (now - raceWindowStart >= 1000) { raceWindowStart = now; raceCount = 0; }
+              if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
+              if (raw.length > 512) throw new Error("Racing controls are too large.");
+              acceptRaceInput(record.party, actor, frame);
+            } else {
+              if (now - tapWindowStart >= 1000) { tapWindowStart = now; tapCount = 0; }
+              if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
+              if (raw.length > 256) throw new Error("Tap controls are too large.");
+              acceptTapInput(record.party, actor, frame);
+            }
           } catch (error) { send(ws, { type: "error", message: error.message }); }
           return;
         }
@@ -312,7 +323,7 @@ export function attachPartySocket(server, {
   // A slow database delays frames rather than creating an unbounded write queue.
   const raceTimer = setInterval(() => {
     for (const record of rooms.values()) {
-      if (record.raceBusy || record.party.mode !== "race" || record.party.phase !== "playing") continue;
+      if (record.raceBusy || !["race", "tap"].includes(record.party.mode) || record.party.phase !== "playing") continue;
       record.raceBusy = true;
       void transact(record, () => {
         const party = record.party;
@@ -322,7 +333,7 @@ export function attachPartySocket(server, {
         if (party.revision !== revision) { publish(record); return; }
         for (const [id, ws] of record.sessions.connections())
           if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
-            send(ws, raceFrame(party, id));
+            send(ws, party.mode === "tap" ? tapFrame(party, id) : raceFrame(party, id));
       }).finally(() => { record.raceBusy = false; });
     }
   }, 100);

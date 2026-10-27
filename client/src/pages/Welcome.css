@@ -59,3 +59,44 @@
 @media (max-width: 960px) { .home-shell { padding: 22px; } .home-nav { padding: 14px 18px; } .home-nav-links { gap: 6px 14px; font-size: .8rem; } .home-hero { grid-template-columns: 1.1fr .9fr; padding-top: 48px; } .lobby-home h1 { font-size: 3.6rem; } .home-intro { font-size: 1rem; } .home-play-grid { gap: 15px; } .home-play-card { padding: 22px 17px; } .home-card-top { flex-wrap: wrap; } .lobby-home h3 { font-size: 1.5rem; } .home-rule-stamp { display: none; } }
 @media (max-width: 700px) { .home-shell { padding: 16px; } .home-nav { align-items: flex-start; gap: 16px; } .home-nav-links { justify-content: flex-end; gap: 2px 14px; max-width: 215px; font-size: .75rem; } .home-nav-links .private-link { padding: 6px 8px; } .home-nav .lobby-wordmark { font-size: 1.4rem; } .home-nav .lobby-brand img { width: 39px; height: 39px; } .home-hero { display: flex; flex-direction: column; gap: 0; padding: 36px 2px 23px; } .home-hero-copy { width: 100%; } .lobby-home h1 { font-size: clamp(2.8rem, 11vw, 4.3rem); max-width: 550px; margin-top: 18px; } .home-intro { max-width: 510px; } .home-hero-actions { max-width: 100%; } .lobby-home .home-cta-primary { width: 100%; max-width: 100%; } .lobby-home .home-cta-coral, .lobby-home .home-cta-gold { flex: 1 1 130px; padding-inline: 10px; } .home-guest-note { margin-top: 19px; font-size: .78rem; } .lobby-party-scene { width: 100%; max-width: 430px; margin: 3px 0 -3px; } .scene-sticker { font-size: .63rem; padding: 11px 13px; } .home-marquee { gap: 8px 13px; padding: 13px; font-size: .72rem; } .home-marquee i { font-size: 1rem; } .home-play-section { padding: 35px 0; } .home-doodle { display: none; } .home-play-grid { grid-template-columns: 1fr; gap: 21px; } .home-play-card { padding: 23px; } .home-card-top { flex-wrap: nowrap; } .home-play-card h3 { font-size: 1.8rem; max-width: 300px; } .home-play-card > p { margin-bottom: 20px; } .home-card-action { font-size: 1rem; } .home-house-rules { padding: 23px; gap: 16px; align-items: flex-start; flex-wrap: wrap; } .home-house-rules > img { width: 60px; height: 60px; flex-basis: 60px; } .home-house-rules > div { flex: 1 1 200px; } .home-footer { justify-content: center; text-align: center; font-size: .75rem; } }
 @media (max-width: 360px) { .home-nav { flex-wrap: wrap; } .home-nav-links { max-width: none; justify-content: flex-start; } .home-hero .lobby-kicker { font-size: .63rem; } }
+
+/* SAKURA ARCADE — original PS1/GameCube-era-inspired interface, not copied assets. */
+.lobby-home { background-color:var(--sakura-cream); background-image:
+  linear-gradient(180deg,rgba(255,245,233,.72) 0%,rgba(255,245,233,.95) 52%,#fff5e9 100%),
+  url("/party/sakura-vista.svg"); background-position:top center,top center; background-repeat:no-repeat; background-size:100% 650px,cover; }
+.home-nav { background:rgba(255,250,245,.95); border-color:var(--sakura-border); box-shadow:0 6px 0 var(--sakura-plum),0 16px 30px #241c4426; backdrop-filter:blur(12px); }
+.home-nav-links a:focus-visible,.sakura-console-tile:focus-visible { outline:4px solid #cc629d; outline-offset:4px; }
+.home-hero { gap:18px; padding-top:45px; }
+.home-hero-copy { min-width:0; }
+.home-intro { max-width:510px; }
+.lobby-home h1 > span { color:var(--sakura-indigo); }
+.home-play-section { padding-top:42px; }
+.sakura-console { background:linear-gradient(155deg,#241c44,#403376 75%,#5142a1); color:white; border:3px solid #9f8cc5; border-radius:28px; box-shadow:0 8px 0 #1c1735,0 19px 36px #241c4442; padding:20px; max-width:565px; }
+.sakura-console-heading { display:flex; justify-content:space-between; align-items:center; gap:12px; color:#ffe2f0; font:900 .78rem/1.4 var(--font-body); letter-spacing:.12em; margin-bottom:14px; }
+.sakura-console-light { display:block; width:10px; height:10px; border-radius:50%; background:var(--sakura-jade); box-shadow:0 0 0 5px #86cfb22e; flex-shrink:0; }
+.sakura-console-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.sakura-console-tile { display:flex; align-items:center; gap:9px; min-width:0; min-height:107px; padding:13px; color:var(--sakura-plum); border:3px solid #241c44; border-radius:18px; text-decoration:none; box-shadow:inset 0 3px 0 #ffffff91,0 5px 0 #15112e; transition:transform .16s ease,box-shadow .16s ease,filter .16s ease; }
+.sakura-console-tile:hover { color:var(--sakura-plum); transform:translateY(-3px); box-shadow:inset 0 3px 0 #ffffff91,0 8px 0 #15112e; filter:saturate(1.08); }
+.sakura-console-tile:active { transform:translateY(2px); box-shadow:inset 0 3px 0 #ffffff91,0 2px 0 #15112e; }
+.sakura-console-tile > svg:first-child { flex-shrink:0; }
+.sakura-console-tile > svg:last-child { margin-left:auto; flex-shrink:0; width:16px; }
+.sakura-console-tile > span { min-width:0; display:grid; gap:3px; }
+.sakura-console-tile strong { font:650 clamp(.85rem,1.5vw,1.03rem)/1.1 var(--font-display); letter-spacing:.015em; }
+.sakura-console-tile small { font:.8rem/1.35 var(--font-body); font-weight:800; }
+.sakura-console-play { background:#f5a9c4; }
+.sakura-console-join { background:#c9e1ff; }
+.sakura-console-create { background:#ffdb88; }
+.sakura-console-learn { background:#86cfb2; }
+.sakura-console .sakura-prompt-strip { margin-top:17px; padding-top:13px; border-top:1px solid #fff5e949; color:#fff2f8; }
+.home-play-card { border-color:var(--sakura-border); box-shadow:0 6px 0 var(--sakura-plum); }
+.home-card-coral { background:#ffe2eb; }.home-card-sky { background:#e3edff; }.home-card-gold { background:#fff0cc; }
+.home-marquee { background:var(--sakura-indigo); }
+.home-house-rules { border-color:var(--sakura-border); background:rgba(255,250,245,.96); box-shadow:0 5px 0 var(--sakura-plum); }
+.lobby-party-scene { filter:drop-shadow(0 14px 24px #241c441e); }
+.lobby-party-scene::before,.lobby-party-scene::after { content:"✿"; position:absolute; color:#d574a8; font-size:clamp(30px,5vw,58px); pointer-events:none; animation:sakura-hover 7s ease-in-out infinite alternate; }
+.lobby-party-scene::before { top:7%; right:5%; }.lobby-party-scene::after { bottom:12%; right:18%; font-size:33px; animation-delay:-3s; }
+@keyframes sakura-hover { from { transform:translateY(0) rotate(-8deg); opacity:.62; } to { transform:translateY(-14px) rotate(20deg); opacity:1; } }
+@media(max-width:1090px){.sakura-console-tile { padding:11px; min-height:98px; }.sakura-console-tile > svg:last-child {display:none;} }
+@media(max-width:960px){.home-hero { grid-template-columns:1fr; }.lobby-party-scene {max-width:480px;width:85%;margin:8px auto 0;}.sakura-console {max-width:650px;} }
+@media(max-width:520px){.sakura-console {padding:14px;border-radius:22px;}.sakura-console-grid {gap:9px;}.sakura-console-tile {min-height:103px;flex-direction:column;align-items:flex-start;gap:7px;}.sakura-console-tile strong {font-size:.85rem;}.sakura-console-tile small {font-size:.68rem;}.sakura-console-tile > svg:first-child {width:25px;height:25px;}.sakura-console .sakura-prompt-strip {font-size:.62rem;}.home-hero {padding-top:32px;}}
+@media(prefers-reduced-motion:reduce){.lobby-party-scene::before,.lobby-party-scene::after {animation:none;}.sakura-console-tile {transition:none;}}

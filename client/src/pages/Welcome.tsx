@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, BookOpen, Gamepad2, GraduationCap, LockKeyhole, PencilLine, Sparkles, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Gamepad2, GraduationCap, LockKeyhole, PencilLine, Sparkles, Users, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LobbyBrand, LobbyPartyScene } from "@/components/LobbyIdentity";
 import "./Welcome.css";
@@ -17,19 +17,24 @@ export default function Welcome() {
       </nav>
       <section className="home-hero" aria-labelledby="welcome-title">
         <div className="home-hero-copy">
-          <span className="lobby-kicker">Good times. Great guesses.</span>
+          <span className="lobby-kicker">✿ Sakura Arcade · Good times. Great guesses.</span>
           <h1 id="welcome-title">Play together. <span>Learn for fun.</span></h1>
-          <p className="home-intro">A little friendly competition. A lot of “one more round.” Turn your questions into a party, or make a small learning win all your own.</p>
-          <div className="home-hero-actions">
-            <Button asChild size="lg" className="home-cta home-cta-primary"><a href="/party/"><Gamepad2 aria-hidden="true" /> Start a Party <ArrowRight aria-hidden="true" /></a></Button>
-            <Button asChild size="lg" variant="secondary" className="home-cta home-cta-coral"><Link href="/learn-demo"><GraduationCap aria-hidden="true" /> Try a Lesson</Link></Button>
-            <Button asChild size="lg" variant="outline" className="home-cta home-cta-gold"><a href="/party/create.html"><PencilLine aria-hidden="true" /> Make a Quiz</a></Button>
-          </div>
-          <p className="home-guest-note"><span aria-hidden="true">✓</span> No email. No password. Just jump in.</p>
+          <p className="home-intro">Your own springtime arcade. Choose a game, scan a code, and bring everyone together—no downloads or guest accounts.</p>
+          <nav className="sakura-console" aria-label="Arcade main menu">
+            <div className="sakura-console-heading"><span>✿ CHOOSE YOUR ADVENTURE</span><span className="sakura-console-light" aria-hidden="true" /></div>
+            <div className="sakura-console-grid">
+              <a className="sakura-console-tile sakura-console-play" href="/party/"><Gamepad2 size={30} aria-hidden="true" /><span><strong>PLAY GAMES</strong><small>Start a Party</small></span><ArrowRight size={19} aria-hidden="true" /></a>
+              <a className="sakura-console-tile sakura-console-join" href="/party/#join-entry"><Smartphone size={30} aria-hidden="true" /><span><strong>JOIN PARTY</strong><small>Enter a room code</small></span><ArrowRight size={19} aria-hidden="true" /></a>
+              <a className="sakura-console-tile sakura-console-create" href="/party/create.html"><PencilLine size={30} aria-hidden="true" /><span><strong>CREATE</strong><small>Make a Quiz</small></span><ArrowRight size={19} aria-hidden="true" /></a>
+              <a className="sakura-console-tile sakura-console-learn" href="/party/learn.html"><BookOpen size={30} aria-hidden="true" /><span><strong>LEARN</strong><small>My Courses</small></span><ArrowRight size={19} aria-hidden="true" /></a>
+            </div>
+            <div className="sakura-prompt-strip" aria-hidden="true"><span><b className="sakura-button-glyph">A</b> Select</span><span><b className="sakura-button-glyph">B</b> Back</span><span><b className="sakura-button-glyph">▸</b> Start</span></div>
+          </nav>
+          <p className="home-guest-note"><span aria-hidden="true">✓</span> No email. No password. Just jump in. <Link href="/learn-demo">Try a Lesson</Link></p>
         </div>
         <LobbyPartyScene />
       </section>
-      <div className="home-marquee" role="group" aria-label="Ways to play"><span>QUIZ</span><i aria-hidden="true">✦</i><span>PROMPT DUEL</span><i aria-hidden="true">✦</i><span>CHARADES</span><i aria-hidden="true">✦</i><span>YOUR OWN IDEAS</span></div>
+      <div className="home-marquee" role="group" aria-label="Ways to play"><span>SAKURA ARCADE</span><i aria-hidden="true">✿</i><span>QUIZ</span><i aria-hidden="true">✦</i><span>PROMPT DUEL</span><i aria-hidden="true">✦</i><span>CHARADES</span><i aria-hidden="true">✦</i><span>YOUR OWN IDEAS</span></div>
       <section className="home-play-section" aria-labelledby="pick-your-play">
         <div className="home-section-heading"><div><span className="home-eyebrow">THERE’S A SPOT FOR EVERYONE</span><h2 id="pick-your-play">Pick your kind of good time.</h2></div><span className="home-doodle" aria-hidden="true">↙</span></div>
         <div className="home-play-grid">

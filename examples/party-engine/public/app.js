@@ -7,6 +7,7 @@ import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
 import { renderPack, drawingBusy } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
+import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -84,18 +85,21 @@ function connect(hello) {
     },
     onStatus(next) {
       roomReady = next === "connected";
-      if (!roomReady) releaseRaceControls();
+      if (!roomReady) { releaseRaceControls(); disposeTap(); }
       if (!roomReady && state) render();
     },
     onMessage(e, socket) {
       let m;
       try { m = JSON.parse(e.data); } catch { return; }
       if (m.type === "race_frame") { receiveRaceFrame(m); return; }
+      if (m.type === "tap_frame") { receiveTapFrame(m); return; }
       if (m.type === "credential") {
         credential = { code: m.code, actor: m.actor, token: m.token };
         resumeSavedParty = true;
         if (m.actor !== "host") history.replaceState(null, "", guestInvitation(location.href, m.code));
-        save(); saveHostChoice(); status("Joining your party…");
+        save(); saveHostChoice();
+        if (m.actor === "host" && gameById(launchGame)) history.replaceState(null, "", partyUrl.pathname);
+        status("Joining your party…");
       }
       if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
@@ -124,7 +128,7 @@ function connect(hello) {
     },
     onClose(event, retrying) {
       clearTimeout(retryTimer);
-      releaseRaceControls();
+      releaseRaceControls(); disposeTap();
       status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
       if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
       if (state) render();
@@ -217,7 +221,9 @@ function button(text, fn, parent, disabled = false) {
 function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
   if (updateRaceState(state)) return;
+  if (updateTapState(state)) return;
   disposeRace();
+  disposeTap();
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
@@ -357,7 +363,8 @@ function render() {
   }
   if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
@@ -482,6 +489,31 @@ function render() {
       `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
       row,
     );
+  }
+  // One party-wide championship survives every individual game and its score reset.
+  const championshipBox = $("championship");
+  championshipBox.replaceChildren();
+  const championship = state.championship;
+  if (championship) {
+    element("h2", "🏆 Game Night Championship", championshipBox);
+    element("p", `${championship.gamesPlayed} completed games · One shared family leaderboard. Standings survive switching games in this room.`, championshipBox);
+    if (championship.standings.length) {
+      const ranking = element("ol", undefined, championshipBox);
+      ranking.className = "championship-standings";
+      for (const [i, player] of championship.standings.entries()) {
+        const row = element("li", undefined, ranking);
+        element("strong", `#${i + 1} ${player.name}`, row);
+        element("span", `${player.points} points · ${player.wins} wins · ${player.games} games`, row);
+      }
+    } else element("p", "Finish the first game to start collecting championship points.", championshipBox);
+    if (championship.recent.length) {
+      const heading = element("h3", "Recent games", championshipBox);
+      const recentList = element("ul", undefined, championshipBox);
+      recentList.className = "championship-recent";
+      for (const game of championship.recent) {
+        element("li", `${gameById(game.mode)?.name || game.mode}: ${game.winners.length ? game.winners.join(", ") : "No points awarded"}`, recentList);
+      }
+    }
   }
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();

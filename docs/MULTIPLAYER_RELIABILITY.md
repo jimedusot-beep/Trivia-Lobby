@@ -76,3 +76,22 @@ production-level backup or a physical 20-phone test.
 The new `test/party-checkpoint-open-pack.test.js` covers playing-state
 roundtrips, mid-race reconnect, 20 kart recovery, stale controls and once-only
 heat scoring. Automated CI must pass on the integrated branch before review.
+
+## Latest-main compatibility: Tap Dash, Sakura Arcade and Game Night Championship
+
+The integration with main through PR #74 keeps the Sakura Arcade UI and
+phone/controller handlers. Room snapshots now include the cumulative,
+room-scoped `championship` map, game history and completed-match ID set,
+preventing a restart from erasing standings or replaying an already scored
+match. The live `tap` pack and 20-controller roster are saved and restored.
+
+Tap Dash and Grand Prix inputs use authenticated, bounded low-latency socket
+handlers. The shared 100 ms frame loop serializes authoritative room advances,
+checkpoints changed state and releases private phone/public host frames only
+after the save succeeds. It does not turn every 20 Hz control into a database
+write. Racing limits remain 40 messages/s and Tap Dash 18 messages/s per
+controller. No change to the other game's guest QR join, account requirements
+or production deployment.
+
+Run regression, browser, PostgreSQL, and 20-controller checks on this PR;
+these are not evidence of real-device Wi-Fi reliability on a live Render host.

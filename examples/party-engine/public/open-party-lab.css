@@ -44,3 +44,9 @@
   .opl-hero { padding: 0 .25rem; }
 }
 @media (prefers-reduced-motion: reduce) { .opl-game { transition: none; } }
+
+/* An original Trivia Lobby mode, not the upstream executable. */
+.opl-game .opl-native-note { font-size: .85rem; line-height: 1.45; color: #3b3763; margin: .3rem 0 0; }
+.opl-native { display: inline-block; border-radius: 12px; padding: .75rem .85rem; text-align: center; background: #5236c7; color: #fff; font-weight: 800; text-decoration: none; }
+.opl-native:hover, .opl-native:focus-visible { background: #352194; color: #fff; }
+.opl-native:focus-visible { outline: 3px solid #ffae63; outline-offset: 2px; }

@@ -81,8 +81,8 @@ export default function Play() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+    <div className="min-h-screen sakura-handheld p-4 flex flex-col">
+      <div className="sakura-phone-header flex justify-between items-center mb-6">
         <div className="font-bold text-slate-500">{gameState.roomCode}</div>
         <div className="flex items-center gap-2">
           <span className="font-bold text-xl text-primary">{score} pts</span>
@@ -152,7 +152,7 @@ export default function Play() {
                     key={letter} type="button" disabled={!canAnswer}
                     aria-label={letter + ": " + question.choices[i]}
                     onClick={() => submitAnswer(letter)}
-                    className={`rounded-2xl shadow-lg border-b-8 transition-all flex flex-col items-center justify-center gap-3 ${selectedAnswer === letter ? "bg-slate-800 text-white ring-4 ring-white/50" : colors[i]} ${!canAnswer && selectedAnswer !== letter ? "opacity-50" : ""}`}
+                    className={`sakura-answer rounded-2xl shadow-lg border-b-8 transition-all flex flex-col items-center justify-center gap-3 ${selectedAnswer === letter ? "bg-slate-800 text-white ring-4 ring-white/50" : colors[i]} ${!canAnswer && selectedAnswer !== letter ? "opacity-50" : ""}`}
                   >
                     <span className="text-4xl text-white">{symbols[i]}</span>
                     <span className="text-sm text-white font-medium px-2 text-center">{question.choices[i]}</span>
@@ -164,7 +164,7 @@ export default function Play() {
           </>
         )}
         {gameState.gameStatus === "playing" && ["reveal", "leaderboard"].includes(gameState.phase) && result && (
-          <div className="text-center space-y-6" aria-live="polite">
+          <div className="sakura-phone-result text-center space-y-6" aria-live="polite">
             {result.isCorrect === true ? (
               <>
                 <CheckCircle2 className="w-24 h-24 text-green-500 mx-auto" aria-hidden="true" />

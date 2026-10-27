@@ -7,6 +7,7 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
+import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
 const fail = (message) => {
   throw new Error(message);
@@ -43,6 +44,7 @@ export class Party {
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.show = customShow ?? defaultShow;
     this.players = new Map();
+    this.championship = newChampionship();
     this.hostConnected = true;
     this.phase = "lobby";
     this.mode = "quiz";
@@ -97,6 +99,7 @@ export class Party {
       this.hostWaitAt = this.clock();
   }
   enter(phase, ms = null) {
+    if (phase === "finished" && this.phase !== "finished") completeChampionshipGame(this);
     this.phase = phase;
     this.revision++;
     this.deadline = ms === null ? null : this.clock() + ms;
