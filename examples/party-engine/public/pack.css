@@ -348,3 +348,13 @@
     font-size: 0.7rem !important;
   }
 }
+
+/* Forbidden Word Frenzy: private phone prompt and large referee actions. */
+.forbidden-game { max-width: 800px; }
+.forbidden-secret { background: #fff8d9; color: #241b35; border: 3px solid #482b81; border-radius: 20px; padding: 1.1rem; }
+.forbidden-secret h3 { font-size: clamp(1.7rem,6vw,2.5rem); }
+.forbidden-secret ul { display: flex; flex-wrap: wrap; gap: .65rem; list-style: none; padding: 0; }
+.forbidden-secret li { padding: .45rem .8rem; border-radius: 12px; background: #ffe2e7; font-weight: 850; }
+.forbidden-controls { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: .5rem; }
+.forbidden-controls button { min-height: 64px; }
+@media (prefers-reduced-motion: reduce) { .forbidden-controls button { transition: none; } }
