@@ -105,7 +105,11 @@ function connect(hello) {
       if (m.type === "state") {
         const resuming = !roomReady;
         state = m.state; offset = state.serverNow - Date.now();
-        connection.ready(); status(resumed ? "Reconnected." : "Party ready."); render();
+        connection.ready();
+        // Only announce initial room synchronization. Routine state broadcasts
+        // must not overwrite a successful action ACK or an actionable error.
+        if (resuming) status(resumed ? "Reconnected." : "Party ready.");
+        render();
         if (pending) {
           if (resuming) socket.send(JSON.stringify(pending));
           clearTimeout(retryTimer);
