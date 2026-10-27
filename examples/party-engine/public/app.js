@@ -71,6 +71,7 @@ function connect(hello) {
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
   let resumed = false;
+  let seenState = false;
   connection = createRecoveringConnection(socketUrl.href, {
     onOpen(socket) {
       resumed = false;
@@ -104,11 +105,13 @@ function connect(hello) {
       if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
         const resuming = !roomReady;
+        const initialState = !seenState;
+        seenState = true;
         state = m.state; offset = state.serverNow - Date.now();
         connection.ready();
-        // Only announce initial room synchronization. Routine state broadcasts
-        // must not overwrite a successful action ACK or an actionable error.
-        if (resuming) status(resumed ? "Reconnected." : "Party ready.");
+        // The first successful join (or a reconnect) gets a readiness message.
+        // Later state broadcasts must not erase action ACKs or actionable errors.
+        if (initialState || resuming) status(resumed ? "Reconnected." : "Party ready.");
         render();
         if (pending) {
           if (resuming) socket.send(JSON.stringify(pending));
