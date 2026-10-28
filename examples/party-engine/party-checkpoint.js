@@ -1,6 +1,7 @@
 import { Party } from "./engine.js";
 import { Chess } from "chess.js";
 import { validatePokerCheckpoint } from "./open-pack/poker.js";
+import { validateHomewardCheckpoint } from "./open-pack/homeward.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
@@ -51,12 +52,13 @@ export function restoreParty(code, state, options, savedAt) {
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
     throw new Error("Unsupported room recovery state.");
   // Never discard an active open-pack game or reset its score on recovery.
-  if (["playing", "reveal"].includes(party.phase) && ["race", "tap", "no-say", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
+  if (["playing", "reveal"].includes(party.phase) && ["homeward", "race", "tap", "no-say", "feud", "draw", "colors", "four", "chess", "checkers", "reversi", "mancala", "table", "backgammon"].includes(party.mode)
     && (!party.pack || typeof party.pack !== "object" || Array.isArray(party.pack)))
     throw new Error("Unsupported room recovery state.");
   if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
     throw new Error("Unsupported racing recovery state.");
   if (party.mode === "table" && party.pack?.guided) validatePokerCheckpoint(party.pack, [...party.players.keys()]);
+  if (party.mode === "homeward" && party.pack && ["playing","reveal","finished"].includes(party.phase)) validateHomewardCheckpoint(party.pack,[...party.players.keys()],party.phase);
   // Restore the same season-within-room standings and completed-match IDs.
   // A newly initialized championship is valid for older version-1 checkpoints.
   if (!(party.championship?.entries instanceof Map) || party.championship.entries.size > 20 ||

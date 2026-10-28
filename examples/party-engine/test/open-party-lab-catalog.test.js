@@ -38,7 +38,8 @@ test("catalog keeps the upstream published player capacities, never advertises a
 test("upstream catalog IDs do not silently register unimplemented Trivia Lobby modes", () => {
   const local = new Set(guestGames.map((game) => game.id));
   for (const game of openPartyLabGames) assert(!local.has(game.id));
-  assert.equal(guestGames.length, 30, "24 original modes plus Grand Prix, Tap Dash, Forbidden Word Frenzy, Light Trails Royale, Turbo Circuit, Wave Sprint");
+  assert.equal(guestGames.length, 31, "Homeward Hustle joins the existing 30 native modes");
+  assert(local.has("homeward"), "The original card-and-pawn race is implemented as a native mode");
   assert(local.has("turbo") && local.has("wave"), "Both original 20-player racers are registered");
   assert(local.has("trails"), "The original Light Trails Royale mode is registered");
   assert(local.has("no-say"), "A native original forbidden-word game is registered");

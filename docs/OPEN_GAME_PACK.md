@@ -8,7 +8,9 @@ The six upstream applications are architectural sources, not interchangeable pac
 
 ## Scope
 
-- Friendly Feud: [original guided team showdown](FAMILY_SHOWDOWN_GAMEPLAY.md) with a first-screen phone buzzer, typed exact matches, private host wording review, hidden answer board, three strikes, steal, multipliers and two timed lightning runs with host review before publication. Original sample questions and documented casual house rules; no claim that curated points are real survey results. Host can import a bounded custom show. A Sorry-style pawn race is not included in the current catalog.
+- [Homeward Hustle](HOMEWARD_HUSTLE_GAMEPLAY.md): original card-and-pawn race with four pawns, legal movement, captures, slides, split sevens, swaps, exact Home entry, timed turns and balanced 2–4-player boards for 2–20 guests. Original board/UI and authoritative rules; no commercial assets or source code copied.
+
+- Friendly Feud: [original guided team showdown](FAMILY_SHOWDOWN_GAMEPLAY.md) with a first-screen phone buzzer, typed exact matches, private host wording review, hidden answer board, three strikes, steal, multipliers and two timed lightning runs with host review before publication. Original sample questions and documented casual house rules; no claim that curated points are real survey results. Host can import a bounded custom show.
 - Scribble.rs: original drawing/guessing game with a private clue, a shared bounded stroke canvas, scoring, alternating artists, timer, undo/clear, and recovery of the current drawing.
 - Unoverse: licensed adaptations of deck generation, turn math and scoring, with original two-dimensional presentation, private hands, legal plays, skip/reverse/draw/wild actions, configurable draw stacking, bots, and timed turns. Up to ten seats; additional guests watch.
 - FreeBoardGames.org: selected rule adaptations for Four in a Row, Mancala and Checkers, independently implemented standard two-player Reversi, and a pinned chess.js dependency for chess. Parallel paired tables let 10–20 guests play in one room; an odd seat gets a bot.

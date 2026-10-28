@@ -7,6 +7,7 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
+import { currentHomewardBoardVersion } from "./open-pack/homeward.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
 import { advanceTrails, trailsReconnected } from "./open-pack/trails.js";
@@ -198,7 +199,9 @@ export class Party {
       return previous.result;
     }
     this.tick();
-    if (msg.matchId !== this.matchId || msg.revision !== this.revision)
+    const independentBoardMove = this.mode === "homeward" && msg.type === "play" &&
+      msg.revision < this.revision && currentHomewardBoardVersion(this,msg.value);
+    if (msg.matchId !== this.matchId || (msg.revision !== this.revision && !independentBoardMove))
       fail("Your screen is out of date. Try again after synchronization.");
     if (actor !== "host" && !this.players.has(actor)) fail("Unknown player.");
     if (msg.type === "start") {

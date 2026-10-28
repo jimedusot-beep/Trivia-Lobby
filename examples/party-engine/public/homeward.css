@@ -1,0 +1,240 @@
+/* Original card/pawn presentation. SPDX-License-Identifier: AGPL-3.0-or-later */
+.homeward-game > h2 {
+  margin: 0.1rem 0 0.4rem;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+}
+.homeward-meta {
+  margin: 0.4rem 0;
+  font-size: 0.9rem;
+}
+.homeward-controller {
+  padding: 0.4rem 0;
+  margin: 0.3rem 0;
+}
+.homeward-controller > h3 {
+  font-size: 1.25rem;
+  margin: 0.45rem 0;
+}
+.homeward-controller p {
+  margin: 0.4rem 0;
+}
+.homeward-identity {
+  font-weight: 850;
+}
+.homeward-turn-clock {
+  display: inline-block;
+  padding: 0.35rem 0.65rem;
+  border: 2px solid #493466;
+  border-radius: 12px;
+  background: #fff1b8;
+  color: #302447;
+  font-weight: 900;
+}
+[data-homeward-time][data-urgent="true"] {
+  background: #a82248;
+  color: #fff;
+}
+.homeward-card-box {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  margin: 0.7rem 0;
+}
+.homeward-card-face {
+  display: grid;
+  place-items: center;
+  flex: 0 0 76px;
+  min-height: 95px;
+  border: 3px solid #493466;
+  border-radius: 15px;
+  background: #eee5ff;
+  color: #493466;
+  font-size: 2.5rem;
+  font-weight: 900;
+  box-shadow: 3px 4px 0 #49346633;
+}
+.homeward-card-face[data-card="BUMP"] {
+  font-size: 1.2rem;
+}
+.homeward-card-box > div {
+  min-width: 0;
+}
+.homeward-card-box h4 {
+  font-size: 1.05rem;
+  margin: 0.2rem 0;
+}
+.homeward-card-box p {
+  font-size: 0.9rem;
+}
+.homeward-controller > button {
+  width: 100%;
+  min-height: 48px;
+  margin: 0.4rem 0;
+  font-weight: 900;
+}
+.homeward-controller label {
+  font-weight: 850;
+  margin: 0.5rem 0 0.2rem;
+}
+.homeward-controller select {
+  width: 100%;
+  min-height: 46px;
+  font-size: 1rem;
+}
+.homeward-pawn-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.65rem 0;
+}
+.homeward-pawn-choices button {
+  min-width: 0;
+  min-height: 64px;
+  margin: 0;
+  padding: 0.55rem !important;
+  border: 2px solid var(--pawn-ink) !important;
+  color: var(--pawn-ink) !important;
+  background: var(--pawn-light) !important;
+  font-size: 0.95rem;
+  font-weight: 850;
+  box-shadow: 0 3px 0 #30244722 !important;
+}
+.homeward-pawn-choices button[aria-pressed="true"] {
+  outline: 3px solid #493466;
+  outline-offset: 1px;
+}
+.homeward-pawn-choices button:disabled {
+  opacity: 0.52;
+}
+.homeward-game [data-color="0"] {
+  --pawn-ink: #a82248;
+  --pawn-light: #fbe0e7;
+}
+.homeward-game [data-color="1"] {
+  --pawn-ink: #235b9e;
+  --pawn-light: #dcecff;
+}
+.homeward-game [data-color="2"] {
+  --pawn-ink: #146c50;
+  --pawn-light: #daf3e8;
+}
+.homeward-game [data-color="3"] {
+  --pawn-ink: #805900;
+  --pawn-light: #fff0bf;
+}
+.homeward-controller .homeward-preview {
+  padding: 0.65rem;
+  border: 2px solid #493466;
+  border-radius: 12px;
+  background: #f0eaff;
+  color: #302447;
+  font-weight: 850;
+}
+.homeward-choice-title {
+  font-weight: 850;
+}
+.homeward-board-panel {
+  margin: 0.8rem 0;
+}
+.homeward-board {
+  margin: 0.7rem auto;
+  max-width: 740px;
+}
+.homeward-board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.homeward-board figcaption {
+  font-size: 0.8rem;
+  margin: 0.6rem 0;
+  line-height: 1.5;
+}
+.homeward-game details {
+  margin: 0.7rem 0;
+}
+.homeward-game summary {
+  min-height: 32px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.homeward-seats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.homeward-seats article {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 2px solid var(--pawn-ink);
+  border-radius: 14px;
+  color: var(--pawn-ink);
+  background: var(--pawn-light);
+}
+.homeward-seats h4,
+.homeward-seats p {
+  margin: 0.25rem 0;
+}
+.homeward-seats [data-turn="true"] {
+  outline: 3px solid #493466;
+  outline-offset: 1px;
+}
+.homeward-seats [data-own="true"] h4::after {
+  content: " · You";
+}
+.homeward-history {
+  padding-left: 1.3rem;
+}
+.homeward-history li {
+  margin: 0.5rem 0;
+}
+.homeward-game label {
+  display: block;
+}
+#game:has(.homeward-game) #roster {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+@media (min-width: 1000px) {
+  .homeward-host {
+    display: grid;
+    grid-template-columns: minmax(200px, 0.6fr) minmax(0, 1.4fr);
+    gap: 0 1rem;
+  }
+  .homeward-host > h2,
+  .homeward-host > p,
+  .homeward-host > label,
+  .homeward-host > select,
+  .homeward-host > details {
+    grid-column: 1/-1;
+  }
+  .homeward-host > .homeward-controller {
+    grid-column: 1;
+  }
+  .homeward-host > .homeward-board-panel {
+    grid-column: 2;
+    margin-top: 0.2rem;
+  }
+}
+@media (max-width: 360px) {
+  .homeward-card-face {
+    flex-basis: 60px;
+    min-height: 82px;
+  }
+  .homeward-card-box {
+    gap: 0.5rem;
+  }
+  .homeward-pawn-choices button {
+    font-size: 0.87rem;
+  }
+}
+@media (max-width: 400px) {
+  .homeward-seats {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .homeward-game * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

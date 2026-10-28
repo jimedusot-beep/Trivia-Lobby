@@ -5,7 +5,7 @@ import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
-import { renderPack, drawingBusy } from "./pack-ui.js";
+import { renderPack, drawingBusy, tickHomewardClocks } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
 import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
@@ -245,6 +245,7 @@ function render() {
   document.body.classList.add("party-playing");
   document.body.classList.remove("party-invited");
   document.body.dataset.partyPhase = state.phase;
+  $("timer").hidden = state.pack?.kind === "homeward";
   $("entry").hidden = true;
   $("pick-games").hidden = true;
   $("game").hidden = false;
@@ -547,6 +548,7 @@ function render() {
 mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
+  if(state.pack?.kind==="homeward")tickHomewardClocks(Date.now()+offset);
   $("timer").textContent = state.deadline
     ? `${Math.max(0, Math.ceil((state.deadline - Date.now() - offset) / 1000))} seconds remaining`
     : "";
