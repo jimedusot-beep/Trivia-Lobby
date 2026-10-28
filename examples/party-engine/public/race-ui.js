@@ -297,7 +297,7 @@ function mountController(a, root, api) {
   const summary = node("summary", "Options", options); summary.setAttribute("aria-label", "Controller options");
   const panel = node("div", undefined, options, "race-options-panel");
   const assistance = node("label", undefined, panel, "race-assist");
-  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = true;
+  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = own?.assist ?? true;
   node("span", "Steering assistance", assistance);
   const leave = node("button", "Leave party", panel); leave.type = "button";
   leave.addEventListener("click", () => document.getElementById("leave").click());

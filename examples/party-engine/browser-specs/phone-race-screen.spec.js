@@ -22,7 +22,8 @@ test('phone racer stays in one viewport through rotation, options and reload',as
   await p.getByLabel('Controller options',{exact:true}).click();await fits(p,p.locator('.race-options-panel'));await fits(p,p.getByRole('button',{name:'Leave party',exact:true}));await noScroll(p);
   await p.getByLabel('Controller options',{exact:true}).click();
  }
- await p.setViewportSize({width:320,height:568});await p.reload();await expect(p.locator('#race-own-number')).toHaveText('#1');await noScroll(p);
+ await p.setViewportSize({width:320,height:568});await p.getByLabel('Controller options',{exact:true}).click();await p.getByLabel('Steering assistance',{exact:true}).uncheck();await expect.poll(()=>f.sent[0].filter(m=>m.type==='race_input').at(-1)?.assist).toBe(false);await p.getByLabel('Controller options',{exact:true}).click();
+ await p.reload();await expect(p.locator('#race-own-number')).toHaveText('#1');await noScroll(p);await p.getByLabel('Controller options',{exact:true}).click();await expect(p.getByLabel('Steering assistance',{exact:true})).not.toBeChecked();await p.getByLabel('Controller options',{exact:true}).click();
  await p.keyboard.down('KeyA');await p.getByLabel('Controller options',{exact:true}).click();await expect.poll(()=>f.sent[0].filter(m=>m.type==='race_input').at(-1)?.steer).toBe(0);await p.keyboard.up('KeyA');await p.getByLabel('Controller options',{exact:true}).click();
  if(process.env.RACE_SCREENSHOT_DIR){await mkdir(process.env.RACE_SCREENSHOT_DIR,{recursive:true});await p.screenshot({path:process.env.RACE_SCREENSHOT_DIR+'/phone-one-screen-portrait.png'});await p.setViewportSize({width:844,height:390});await p.screenshot({path:process.env.RACE_SCREENSHOT_DIR+'/phone-one-screen-landscape.png'});}
  expect(f.errors).toEqual([]);
