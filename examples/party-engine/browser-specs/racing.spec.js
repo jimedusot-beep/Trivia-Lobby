@@ -25,7 +25,11 @@ for(const mode of ["turbo","wave"]){
      await host.getByRole("button",{name:"Start match",exact:true}).click();
      await expect(host.locator("#heading")).toContainText("racing");
      const p=racers[0];
+     await expect(host.getByRole("img",{name:/live race track, three lanes/})).toBeVisible();
+     await expect(p.getByRole("img",{name:/live race track, three lanes/})).toHaveCount(0);
+     await p.getByRole("button",{name:"Game info",exact:true}).click();
      await expect(p.getByRole("img",{name:/live race track, three lanes/})).toBeVisible();
+     await p.getByRole("button",{name:"Back to game",exact:true}).click();
      await expect(p.getByRole("button",{name:/GAS: OFF/})).toBeVisible();
      await p.getByRole("button",{name:/GAS: OFF/}).click();
      await expect(p.getByRole("button",{name:/GAS: ON/})).toBeVisible();

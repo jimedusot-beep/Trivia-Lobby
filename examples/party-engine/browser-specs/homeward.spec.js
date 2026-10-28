@@ -165,11 +165,13 @@ test("Homeward: decoded QR, first-screen phone draw, keyboard pawn move and relo
     ).toBeFocused();
     await actor.keyboard.press("Enter");
     await expect.poll(() => board.seats[0].pawns[0].position).toBe(3);
+    await actor.getByRole("button",{name:"Game info",exact:true}).click();
     await actor.getByText("View your board", { exact: true }).click();
     await expect(actor.locator(".homeward-board-panel")).toHaveAttribute(
       "open",
     );
     await actor.reload();
+    await actor.getByRole("button",{name:"Game info",exact:true}).click();
     await expect(actor.locator(".homeward-board-panel")).toHaveAttribute(
       "open",
     );

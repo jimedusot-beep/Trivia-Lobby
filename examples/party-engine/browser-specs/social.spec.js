@@ -32,7 +32,7 @@ for(const mode of ["majority","likely","closest","survey","impostor"]) {
    for(let i=0;i<3;i++){
     const p=f.players[i];
     await expect(p.locator("#heading")).toContainText(opening);
-    if(["majority","likely"].includes(mode))await p.locator("#content button:enabled").first().click();
+    if(["majority","likely"].includes(mode))await p.locator(".phone-surface button:enabled").first().click();
     else {
      await p.locator("#social-response").fill(mode==="closest"?"88":mode==="survey"?"Passport":"A nice clue");
      await p.getByRole("button",{name:"Lock answer"}).click();
@@ -43,7 +43,7 @@ for(const mode of ["majority","likely","closest","survey","impostor"]) {
     await expect(f.host.locator("#content")).not.toContainText("Word: Pancakes");
     for(const p of f.players){
      await expect(p.locator("#heading")).toContainText("voting");
-     await p.locator("#content button:enabled").first().click();
+     await p.locator(".phone-surface button:enabled").first().click();
     }
    }
    await expect(f.host.locator("#heading")).toContainText("reveal");

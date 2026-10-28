@@ -10,6 +10,7 @@ import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRace
 import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
 import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
+import { mountPhoneController, disposePhoneController } from "./phone-controller.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -239,6 +240,7 @@ function render() {
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
+  disposePhoneController();
   const selectedMode = $("mode")?.value || preferredMode;
   const selectedCategory = $("charades-category")?.value || preferredCategory;
   const previousPhase = phaseKey;
@@ -535,6 +537,7 @@ function render() {
       }
     }
   }
+  mountPhoneController(state, { actor: credential?.actor, game: gameById(state.mode), releaseControls: releaseRaceControls });
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {

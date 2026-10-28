@@ -68,7 +68,7 @@ test("host a custom local quiz for three guest players and show the true result"
       players.push(player);
     }
     await page.getByRole("button", { name: "Start match" }).click();
-    await expect(players[0].getByRole("heading", { name: "Which answer is right?" })).toBeVisible({ timeout: 10000 });
+    await expect(players[0].locator(".phone-prompt")).toHaveText("Which answer is right?", { timeout: 10000 });
     await expect(players[0].getByText("Right answer ✓ Correct")).toHaveCount(0);
     await players[0].getByRole("button", { name: "Right answer" }).click();
     await players[1].getByRole("button", { name: "Wrong answer" }).click();

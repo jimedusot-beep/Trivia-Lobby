@@ -4,12 +4,15 @@ import jsQR from "jsqr";
 const base = "http://127.0.0.1:4317";
 
 export async function lobby(browser, count = 2, viewport = { width: 390, height: 844 }, setup) {
-  const contexts = [], errors = [], sent = [], requests = [];
+  const contexts = [], errors = [], sent = [], requests = [], snapshots = new Map();
   async function page(size) {
     const context = await browser.newContext({ viewport: size });
     if (!contexts.length && setup) await context.addInitScript(setup);
     contexts.push(context);
     const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
+    page.on("websocket", ws => ws.on("framereceived", event => {
+      try { const message=JSON.parse(event.payload); if(message.type==="state") snapshots.set(page,message.state); } catch {}
+    }));
     const network = []; page.on("request", r => network.push(r.url())); requests.push(network);
     return page;
   }
@@ -31,7 +34,7 @@ export async function lobby(browser, count = 2, viewport = { width: 390, height:
     await expect(p.locator("#heading")).toContainText("lobby");
     players.push(p);
   }
-  return { host, players, sent, errors, requests, code: new URL(qr.data).searchParams.get("code"),
+  return { host, players, sent, errors, requests, latest:page=>snapshots.get(page), forget:page=>snapshots.delete(page), code: new URL(qr.data).searchParams.get("code"),
     async start() {
       await host.getByRole("button", { name: "Start match", exact: true }).click();
       await expect(host.locator("#race-track")).toBeVisible({ timeout: 12000 });

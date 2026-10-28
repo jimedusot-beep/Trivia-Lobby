@@ -45,7 +45,7 @@ for(const mode of ["bracket","timeline","caption","category","percentage","bingo
      for(let i=0;i<3;i++){
        const p=players[i];
        await expect(p.locator("#heading")).toContainText(phase);
-       if(mode==="bracket")await p.locator("#content button:enabled").first().click();
+       if(mode==="bracket")await p.locator(".phone-surface button:enabled").first().click();
        if(mode==="timeline"){
          for(let index=0;index<4;index++)await p.locator("#timeline-"+index).selectOption(String(index));
          await p.getByRole("button",{name:"Submit order"}).click();
