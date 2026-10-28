@@ -11,7 +11,8 @@ group. Passing those earlier tests did not establish a complete guided poker gam
   acknowledged action at a time. A held/slow submission cannot create a second
   phantom gesture. Match/phase checks still reject late or wrong-artist actions.
 - Keep pen color and width in tab storage. White acts as an eraser. Keyboard
-  drawing remains available. Undo/Redo operates on a whole grouped gesture,
+  drawing keeps focus and pen position across acknowledged lines, with a visible
+  keyboard cursor. Undo/Redo operates on a whole grouped gesture,
   including a gesture streamed in multiple parts; new ink clears Redo.
 - Expand the original word pool from 30 to 90 common prompts, without reusing a
   chosen word during a match. Keep words private until reveal, explain the
@@ -60,6 +61,9 @@ connected guests with bounded active poker seats and reconnects.
 Five focused Chromium browser journeys passed: private drawing/keyboard recovery,
 live streaming with persistent tools and whole-gesture Undo/Redo, slow-submission
 handling, guided poker through payout/next hand, and the retained Whist table.
+The full 17-case Chromium pack also passed. A further keyboard regression first
+reproduced lost focus after one line, then passed with two continuous keyboard
+segments after the fix; all three drawing browser journeys passed again.
 The full game-pack browser suite and hosted Chromium/Firefox/WebKit suites are
 release checks; their final results are recorded in the pull request. Browser
 viewports are not physical-phone or manual screen-reader certification. No merge

@@ -114,8 +114,14 @@ test("Doodle Dash: private word, pointer drawing, keyboard stroke, guess and can
     await artist.keyboard.press("ArrowRight");
     await artist.keyboard.press("Enter");
     await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 1);
+    await expect(pad).toBeFocused();
+    await artist.keyboard.press("ArrowRight");
+    await artist.keyboard.press("Enter");
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
+    const keyboardLines=await guesser.locator(".doodle-pad polyline").evaluateAll(lines=>lines.slice(-2).map(line=>line.getAttribute("points")));
+    expect(keyboardLines).toEqual(["500,500 530,500","530,500 560,500"]);
     await artist.reload();
-    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 1);
+    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
     await guesser.getByLabel("Guess the drawing").fill(word);
     await guesser
       .locator(".pack-entry")

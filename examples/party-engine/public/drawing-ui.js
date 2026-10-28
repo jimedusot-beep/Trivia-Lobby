@@ -10,6 +10,7 @@ const palette = [
   ["Eraser", "#ffffff"],
 ];
 let active;
+let keyboardPen = { key: "", point: [500, 500], visible: false };
 export const drawingBusy = () => !!active?.busy;
 export function disposeDrawing() {
   if (active) clearInterval(active.timer);
@@ -86,6 +87,7 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
   }
   for (const stroke of s.strokes) line(stroke);
   if (s.canDraw) {
+    svg.id = "doodle-pad";
     svg.tabIndex = 0;
     svg.setAttribute("aria-disabled", String(!canAct()));
     const tools = e("div");
@@ -99,8 +101,13 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
     color.value = tool.color;
     const width = e("select", undefined, tools);
     width.setAttribute("aria-label", "Pen width");
-    for (const n of [4, 8, 16, 24]) {
-      const option = e("option", `${n} px`, width);
+    for (const [n, label] of [
+      [4, "Fine"],
+      [8, "Medium"],
+      [16, "Bold"],
+      [24, "Extra bold"],
+    ]) {
+      const option = e("option", label, width);
       option.value = String(n);
     }
     width.value = String(tool.width);
@@ -221,6 +228,8 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
       if (event.button !== 0 || !event.isPrimary || !canAct() || gesture.busy)
         return;
       event.preventDefault();
+      keyboardPen.visible = false;
+      cursor.style.display = "none";
       svg.setPointerCapture(event.pointerId);
       Object.assign(gesture, {
         busy: true,
@@ -280,16 +289,33 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
     svg.onlostpointercapture = (event) => {
       if (gesture.down) release(event);
     };
-    let start = [500, 500],
-      end = [500, 500];
+    const penKey = `${state.matchId}:${state.index}:${s.artist}`;
+    if (keyboardPen.key !== penKey)
+      keyboardPen = { key: penKey, point: [500, 500], visible: false };
+    let start = [...keyboardPen.point],
+      end = [...keyboardPen.point];
+    const cursor = document.createElementNS(ns, "circle");
+    cursor.classList.add("doodle-cursor");
+    cursor.setAttribute("r", "10");
+    cursor.setAttribute("fill", "white");
+    cursor.setAttribute("stroke", "#6146df");
+    cursor.setAttribute("stroke-width", "5");
+    cursor.setAttribute("aria-hidden", "true");
+    cursor.setAttribute("cx", String(end[0]));
+    cursor.setAttribute("cy", String(end[1]));
+    cursor.style.display = keyboardPen.visible ? "" : "none";
+    svg.append(cursor);
     svg.onkeydown = (event) => {
-      if (gesture.busy) return;
       const delta = {
         ArrowLeft: [-30, 0],
         ArrowRight: [30, 0],
         ArrowUp: [0, -30],
         ArrowDown: [0, 30],
       }[event.key];
+      if (gesture.busy || !canAct()) {
+        if (delta || event.key === "Enter") event.preventDefault();
+        return;
+      }
       if (delta) {
         event.preventDefault();
         start = [...end];
@@ -297,6 +323,11 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
           Math.max(0, Math.min(1000, end[0] + delta[0])),
           Math.max(0, Math.min(1000, end[1] + delta[1])),
         ];
+        keyboardPen.point = [...end];
+        keyboardPen.visible = true;
+        cursor.style.display = "";
+        cursor.setAttribute("cx", String(end[0]));
+        cursor.setAttribute("cy", String(end[1]));
       }
       if (event.key === "Enter" && canAct()) {
         event.preventDefault();
