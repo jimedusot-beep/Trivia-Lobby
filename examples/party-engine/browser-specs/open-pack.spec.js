@@ -57,32 +57,92 @@ async function noOverflow(page) {
   await expect(page.getByLabel("Email", { exact: true })).toHaveCount(0);
 }
 
-test("Family Showdown: decoded QR, phone buzzer, hidden board, host judge and reconnect", async ({
+test("Family Showdown: visible phone buzzer, private review, typed answers, three strikes and steal", async ({
   browser,
 }) => {
   const f = await lobby(browser, "feud", 4);
   try {
     await f.start();
     const p = f.players[0];
+    await p.setViewportSize({width:320,height:844});
     await expect(
       p.getByRole("button", { name: "BUZZ!", exact: true }),
     ).toBeVisible();
+    const buzzer=await p.getByRole("button",{name:"BUZZ!",exact:true}).boundingBox();
+    expect(buzzer.y+buzzer.height).toBeLessThan(844);
+    await expect(p.locator(".feud-board-panel")).not.toHaveAttribute("open");
+    await p.getByText("View the answer board",{exact:true}).click();
     await p.getByRole("button", { name: "BUZZ!", exact: true }).click();
+    await expect(p.locator(".feud-board-panel")).toHaveAttribute("open");
     await expect(f.host.locator("#content")).toContainText(
       "Guest 0 buzzed first",
     );
+    await p.getByLabel("Your team's answer",{exact:true}).fill("packed lunches");
+    await p.getByRole("button",{name:"Send answer",exact:true}).click();
+    await expect(p.locator(".feud-controller")).toContainText("Waiting for the host");
+    await expect(f.players[1].locator("#content")).not.toContainText("packed lunches");
+    await expect(f.host.locator(".feud-controller")).not.toContainText("packed lunches");
+    await expect(f.host.locator(".feud-submitted-answer")).not.toBeVisible();
     await f.host.getByText("Private host controls", { exact: true }).click();
+    await expect(f.host.locator(".feud-submitted-answer")).toHaveText("packed lunches");
     await f.host
       .getByRole("button", { name: "Reveal Sandwiches (+35)", exact: true })
       .click();
-    await expect(p.locator(".feud-board")).toContainText("Sandwiches — 35");
+    await expect(p.locator(".feud-board li").filter({hasText:"Sandwiches"}).locator("strong")).toHaveText("35");
     await expect(p.locator(".feud-board")).not.toContainText("Blanket");
     await p.reload();
-    await expect(p.locator(".feud-board")).toContainText("Sandwiches — 35");
+    await expect(p.locator(".feud-board li").filter({hasText:"Sandwiches"}).locator("strong")).toHaveText("35");
+    await p.getByLabel("Your team's answer",{exact:true}).fill("Blanket");
+    await p.getByRole("button",{name:"Send answer",exact:true}).click();
+    await expect(p.locator(".feud-decision")).toContainText("Blanket revealed");
+    for(let strike=1;strike<=3;strike++){
+      await f.host.getByRole("button",{name:"Strike — answer not on board",exact:true}).click();
+      await expect(f.host.locator(".feud-strikes")).toContainText(`Strikes: ${strike} / 3`);
+    }
+    const stealer=f.players[1];
+    await expect(p.getByLabel("Your team's answer",{exact:true})).toHaveCount(0);
+    await stealer.getByLabel("Your team's answer",{exact:true}).fill("Water");
+    await stealer.getByRole("button",{name:"Send answer",exact:true}).click();
+    await expect(f.host.locator(".feud-controller")).toContainText("Starlight wins the 80-point pot!");
+    await expect(p.locator(".feud-board-panel")).toHaveAttribute("open");
     await noOverflow(p);
   } finally {
     await f.close();
   }
+});
+
+test("Family Showdown: full phone match, retained duplicate draft, private final review and scoring", async ({browser})=>{
+  const f=await lobby(browser,"feud",4);
+  try {
+    await f.start();const first=f.players[0],second=f.players[2];
+    const rounds=[["Sandwiches","Blanket","Water","Fruit","Napkins"],["Flowers","Trees","Birds","Vegetables","Butterflies"],["Board games","Movies","Reading","Baking","Puzzles"]];
+    for(const answers of rounds){
+      await first.getByRole("button",{name:"BUZZ!",exact:true}).click();
+      for(const text of answers){await first.getByLabel("Your team's answer",{exact:true}).fill(text);await first.getByRole("button",{name:"Send answer",exact:true}).click();await expect(first.locator(".feud-decision")).toContainText(`${text} revealed`);}
+      await expect(f.host.locator("#heading")).toContainText("reveal");await f.host.getByRole("button",{name:"Next",exact:true}).click();
+    }
+    await f.host.getByRole("button",{name:"Start lightning timer",exact:true}).click();
+    for(const [index,text] of ["yellow curved fruit","Bird","Orange juice","Swing","Zebra"].entries()){
+      await first.getByLabel("Your quick answer",{exact:true}).fill(text);await first.getByRole("button",{name:"Lock answer",exact:true}).click();
+      if(index<4)await expect(first.locator(".feud-controller")).toContainText(`Question ${index+2} of 5`);
+    }
+    await expect(second.locator("#content")).not.toContainText("yellow curved fruit");
+    await f.host.getByRole("button",{name:"Start lightning timer",exact:true}).click();
+    await second.getByLabel("Your quick answer",{exact:true}).fill("Lemon");await second.getByRole("button",{name:"Lock answer",exact:true}).click();
+    await expect(second.locator(".feud-controller")).toContainText("Question 2 of 5");
+    await second.getByLabel("Your quick answer",{exact:true}).fill("Bird");await second.getByRole("button",{name:"Lock answer",exact:true}).click();
+    await expect(second.locator("#status")).toContainText("used by the first finalist");await expect(second.getByLabel("Your quick answer",{exact:true})).toHaveValue("Bird");
+    for(const [index,text] of ["Airplane","Milk","Slide","Tiger"].entries()){
+      await second.getByLabel("Your quick answer",{exact:true}).fill(text);await second.getByRole("button",{name:"Lock answer",exact:true}).click();
+      if(index<3)await expect(second.locator(".feud-controller")).toContainText(`Question ${index+3} of 5`);
+    }
+    await expect(f.host.locator(".feud-controller")).toContainText("Both runs are locked");await expect(second.locator("#content")).not.toContainText("yellow curved fruit");
+    await f.host.getByText("Private host controls",{exact:true}).click();await f.host.getByLabel("Match run 1, question 1",{exact:true}).selectOption("0");
+    await expect(f.host.locator(".feud-review-question").first()).toContainText("yellow curved fruit · 40 points");
+    await f.host.reload();await expect(f.host.locator(".feud-review-question").first()).toContainText("yellow curved fruit · 40 points");
+    await f.host.getByRole("button",{name:"Publish lightning results",exact:true}).click();await expect(first.locator(".feud-final-results")).toContainText("350 / 200 points");
+    await f.host.getByRole("button",{name:"Next",exact:true}).click();await expect(first.locator("#heading")).toContainText("finished");await expect(first.locator("#roster")).toContainText("Guest 0: 950 points");await noOverflow(first);
+  } finally {await f.close();}
 });
 
 test("Doodle Dash: private word, pointer drawing, keyboard stroke, guess and canvas recovery", async ({

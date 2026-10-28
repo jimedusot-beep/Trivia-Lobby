@@ -171,8 +171,15 @@ for (const mode of packIds)
           assert.ok(snapshot.pack.board.every((a) => a.hidden));
           assert.equal(snapshot.pack.judge, undefined);
           await send(active, id, "play", { action: "buzz" });
+          await send(active, id, "play", { action: "answer", text: "packed lunches" });
+          const privateState = await host.wait(m => m.type === "state" && m.state.pack?.submittedAnswer?.text === "packed lunches");
+          assert.equal(privateState.state.pack.waitingForHost, true);
+          const waiting = await players[1].s.wait(m => m.type === "state" && m.state.pack?.waitingForHost);
+          assert.equal(waiting.state.pack.submittedAnswer, undefined);
           await send(host, "host", "play", { action: "judge", index: 0 });
           assert.equal(party.pack.pot, 35);
+          await send(active, id, "play", { action: "answer", text: "Blanket" });
+          assert.equal(party.pack.pot, 60);
         } else if (mode === "draw") {
           assert.equal(party.view("host").pack.word, undefined);
           await send(active, id, "play", { action: "choose", index: 0 });

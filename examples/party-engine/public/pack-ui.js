@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { renderPoker } from "./poker-ui.js";
+import { renderFeud } from "./feud-ui.js";
 import { renderDrawing, disposeDrawing } from "./drawing-ui.js";
 export { drawingBusy } from "./drawing-ui.js";
 const selections = new Map();
@@ -87,136 +88,8 @@ export function renderPack(state, context) {
     return;
   }
   if (s.kind === "feud") {
-    e("h2", s.title);
-    const teams = e("div");
-    teams.className = "feud-teams";
-    for (const team of s.teams) {
-      const card = e("article", undefined, teams);
-      e("h3", team.name, card);
-      e("strong", `${team.score} points`, card);
-      e("p", team.players.join(", "), card);
-    }
-    e("h3", s.question);
-    if (!s.stage.startsWith("final")) {
-      e(
-        "p",
-        `Board ${s.round} of ${s.total} · ×${s.multiplier} · Pot ${s.pot} · Strikes ${s.strikes} / 3`,
-      );
-      const board = e("ol");
-      board.className = "feud-board";
-      for (const answer of s.board)
-        e(
-          "li",
-          answer.hidden
-            ? `${answer.index + 1}. ?`
-            : `${answer.text} — ${answer.points}`,
-          board,
-        );
-      if (s.canBuzz && playing)
-        b("BUZZ!", () => play({ action: "buzz" })).className = "buzz-button";
-      if (s.buzzer)
-        e("p", `${s.buzzer} buzzed first! Say your answer aloud to the host.`);
-      if (s.team !== null && s.stage === "play")
-        e(
-          "p",
-          `${s.teams[s.team].name} controls the board. Say your answers aloud.`,
-        );
-      if (s.stage === "steal")
-        e("h3", `${s.teams[1 - s.team].name}: one answer to steal the pot!`);
-      if (host && playing) {
-        const controls = e("details");
-        e("summary", "Private host controls", controls);
-        e(
-          "p",
-          "Keep these answer controls off the shared screen. Judge the answers spoken by the teams.",
-          controls,
-        );
-        try {
-          controls.open =
-            sessionStorage.getItem("feud-controls-open") === "yes";
-        } catch {}
-        controls.ontoggle = () => {
-          try {
-            sessionStorage.setItem(
-              "feud-controls-open",
-              controls.open ? "yes" : "no",
-            );
-          } catch {}
-        };
-        if (["faceoff", "play", "steal"].includes(s.stage)) {
-          for (const a of s.judge)
-            b(
-              `Reveal ${a.text} (+${a.points})`,
-              () => play({ action: "judge", index: a.index }),
-              controls,
-              !s.board[a.index].hidden,
-            );
-          b(
-            s.stage === "faceoff"
-              ? "Miss — other team takes control"
-              : "Strike / missed steal",
-            () => play({ action: "judge", index: -1 }),
-            controls,
-          );
-          if (
-            s.stage === "play" &&
-            !s.strikes &&
-            !s.passed &&
-            s.board.filter((a) => !a.hidden).length === 1
-          )
-            b(
-              "Pass control to the other team",
-              () => play({ action: "pass" }),
-              controls,
-            );
-        }
-        for (let index = 0; index < 2; index++) {
-          const field = input(
-            `Team ${index + 1} name`,
-            `feud-team-${index}`,
-            24,
-            controls,
-          );
-          b(
-            "Save team name",
-            () => play({ action: "team-name", index, name: field.value }),
-            controls,
-          );
-        }
-      }
-    } else {
-      e(
-        "p",
-        `Lightning final · Player ${s.finalPlayer} · ${s.finalist} · Question ${Math.min(s.finalCursor, 5)} / 5`,
-      );
-      if (s.stage === "final-ready") {
-        e(
-          "p",
-          "Only the current finalist answers. Keep their phone private from the next finalist.",
-        );
-        if (host)
-          b("Start lightning timer", () => play({ action: "final-start" }));
-      }
-      if (s.canAnswer) {
-        entry("Your quick answer", "feud-final-answer", (text) =>
-          play({ action: "final-answer", text }),
-        );
-        b("Pass this question", () => play({ action: "final-pass" }));
-      }
-      if (s.finalAnswers) {
-        e(
-          "h3",
-          `${s.finalTotal} / ${s.goal} points${s.finalTotal >= s.goal ? " · Goal reached!" : ""}`,
-        );
-        s.questions.forEach((q, i) => {
-          e("h4", q);
-          for (let n = 0; n < 2; n++) {
-            const a = s.finalAnswers[n][i];
-            e("p", `Player ${n + 1}: ${a?.text ?? "Pass"} — ${a?.points ?? 0}`);
-          }
-        });
-      }
-    }
+    renderFeud(state,{root,e,b,play,input,canAct});
+    return;
   }
   if (s.kind === "draw") {
     renderDrawing(state,{e,b,play,refresh,canAct,getPack:context.getPack ?? (()=>s)});
