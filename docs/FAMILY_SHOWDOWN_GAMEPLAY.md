@@ -39,6 +39,8 @@ Primary implementation evidence:
 2. Each board starts with 45 seconds to buzz. Phone controls appear above compact
    team scores and a collapsible board. The host sees the board and separate,
    initially closed answer controls. No buzzer means an unawarded board reveal.
+   Chosen board, team-roster and help-panel visibility survives state updates and
+   reloads; the board opens by default when results are revealed.
 3. The first buzzer gets 20 seconds to answer. That player can speak to the host
    or type up to 60 readable characters. Only that player can submit at this step.
 4. Normalized exact matches reveal automatically and add the listed value times

@@ -71,7 +71,9 @@ test("Family Showdown: visible phone buzzer, private review, typed answers, thre
     const buzzer=await p.getByRole("button",{name:"BUZZ!",exact:true}).boundingBox();
     expect(buzzer.y+buzzer.height).toBeLessThan(844);
     await expect(p.locator(".feud-board-panel")).not.toHaveAttribute("open");
+    await p.getByText("View the answer board",{exact:true}).click();
     await p.getByRole("button", { name: "BUZZ!", exact: true }).click();
+    await expect(p.locator(".feud-board-panel")).toHaveAttribute("open");
     await expect(f.host.locator("#content")).toContainText(
       "Guest 0 buzzed first",
     );

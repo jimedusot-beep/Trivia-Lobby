@@ -56,6 +56,19 @@ export function renderFeud(state, { root, e, b, play, input, canAct }) {
     };
     return field;
   }
+  function rememberPanel(panel, key, defaultOpen = false) {
+    let open = defaultOpen;
+    try {
+      const saved = sessionStorage.getItem(key);
+      if (saved !== null) open = saved === "yes";
+    } catch {}
+    panel.open = open;
+    panel.ontoggle = () => {
+      try {
+        sessionStorage.setItem(key, panel.open ? "yes" : "no");
+      } catch {}
+    };
+  }
   function privatePanel(parent) {
     const controls = e("details", undefined, parent);
     controls.className = "feud-private";
@@ -253,7 +266,11 @@ export function renderFeud(state, { root, e, b, play, input, canAct }) {
     if (host) e("h3", "Answer board", boardPanel);
     else {
       e("summary", "View the answer board", boardPanel);
-      boardPanel.open = state.phase === "reveal";
+      rememberPanel(
+        boardPanel,
+        `feud-board-open:${state.matchId}:${s.round}:${state.phase}`,
+        state.phase === "reveal",
+      );
     }
     const board = e("ol", undefined, boardPanel);
     board.className = "feud-board";
@@ -406,11 +423,13 @@ export function renderFeud(state, { root, e, b, play, input, canAct }) {
   }
   const roster = e("details");
   e("summary", "Teams & players", roster);
+  rememberPanel(roster, `feud-roster-open:${state.matchId}`);
   for (const team of s.teams)
     e("p", `${team.name}: ${team.players.join(", ")}`, roster);
   const rules = e("details");
   rules.className = "feud-rules";
   e("summary", "How Family Showdown works", rules);
+  rememberPanel(rules, "feud-rules-open");
   e(
     "p",
     "This is a casual team showdown with original sample questions and curated points. These are house rules, not an exact television-show simulation.",
