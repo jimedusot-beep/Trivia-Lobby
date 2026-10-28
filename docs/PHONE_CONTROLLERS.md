@@ -39,7 +39,7 @@ Party Lab projects keep their own interfaces.
 | Color Clash, manual card table | Grouped hand and legal actions | Table details and optional actions |
 | Five-card draw | Five private cards and betting/exchange | Opponents, pots and rules |
 | Grand Prix, Turbo, Wave, Light Trails, Tap | Live status and large controls | Track/standings on TV, options |
-| Homeward Hustle (separate feature PR) | Current card and guided pawn action | Board and detailed rules |
+| Homeward Hustle | Current card and guided pawn action | Board and detailed rules |
 
 ## Architecture and verification
 
@@ -77,10 +77,9 @@ to submit real actions. Record local/CI/device results separately in the PR.
   focusable. This does not establish manual screen-reader conformance.
 - A separate local merge rehearsal with Homeward Hustle PR #89 passed its initial
   controller in four sizes and actual split-seven, swap and Bump actions, with
-  bounds checks on the complex controls. Its code is not bundled into this PR;
-  its controller contract starts running automatically when that game is merged.
-- Firefox/WebKit CI, physical iPhone/Android keyboards, zoom and changing browser
-  bars on real devices remain separate verification. No hosting or account
+  bounds checks on the complex controls. That game has since been integrated from main into this release.
+- The release CI results are recorded in the PR. Physical iPhone/Android keyboards,
+  zoom and changing browser bars on real devices remain separate verification. No hosting or account
   change is required, and this branch does not deploy the website.
 
 PR #88 is a parallel standalone Grand Prix phone-layout change. Reconcile that
@@ -104,3 +103,8 @@ match/heat and twenty players, and requires the UI to show either the current
 live grid or all twenty completed results. The initial 20-kart/3D checks remain.
 This changes test synchronization and assertions; race duration and game rules
 are unchanged. CI must pass again on the combined release before deployment.
+
+The second WebKit run exposed a real short-landscape overflow: the split-seven
+confirmation button extended three pixels below the play area. Reducing the
+finish-panel gaps and preview padding keeps the 44px action intact. The existing
+complex-move test reproduced the failure locally and remains the regression gate.

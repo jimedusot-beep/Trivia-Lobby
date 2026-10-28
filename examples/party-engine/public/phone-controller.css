@@ -718,6 +718,12 @@ body.phone-controller-active #status {
   }
 }
 @media (max-height: 450px) and (orientation: landscape) {
+  .phone-surface .phone-homeward-finish {
+    gap: 3px 6px;
+  }
+  .phone-surface .homeward-preview {
+    padding: 3px 5px;
+  }
   .phone-homeward-context > p:first-child {
     display: none;
   }
