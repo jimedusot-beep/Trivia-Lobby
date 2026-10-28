@@ -36,7 +36,7 @@ export const packGames = Object.freeze([
     max: 20,
     rounds: "3 boards + lightning final",
     rules:
-      "Split into teams. Buzz first, uncover the host's curated answers, avoid three strikes, and steal the pot. Finish with two timed answer sprints. Sample points are curated, not real poll results.",
+      "Split into two teams. Buzz first, type answers or speak to the host, avoid three strikes, and steal the pot. Exact matches reveal automatically; the host judges other wording and reviews the lightning final. Original sample questions and curated points; casual house rules.",
     tag: "Team game show",
   },
   {

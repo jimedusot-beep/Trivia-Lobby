@@ -378,3 +378,45 @@
 .poker-table-details {margin:1rem 0;}
 .poker-table-details .poker-table {margin-top:.8rem;}
 @media(max-width:360px){.open-game .card-hand.poker-hand{grid-template-columns:repeat(3,minmax(44px,64px));justify-content:center;}}
+
+/* Family Showdown keeps the phone action ahead of the shared answer board. */
+.feud-game > h2 {margin:.1rem 0 .45rem;font-size:clamp(1.4rem,3.5vw,2rem);}
+.feud-game .feud-question {margin:.5rem 0;font-size:clamp(1.15rem,3vw,1.65rem);line-height:1.35;}
+.feud-game .feud-round-meta {margin:.35rem 0;font-weight:800;}
+.feud-controller {margin:.6rem 0 .8rem;}
+.feud-controller p {margin:.45rem 0;}
+.feud-identity {font-weight:850;}
+.feud-turn {font-size:1.15rem;font-weight:900;}
+.feud-game .buzz-button {margin:.5rem 0;min-height:86px!important;font-size:2.2rem!important;}
+.feud-entry {display:grid;grid-template-columns:minmax(0,1fr);gap:.4rem;margin:.7rem 0;}
+.feud-entry label {font-weight:850;}
+.feud-entry input {width:100%;min-height:48px;font-size:1rem;}
+.feud-entry button {width:100%;margin:0;}
+.feud-game .feud-decision {padding:.6rem;border:2px solid #1f6245;border-radius:10px;background:#e6f5e8;color:#183c29;font-weight:800;}
+.feud-strikes {display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;font-weight:850;}
+.feud-strikes span {display:inline-grid;place-items:center;width:28px;height:28px;border:2px solid #62556a;border-radius:7px;color:#62556a;background:#fff;}
+.feud-strikes span[data-used="true"] {background:#a91644;color:#fff;border-color:#a91644;}
+.feud-game .feud-teams {margin:.7rem 0;grid-template-columns:repeat(2,minmax(0,1fr));}
+.feud-game .feud-teams article {padding:.55rem;min-width:0;}
+.feud-game .feud-teams h3 {font-size:1rem;margin:.15rem 0 .35rem;}
+.feud-game .feud-teams [data-mine="true"] {outline:3px solid #5037a4;outline-offset:1px;}
+.feud-layout {display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;margin:.75rem 0;}
+.feud-layout:empty {display:none;}
+.feud-layout > * {min-width:0;}
+.feud-host .feud-private {order:-1;}
+.feud-game .feud-board {margin:.6rem 0;}
+.feud-game .feud-board li {display:flex;justify-content:space-between;gap:.5rem;align-items:center;font-size:1.05rem;min-height:52px;box-sizing:border-box;}
+.feud-board li strong {flex-shrink:0;min-width:2rem;text-align:center;border-left:2px solid #fff8;padding-left:.4rem;}
+.feud-board li[data-revealed="true"] {background:#fff0b3;color:#20264b;}
+.feud-game .feud-private {background:#fff0e4;border-style:solid;}
+.feud-game summary {cursor:pointer;font-weight:850;min-height:32px;}
+.feud-judge-actions {display:grid;grid-template-columns:minmax(0,1fr);gap:.5rem;}
+.feud-judge-actions button {width:100%;text-align:left;margin:0;}
+.feud-submitted-answer {padding:.6rem;border:2px solid #6541ad;border-radius:10px;background:#fff;font-weight:900;}
+.feud-review-question {padding:.65rem 0;border-bottom:2px solid #c9a9b4;}
+.feud-review-question h3 {font-size:1.1rem;}
+.feud-review-question select {width:100%;min-height:44px;}
+.feud-game > details {margin:.6rem 0;}
+#game:has(.feud-game) #roster {grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));}
+@media(min-width:900px){.feud-host .feud-layout{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);}.feud-host .feud-private{order:0;}.feud-final-results,.feud-host .feud-private:only-child{grid-column:1/-1;}}
+@media(max-width:360px){.feud-game .feud-question{font-size:1.1rem;}.feud-game .feud-round-meta{font-size:.9rem;}.feud-game .buzz-button{min-height:74px!important;}}

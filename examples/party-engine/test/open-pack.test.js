@@ -95,6 +95,8 @@ test("Feud: complete all boards and two private timed finalists without duplicat
   );
   for (const text of ["Lemon", "Airplane", "Milk", "Slide", "Tiger"])
     act(ids[2], { action: "final-answer", text });
+  assert.equal(p.pack.stage, "final-review");
+  act("host", { action: "final-publish" });
   assert.equal(p.phase, "reveal");
   assert.equal(p.pack.finalTotal, 350);
   next();
@@ -123,6 +125,7 @@ test("Feud timeouts release a buzzer and complete both lightning players", () =>
   assert.equal(p.pack.stage, "final-ready");
   act("host", { action: "final-start" });
   advance(25000);
+  act("host", { action: "final-publish" });
   assert.equal(p.pack.finalTotal, 0);
   next();
   assert.equal(p.phase, "finished");
