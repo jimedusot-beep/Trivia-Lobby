@@ -42,7 +42,18 @@ const words = [
   "pancakes",
   "suitcase",
   "crown",
+  "elephant", "giraffe", "jellyfish", "kangaroo", "turtle", "flamingo",
+  "hedgehog", "crocodile", "ladybird", "seahorse", "peacock", "squirrel",
+  "dolphin", "snail", "crab", "bat", "owl", "rabbit", "whale", "zebra",
+  "toothbrush", "backpack", "alarm clock", "rubber duck", "teapot",
+  "roller skates", "watering can", "headphones", "popcorn", "snow globe",
+  "beach", "library", "train station", "playground", "mountain", "farm",
+  "swimming pool", "space station", "campsite", "water park", "desert",
+  "aquarium", "bakery", "bridge", "island", "museum", "garden", "cave",
+  "windmill", "igloo", "submarine", "fire engine", "snowflake", "mailbox",
+  "trophy", "hammock", "paintbrush", "binoculars", "washing machine", "swing",
 ];
+export const DRAW_LIMITS = Object.freeze({ points: 2400, strokes: 200, segment: 64 });
 export const inkColors = [
   "#20264b",
   "#e23867",
@@ -54,12 +65,15 @@ export const inkColors = [
   "#ffffff",
 ];
 export function openDrawing(p) {
+  const used = p.pack?.kind === "draw" ? [...(p.pack.used ?? [])] : [];
   p.pack = {
     kind: "draw",
     artist: p.roster[p.index],
-    choices: shuffle(words).slice(0, 3),
+    choices: shuffle(words.filter(word => !used.includes(word))).slice(0, 3),
+    used,
     word: null,
     strokes: [],
+    redo: [],
     guesses: [],
     solved: new Set(),
     pointCount: 0,
@@ -71,12 +85,13 @@ export function openDrawing(p) {
 function choose(p, index) {
   const s = p.pack;
   s.word = s.choices[index];
+  (s.used ??= []).push(s.word);
   s.stage = "drawing";
   renewed(p, 60000);
 }
 export function acceptDrawing(p, actor, v) {
   const s = p.pack;
-  requireFields(v, ["action"], ["index", "points", "color", "width", "text"]);
+  requireFields(v, ["action"], ["index", "points", "color", "width", "text", "strokeId", "part"]);
   playerOnly(p, actor);
   if (v.action === "choose") {
     if (actor !== s.artist || s.stage !== "choose" || !integer(v.index, 0, 2))
@@ -85,17 +100,29 @@ export function acceptDrawing(p, actor, v) {
     return;
   }
   if (s.stage !== "drawing") fail("Drawing has not opened.");
-  if (["stroke", "undo", "clear"].includes(v.action)) {
+  if (["stroke", "undo", "redo", "clear"].includes(v.action)) {
     if (actor !== s.artist) fail("Only the artist can draw.");
     if (v.action === "clear") {
       s.strokes = [];
       s.pointCount = 0;
+      s.redo = [];
       s.version++;
       return;
     }
     if (v.action === "undo") {
-      const stroke = s.strokes.pop();
-      s.pointCount -= stroke?.points.length ?? 0;
+      const last = s.strokes.at(-1), group = [];
+      if (last) {
+        do { group.unshift(s.strokes.pop()); }
+        while(last.strokeId && s.strokes.at(-1)?.strokeId===last.strokeId);
+        s.pointCount -= group.reduce((n,stroke)=>n+stroke.points.length,0);
+        (s.redo ??= []).push(group);
+      }
+      s.version++;
+      return;
+    }
+    if (v.action === "redo") {
+      const group = s.redo?.pop();
+      if (group) {s.strokes.push(...group);s.pointCount+=group.reduce((n,stroke)=>n+stroke.points.length,0);}
       s.version++;
       return;
     }
@@ -104,7 +131,7 @@ export function acceptDrawing(p, actor, v) {
       !integer(v.width, 2, 24) ||
       !Array.isArray(v.points) ||
       v.points.length < 2 ||
-      v.points.length > 64 ||
+      v.points.length > DRAW_LIMITS.segment ||
       v.points.some(
         (pt) =>
           !Array.isArray(pt) ||
@@ -113,13 +140,22 @@ export function acceptDrawing(p, actor, v) {
       )
     )
       fail("Invalid drawing stroke.");
-    if (s.strokes.length >= 160 || s.pointCount + v.points.length > 1200)
+    const grouped = v.strokeId !== undefined || v.part !== undefined;
+    if (grouped) {
+      if(typeof v.strokeId!=="string" || !/^[a-f0-9]{32}$/.test(v.strokeId) || !integer(v.part,0,511)) fail("Invalid stroke sequence.");
+      const last=s.strokes.at(-1), earlier=s.strokes.some(stroke=>stroke.strokeId===v.strokeId);
+      if(earlier ? last?.strokeId!==v.strokeId || v.part!==last.part+1 || last.color!==v.color || last.width!==v.width || last.points.at(-1).join(",")!==v.points[0].join(",") : v.part!==0)
+        fail("This drawing segment is out of order.");
+    }
+    if (s.strokes.length >= DRAW_LIMITS.strokes || s.pointCount + v.points.length > DRAW_LIMITS.points)
       fail("Canvas is full. Undo a stroke or clear it to keep drawing.");
     s.strokes.push({
       points: v.points.map((pt) => [...pt]),
       color: v.color,
       width: v.width,
+      ...(grouped?{strokeId:v.strokeId,part:v.part}:{}),
     });
+    s.redo = [];
     s.pointCount += v.points.length;
     s.version++;
     return;
@@ -176,6 +212,11 @@ export function projectDrawing(p, actor) {
     version: s.version,
     guesses: s.guesses,
     solved: s.solved.size,
+    hasGuessed: s.solved.has(actor),
+    canUndo: actor === s.artist && s.strokes.length > 0 && s.stage === "drawing",
+    canRedo: actor === s.artist && !!s.redo?.length && s.stage === "drawing",
+    remainingPoints: DRAW_LIMITS.points - s.pointCount,
+    remainingSegments: DRAW_LIMITS.strokes - s.strokes.length,
     canGuess:
       s.stage === "drawing" &&
       actor !== "host" &&

@@ -339,7 +339,7 @@ function render() {
           settingsSelect("Draw-card stacking", "stacking", [[false,"Off"],[true,"On"]], "colors", false);
           settingsSelect("Seconds per card turn", "turnSeconds", [15,30,60,90].map(n=>[n,String(n)]), "colors", 30);
         }
-        if (select.value === "table") settingsSelect("Card-table preset", "preset", [["poker","Five-card poker (manual rules)"],["whist","Whist (four seats, manual rules)"]], "table", "poker");
+        if (select.value === "table") settingsSelect("Card-table preset", "preset", [["poker","Five-card draw (guided, 2–6 seats)"],["whist","Whist (four seats, manual rules)"]], "table", "poker");
         if (select.value === "feud") { const link = element("a", "Make or import your own showdown questions", settingsBox); link.href = "./show.html"; }
         start.disabled = state.players.filter(p=>p.connected).length < (gameById(select.value)?.min ?? 3) || !!pending;
       }
@@ -384,7 +384,7 @@ function render() {
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
-  else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
+  else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,getPack:()=>state.pack,canAct:()=>!pending && roomReady && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
   });

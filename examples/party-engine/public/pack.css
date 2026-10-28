@@ -8,6 +8,20 @@
   margin: 1rem 0;
   overflow-wrap: anywhere;
 }
+.poker-pot {font-size:1.35rem;font-weight:900;text-align:center;padding:.7rem;border-radius:14px;background:#dff4e7;color:#173d2b;}
+.poker-table {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:.6rem;padding:1rem;border:5px solid #6e4637;border-radius:24px;background:#174d3d;}
+.poker-seat {min-width:0;padding:.65rem;border:3px solid transparent;border-radius:14px;background:#fff7e8;color:#28213b;}
+.poker-seat[data-turn="true"] {border-color:#ffce52;outline:2px solid #ffce52;}
+.poker-seat h4,.poker-seat p {margin:.25rem 0;}
+.poker-hand {display:flex;flex-wrap:wrap;justify-content:center;gap:.45rem;}
+.poker-hand .poker-card,.poker-revealed .poker-card {display:inline-grid;place-items:center;min-width:48px;max-width:78px;min-height:82px!important;padding:.5rem!important;border:2px solid #372646;border-radius:10px;color:#221e39;background:#fff;font-size:1.5rem!important;font-weight:900;box-shadow:0 3px 0 #37264644;}
+.poker-card[data-red="true"] {color:#b91e48!important;}
+.poker-card[data-selected="true"] {outline:4px solid #6146df;outline-offset:2px;background:#e8dfff!important;}
+.poker-revealed {display:flex;flex-wrap:wrap;gap:.25rem;}
+.poker-revealed .poker-card {min-width:30px;min-height:50px!important;font-size:1rem!important;padding:.2rem!important;}
+.poker-actions {display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0;}
+.poker-actions p {flex-basis:100%;}
+@media(max-width:400px){.poker-table{padding:.5rem;}.poker-hand .poker-card{min-width:43px;padding:.3rem!important;font-size:1.25rem!important;}.poker-game details{font-size:.9rem;}}
 .open-game h2 {
   font-size: clamp(1.5rem, 4vw, 2.6rem);
 }
@@ -358,3 +372,9 @@
 .forbidden-controls { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: .5rem; }
 .forbidden-controls button { min-height: 64px; }
 @media (prefers-reduced-motion: reduce) { .forbidden-controls button { transition: none; } }
+.open-game .card-hand.poker-hand {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.3rem;}
+.open-game .card-hand.poker-hand .poker-card {width:100%;max-width:76px;min-width:0;min-height:74px!important;box-sizing:border-box;}
+.poker-controller {margin:.7rem 0 1rem;}
+.poker-table-details {margin:1rem 0;}
+.poker-table-details .poker-table {margin-top:.8rem;}
+@media(max-width:360px){.open-game .card-hand.poker-hand{grid-template-columns:repeat(3,minmax(44px,64px));justify-content:center;}}

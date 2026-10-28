@@ -107,13 +107,21 @@ test("Doodle Dash: private word, pointer drawing, keyboard stroke, guess and can
     await artist.mouse.down();
     await artist.mouse.move(box.x + 80, box.y + 90, { steps: 5 });
     await artist.mouse.up();
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(1);
+    await expect.poll(() => guesser.locator(".doodle-pad polyline").count()).toBeGreaterThan(0);
+    await expect(artist.locator(".doodle-pad")).toHaveAttribute("aria-disabled", "false");
+    const drawnSegments = await guesser.locator(".doodle-pad polyline").count();
     await pad.focus();
     await artist.keyboard.press("ArrowRight");
     await artist.keyboard.press("Enter");
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(2);
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 1);
+    await expect(pad).toBeFocused();
+    await artist.keyboard.press("ArrowRight");
+    await artist.keyboard.press("Enter");
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
+    const keyboardLines=await guesser.locator(".doodle-pad polyline").evaluateAll(lines=>lines.slice(-2).map(line=>line.getAttribute("points")));
+    expect(keyboardLines).toEqual(["500,500 530,500","530,500 560,500"]);
     await artist.reload();
-    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(2);
+    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
     await guesser.getByLabel("Guess the drawing").fill(word);
     await guesser
       .locator(".pack-entry")
@@ -193,37 +201,53 @@ for (const mode of ["four", "chess", "checkers", "reversi", "mancala"])
     }
   });
 
-test("Card table: private hands, public plays, chips and host award", async ({
-  browser,
-}) => {
+test("Guided poker: private hands, betting, card exchange, automatic payout and next hand", async ({ browser }) => {
   const f = await lobby(browser, "table");
   try {
     await f.start();
-    const p = f.players[0],
-      other = f.players[1];
-    await expect(p.locator(".card-hand .standard-card")).toHaveCount(5);
-    await p.locator(".card-hand .standard-card").first().click();
-    await expect(other.locator(".card-hand .standard-card")).toHaveCount(6);
+    const [other, first] = f.players;
+    await expect(first.locator(".poker-hand .poker-card")).toHaveCount(5);
+    await expect(first.locator(".poker-table-details")).not.toHaveAttribute("open");
+    expect(await first.locator(".poker-controller").evaluate(node=>node.nextElementSibling?.classList.contains("poker-table-details"))).toBe(true);
+    await expect(f.host.locator(".poker-hand")).toHaveCount(0);
+    await expect(f.host.locator(".poker-revealed")).toHaveCount(0);
+    await expect(first.getByRole("button", {name:"Roll two dice"})).toHaveCount(0);
+    await first.getByRole("button", {name:"Bet · add 10 chips",exact:true}).click();
+    await other.getByRole("button", {name:"Call 10 chips",exact:true}).click();
+    await expect(first.getByRole("button", {name:"Stand pat (keep all 5)",exact:true})).toBeVisible();
+    const old = await first.locator(".poker-hand .poker-card").allTextContents();
+    await first.locator(".poker-hand button").first().click();
+    await first.getByRole("button", {name:"Replace 1 selected cards",exact:true}).click();
+    await expect(first.locator(".poker-hand .poker-card")).not.toHaveText(old);
+    await other.getByRole("button", {name:"Stand pat (keep all 5)",exact:true}).click();
+    await first.getByRole("button", {name:"Check",exact:true}).click();
+    await other.getByRole("button", {name:"Check",exact:true}).click();
+    await expect(f.host.locator("#content")).toContainText("Pots were awarded automatically");
+    await expect(f.host.locator(".poker-revealed .poker-card")).toHaveCount(10);
+    await expect(f.host.locator(".poker-pot")).toContainText("Pot: 0 play chips");
+    await first.reload();
+    await expect(first.locator(".poker-hand .poker-card")).toHaveCount(5);
+    await noOverflow(first);
+    await f.host.getByRole("button", {name:"Next poker hand",exact:true}).click();
+    await expect(f.host.locator("#content")).toContainText("Hand 2 of 5");
+    await expect(f.host.locator(".poker-revealed")).toHaveCount(0);
+  } finally { await f.close(); }
+});
+
+test("Whist remains a manual private-hand table with host-controlled pot awards", async ({ browser }) => {
+  const f = await lobby(browser, "table", 4);
+  try {
+    await f.host.getByLabel("Card-table preset").selectOption("whist");
+    await f.start();
+    const p=f.players[0];
+    await expect(p.locator(".card-hand .standard-card")).toHaveCount(13);
     await p.getByLabel("Play chips to add to pot").fill("10");
-    await p
-      .getByRole("button", { name: "Add chips to pot", exact: true })
-      .click();
-    await expect(f.host.locator("#content")).toContainText(
-      "Pot: 10 play chips",
-    );
-    await f.host
-      .getByRole("button", {
-        name: "Award pot to selected player",
-        exact: true,
-      })
-      .click();
+    await p.getByRole("button",{name:"Add chips to pot",exact:true}).click();
+    await expect(f.host.locator("#content")).toContainText("Pot: 10 play chips");
+    await f.host.getByRole("button",{name:"Award pot to selected player",exact:true}).click();
     await expect(f.host.locator("#content")).toContainText("Pot: 0 play chips");
-    await p.reload();
-    await expect(p.locator(".card-hand .standard-card")).toHaveCount(5);
     await noOverflow(p);
-  } finally {
-    await f.close();
-  }
+  } finally { await f.close(); }
 });
 
 test("Backgammon: roll, select, move, shared board and end turn", async ({
@@ -355,10 +379,10 @@ test("Drawing waits for a slow submission instead of showing a stroke that was n
     await expect(artist.getByLabel("Pen color",{exact:true})).toBeVisible();
     await artist.evaluate(()=>{
       const send=WebSocket.prototype.send, seen=new Set();
-      window.__heldStrokes=[];
+      window.__heldStrokes=[]; window.__drawingReleased=false;
       WebSocket.prototype.send=function(raw){
         const msg=JSON.parse(raw);
-        if(msg.type==="play"&&msg.value?.action==="stroke"){
+        if(msg.type==="play"&&msg.value?.action==="stroke"&&!window.__drawingReleased){
           if(!seen.has(msg.requestId)){seen.add(msg.requestId);window.__heldStrokes.push(()=>send.call(this,raw));}
         } else send.call(this,raw);
       };
@@ -377,10 +401,58 @@ test("Drawing waits for a slow submission instead of showing a stroke that was n
     await stroke(60);
     expect(await artist.evaluate(()=>window.__heldStrokes.length)).toBe(1);
     await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(0);
-    await artist.evaluate(()=>window.__heldStrokes.shift()());
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(1);
+    await artist.evaluate(()=>{window.__drawingReleased=true;window.__heldStrokes.shift()();});
     await expect(pad).toHaveAttribute("aria-disabled","false");
+    const committed=await guesser.locator(".doodle-pad polyline").count();
+    expect(committed).toBeGreaterThan(0);
+    expect(await guesser.locator(".doodle-pad polyline").evaluateAll(lines=>new Set(lines.map(line=>line.dataset.strokeId)).size)).toBe(1);
     await artist.reload();
-    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(1);
+    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(committed);
+  } finally { await f.close(); }
+});
+
+
+test("Doodle Dash streams while drawing, preserves tools, groups undo/redo and explains a correct guess", async ({ browser }) => {
+  const f=await lobby(browser,"draw",3);
+  try {
+    await f.start();
+    const [artist,guesser,last]=f.players;
+    const word=await artist.locator(".open-game button").first().innerText();
+    await artist.getByRole("button",{name:word,exact:true}).click();
+    await artist.setViewportSize({width:320,height:780});
+    await artist.getByLabel("Pen color",{exact:true}).selectOption("#2477db");
+    await artist.getByLabel("Pen width",{exact:true}).selectOption("16");
+    const pad=artist.locator(".doodle-pad");
+    await pad.scrollIntoViewIfNeeded();
+    const box=await pad.boundingBox();
+    await artist.mouse.move(box.x+25,box.y+25);await artist.mouse.down();
+    for(let i=1;i<=8;i++) {
+      await artist.mouse.move(box.x+25+i*12,box.y+25+i*10);
+      await artist.waitForTimeout(90);
+    }
+    await expect.poll(()=>guesser.locator(".doodle-pad polyline").count()).toBeGreaterThan(0);
+    await artist.mouse.up();
+    await expect(pad).toHaveAttribute("aria-disabled","false");
+    const segments=await guesser.locator(".doodle-pad polyline").count();
+    await expect(artist.getByLabel("Pen color",{exact:true})).toHaveValue("#2477db");
+    await expect(artist.getByLabel("Pen width",{exact:true})).toHaveValue("16");
+    await artist.getByRole("button",{name:"Undo stroke",exact:true}).click();
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(0);
+    await artist.getByRole("button",{name:"Redo stroke",exact:true}).click();
+    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(segments);
+    await artist.reload();
+    await expect(artist.getByLabel("Pen color",{exact:true})).toHaveValue("#2477db");
+    await expect(artist.getByLabel("Pen width",{exact:true})).toHaveValue("16");
+    await noOverflow(artist);
+    await guesser.getByLabel("Guess the drawing").fill(word);
+    await guesser.getByRole("button",{name:"Submit",exact:true}).click();
+    await expect(guesser.locator("#content")).toContainText("You guessed it!");
+    await expect(guesser.getByLabel("Guess the drawing")).toHaveCount(0);
+    await expect(last.locator("#content")).not.toContainText(`Your private word: ${word}`);
+    await last.getByLabel("Guess the drawing").fill(word);
+    await last.getByRole("button",{name:"Submit",exact:true}).click();
+    await expect(f.host.locator("#heading")).toContainText("reveal");
+    await f.host.getByRole("button",{name:"Next",exact:true}).click();
+    await expect(guesser.getByRole("heading",{name:"Choose your secret word",exact:true})).toBeVisible();
   } finally { await f.close(); }
 });

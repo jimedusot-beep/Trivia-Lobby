@@ -1,5 +1,6 @@
 import { Party } from "./engine.js";
 import { Chess } from "chess.js";
+import { validatePokerCheckpoint } from "./open-pack/poker.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
@@ -55,6 +56,7 @@ export function restoreParty(code, state, options, savedAt) {
     throw new Error("Unsupported room recovery state.");
   if (party.mode === "race" && party.pack?.kind === "race" && (!Array.isArray(party.pack.karts) || party.pack.karts.length !== party.players.size))
     throw new Error("Unsupported racing recovery state.");
+  if (party.mode === "table" && party.pack?.guided) validatePokerCheckpoint(party.pack, [...party.players.keys()]);
   // Restore the same season-within-room standings and completed-match IDs.
   // A newly initialized championship is valid for older version-1 checkpoints.
   if (!(party.championship?.entries instanceof Map) || party.championship.entries.size > 20 ||
