@@ -15,7 +15,7 @@ const color = number => RACE_COLORS[(number - 1) % RACE_COLORS.length];
 export function disposeRace() {
   active?.cleanup();
   active = null;
-  document.body.classList.remove("race-host-active", "race-controller-active");
+  document.body.classList.remove("race-host-active", "race-controller-active", "race-phone-results");
 }
 export function releaseRaceControls() { active?.release?.(); }
 export function receiveRaceFrame(frame) {
@@ -32,18 +32,25 @@ export function updateRaceState(state) {
 export function renderRace(state, api) {
   if (state.phase !== "playing") {
     disposeRace();
+    const phone = state.role !== "host";
+    if (phone) document.body.classList.add("race-phone-results");
     const root = node("section", undefined, document.getElementById("content"), "race-results");
     node("span", "THE CHECKERED FLAG", root, "eyebrow");
     node("h2", state.phase === "finished" ? "Grand Prix complete!" : `Heat ${state.index + 1} results`, root);
-    node("p", "Championship points carry into the next heat. Everyone stays in the race.", root);
+    node("p", phone ? (state.interrupted ? "Race interrupted. Wait for your host." : state.endedByHost ? "Your host ended the race." : "Look at the TV for full standings.") : "Championship points carry into the next heat. Everyone stays in the race.", root);
     const list = node("ol", undefined, root, "race-result-list");
-    for (const result of state.pack.results || []) {
+    for (const result of (state.pack.results || []).filter(r => !phone || r.number === state.pack.own?.number)) {
       const row = node("li", undefined, list);
       const badge = node("strong", `#${result.number}`, row, "race-number-small");
       badge.style.setProperty("--kart-color", color(result.number));
       node("span", `${result.place}. ${result.name}`, row);
       node("strong", `+${result.points}`, row);
       node("small", result.finished ? `${result.seconds}s` : "At the time limit", row);
+    }
+    if (phone) {
+      node("p", state.phase === "finished" ? "Your host will choose the next game." : "Next heat starts when your host is ready.", root, "race-wait");
+      const leave = node("button", "Leave party", root); leave.type = "button";
+      leave.addEventListener("click", () => document.getElementById("leave").click());
     }
     return;
   }
@@ -286,9 +293,14 @@ function mountController(a, root, api) {
   const drift = node("button", "HOLD\nDRIFT", controls, "race-control race-drift"); drift.setAttribute("aria-label", "Hold drift, release for boost");
   const item = node("button", "USE\nITEM", controls, "race-control race-item"); item.setAttribute("aria-label", "Use racing item");
   for (const b of [left, right, drift, item]) { b.type = "button"; b.setAttribute("aria-pressed", "false"); }
-  const assistance = node("label", undefined, root, "race-assist");
+  const options = node("details", undefined, root, "race-options");
+  const summary = node("summary", "Options", options); summary.setAttribute("aria-label", "Controller options");
+  const panel = node("div", undefined, options, "race-options-panel");
+  const assistance = node("label", undefined, panel, "race-assist");
   const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = true;
   node("span", "Steering assistance", assistance);
+  const leave = node("button", "Leave party", panel); leave.type = "button";
+  leave.addEventListener("click", () => document.getElementById("leave").click());
   const hint = node("p", "Auto-accelerate is on. A / D to steer · Shift to drift · E for item.", root, "race-keyboard-hint");
   const connection = node("p", "Your phone is connected.", root, "race-controller-status"); connection.id = "race-controller-status";
   const held = new Map(), keys = new Map(), cleanups = [], timeouts = new Set();
@@ -307,6 +319,7 @@ function mountController(a, root, api) {
   }
   function release() { held.clear(); keys.clear(); itemPulse = false; send(true); }
   a.release = release;
+  on(options, "toggle", () => { if (options.open) release(); });
   for (const [key, button] of [["left", left], ["right", right], ["drift", drift], ["item", item]]) {
     on(button, "pointerdown", e => { e.preventDefault(); held.set(e.pointerId, key); if (key === "item") itemPulse = true; try { button.setPointerCapture(e.pointerId); } catch {} send(); });
     const up = e => { held.delete(e.pointerId); send(); };

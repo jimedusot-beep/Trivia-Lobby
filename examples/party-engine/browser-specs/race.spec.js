@@ -9,7 +9,7 @@ test("Grand Prix: decoded QR opens a no-login 320px controller; all four control
     await f.start();
     const p = f.players[0];
     await expect(p.locator("#race-own-number")).toHaveText("#1");
-    await expect(p.getByText("Watch your number on the big screen.", { exact: true })).toBeVisible();
+    await expect(p.getByText("Watch your number on the big screen.", { exact: true })).toBeHidden();
     await expect(p.locator("#race-track")).toHaveCount(0);
     await expect(f.host.locator(".race-driver")).toHaveCount(2);
     await expect.poll(async () => Number(await p.locator("#race-own-place").getAttribute("data-speed"))).toBeGreaterThan(0);
@@ -54,7 +54,9 @@ test("Grand Prix: independent touch holds, cancel, keyboard release and assistan
     await p.evaluate(() => window.dispatchEvent(new Event("blur")));
     await expect.poll(() => frames.filter(m => m.type === "race_input").at(-1)?.steer).toBe(0);
     await p.keyboard.up("KeyD"); await p.keyboard.up("Shift");
+    await p.getByLabel("Controller options", {exact:true}).click();
     await p.getByLabel("Steering assistance", { exact: true }).uncheck();
+    await p.getByLabel("Controller options", {exact:true}).click();
     await expect.poll(async () => p.locator("#race-own-place").getAttribute("data-assist")).toBe("false");
     await p.getByRole("button", { name: "Use racing item", exact: true }).click();
     await expect.poll(() => frames.some(m => m.type === "race_input" && m.item)).toBe(true);
