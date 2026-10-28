@@ -152,10 +152,94 @@ function mountTV(a, root) {
     node("span", driver.name, row, "race-driver-name");
     const position = node("span", "Ready", row, "race-place"); rows.set(driver.number, { row, position });
   }
+  const viewControls = node("div", undefined, root, "race-view-controls");
+  const viewButton = node("button", "Use 2D view", viewControls, "race-view-toggle");
+  viewButton.type = "button";
+  const viewStatus = node("span", "Loading 3D broadcast view…", viewControls, "race-view-status");
+  viewStatus.setAttribute("role", "status");
+  const cameraLabel = node("label", "Race camera ", viewControls, "race-camera-label");
+  const cameraSelect = node("select", undefined, cameraLabel); cameraSelect.disabled = true;
+  cameraSelect.setAttribute("aria-label", "Race camera");
+  for (const [value, name] of [["overview", "Whole track"], ["director", "Race director"]]) {
+    const option = node("option", name, cameraSelect); option.value = value;
+  }
+  try { cameraSelect.value = sessionStorage.getItem("party-race-camera") || "overview"; } catch {}
+  const minimap = node("canvas", undefined, screen, "race-minimap");
+  minimap.width = 240; minimap.height = 144; minimap.hidden = true;
+  minimap.setAttribute("role", "img"); minimap.setAttribute("aria-label", "All racers on the full track. Numbered standings are below.");
+  const directorBadge = node("span", undefined, screen, "race-director-badge"); directorBadge.hidden = true;
+  const mapContext = minimap.getContext("2d");
   const c = canvas.getContext("2d"), background = staticTrack();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let scene3d = null, disposed = false, request = 0, prefer3d = true;
+  try { prefer3d = sessionStorage.getItem("party-race-view") !== "2d"; } catch {}
+  function saveView() { try { sessionStorage.setItem("party-race-view", prefer3d ? "3d" : "2d"); } catch {} }
+  function fallback(message = "2D broadcast view") {
+    viewButton.disabled = false; cameraSelect.disabled = true; minimap.hidden = true; directorBadge.hidden = true;
+    if (scene3d) { scene3d.canvas.replaceWith(canvas); scene3d.dispose(); scene3d = null; }
+    canvas.dataset.renderer = "2d";
+    viewButton.textContent = "Use 3D view"; viewStatus.textContent = message;
+  }
+  async function start3d() {
+    const token = ++request;
+    viewButton.disabled = true;
+    viewStatus.textContent = "Loading 3D broadcast view…";
+    try {
+      const { createRaceScene } = await import("./race-3d.bundle.js");
+      if (disposed || token !== request || !prefer3d) return;
+      const created = createRaceScene({ onContextLost() {
+        if (disposed) return;
+        ++request; prefer3d = false;
+        fallback("3D graphics interrupted. Racing continues in 2D.");
+      } });
+      if (disposed || token !== request) { created.dispose(); return; }
+      scene3d = created; created.setCamera(cameraSelect.value); cameraSelect.disabled = reducedMotion.matches;
+      created.canvas.id = "race-track";
+      created.canvas.setAttribute("role", "img");
+      created.canvas.setAttribute("aria-label", "Live 3D overhead race track. Player numbers and positions are listed below.");
+      // The fallback canvas remains available; a graphics failure never reloads a room.
+      created.render(frame, previous, 1, performance.now(), reducedMotion.matches);
+      canvas.replaceWith(created.canvas);
+      viewButton.textContent = "Use 2D view"; viewStatus.textContent = "3D broadcast · all racers on one screen";
+    } catch {
+      prefer3d = false;
+      fallback("3D is unavailable on this display. Racing continues in 2D.");
+    } finally { if (!disposed && token === request) viewButton.disabled = false; }
+  }
+  cameraSelect.addEventListener("change", () => {
+    scene3d?.setCamera(cameraSelect.value);
+    try { sessionStorage.setItem("party-race-camera", cameraSelect.value); } catch {}
+  });
+  viewButton.addEventListener("click", () => {
+    prefer3d = !scene3d; ++request; saveView();
+    if (prefer3d) void start3d(); else fallback();
+  });
   let frame = a.state.pack, previous = frame, receivedAt = performance.now(), animation;
   const draw = () => {
     if (active !== a) return;
+    if (document.hidden) { animation = requestAnimationFrame(draw); return; }
+    const interpolation = clamp((performance.now() - receivedAt) / 100, 0, 1);
+    if (scene3d) {
+      try {
+        scene3d.render(frame, previous, interpolation, performance.now(), reducedMotion.matches);
+        cameraSelect.disabled = reducedMotion.matches;
+        minimap.hidden = scene3d.canvas.dataset.camera !== "director";
+        directorBadge.hidden = minimap.hidden;
+        directorBadge.textContent = "Race director · #" + scene3d.canvas.dataset.focusNumber;
+        if (!minimap.hidden) {
+          mapContext.drawImage(background, 0, 0, 240, 144);
+          mapContext.font = "900 12px sans-serif"; mapContext.textAlign = "center";
+          for (const k of frame.karts || []) {
+            const x = k.x / 5, y = k.y / 5;
+            mapContext.fillStyle = color(k.number); mapContext.beginPath(); mapContext.arc(x, y, 4, 0, Math.PI * 2); mapContext.fill();
+            mapContext.lineWidth = 3; mapContext.strokeStyle = "#24324b"; mapContext.fillStyle = "#fff9e9";
+            mapContext.strokeText(String(k.number), x, y - 6); mapContext.fillText(String(k.number), x, y - 6);
+          }
+        }
+      }
+      catch { prefer3d = false; fallback("3D graphics interrupted. Racing continues in 2D."); }
+      animation = requestAnimationFrame(draw); return;
+    }
     c.drawImage(background, 0, 0);
     const t = clamp((performance.now() - receivedAt) / 100, 0, 1);
     for (let i = 0; i < ITEM_SPOTS.length; i++) if (frame.boxes?.[i]) {
@@ -179,7 +263,9 @@ function mountTV(a, root) {
     caption.textContent = a.state.hostConnected ? "Look for your number. Hold drift in a corner, then release for a boost." : "Host reconnecting. The server keeps the race moving.";
   };
   animation = requestAnimationFrame(draw);
-  a.cleanup = () => cancelAnimationFrame(animation);
+  a.cleanup = () => { disposed = true; ++request; cancelAnimationFrame(animation); scene3d?.dispose(); scene3d = null; };
+  canvas.dataset.renderer = "2d";
+  if (prefer3d) void start3d(); else fallback();
 }
 
 function mountController(a, root, api) {

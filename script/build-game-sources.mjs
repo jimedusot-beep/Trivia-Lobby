@@ -4,13 +4,16 @@ import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { buildRaceRenderer } from './build-race-renderer.mjs';
 const root = fileURLToPath(new URL("../", import.meta.url));
 export async function buildGameSources() {
+  await buildRaceRenderer();
   const files = [];
   async function collect(relative) {
     for (const entry of await readdir(path.join(root, relative), {
       withFileTypes: true,
     })) {
+      if (entry.name === 'race-3d.bundle.js') continue;
       if (
         [
           "node_modules",
@@ -39,6 +42,7 @@ export async function buildGameSources() {
     "package-lock.json",
     "script/build.ts",
     "script/build-game-sources.mjs",
+    "script/build-race-renderer.mjs",
     "server/guest-party.ts",
     "docs/OPEN_GAME_PACK.md",
     "docs/OPEN_GAME_SOURCES.json",

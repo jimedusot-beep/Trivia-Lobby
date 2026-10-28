@@ -1,47 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { PNG } from "pngjs";
-import jsQR from "jsqr";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-const base = "http://127.0.0.1:4317";
-
-async function lobby(browser, count = 2, viewport = { width: 390, height: 844 }) {
-  const contexts = [], errors = [], sent = [];
-  async function page(size) {
-    const context = await browser.newContext({ viewport: size }); contexts.push(context);
-    const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
-    return page;
-  }
-  const host = await page({ width: 1440, height: 1080 });
-  await host.goto(base);
-  await host.getByRole("button", { name: "Host Party Grand Prix, 2–20 players", exact: true }).click();
-  await expect(host.locator("#heading")).toContainText("lobby");
-  const png = PNG.sync.read(await host.locator("#party-invitation svg").screenshot());
-  const qr = jsQR(new Uint8ClampedArray(png.data), png.width, png.height);
-  expect(qr?.data).toBe(await host.locator("#invite-link").inputValue());
-  const players = [];
-  for (let i = 0; i < count; i++) {
-    const p = await page(viewport), frames = [];
-    p.on("websocket", ws => ws.on("framesent", event => { try { frames.push(JSON.parse(event.payload)); } catch {} }));
-    sent.push(frames);
-    await p.goto(qr.data);
-    await p.getByLabel("Nickname", { exact: true }).fill(`Racer ${i + 1}`);
-    await p.getByRole("button", { name: "Join party", exact: true }).click();
-    await expect(p.locator("#heading")).toContainText("lobby");
-    players.push(p);
-  }
-  return { host, players, sent, errors, code: new URL(qr.data).searchParams.get("code"),
-    async start() {
-      await host.getByRole("button", { name: "Start match", exact: true }).click();
-      await expect(host.locator("#race-track")).toBeVisible({ timeout: 12000 });
-      for (const p of players) await expect(p.getByRole("group", { name: "Racing controls" })).toBeVisible();
-    },
-    async close() { await Promise.all(contexts.map(c => c.close())); } };
-}
-async function cleanPage(page) {
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await expect(page.getByLabel("Email", { exact: true })).toHaveCount(0);
-}
+import { lobby, cleanPage } from "./helpers/race-lobby.js";
 
 test("Grand Prix: decoded QR opens a no-login 320px controller; all four controls fit", async ({ browser }) => {
   const f = await lobby(browser, 2, { width: 320, height: 568 });
@@ -108,12 +68,22 @@ test("Grand Prix: twenty QR controllers and the shared TV recover the same grid 
   try {
     await f.start();
     await expect(f.host.locator(".race-driver")).toHaveCount(20);
+    if (testInfo.project.name === "chromium") {
+      await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", "3d", {timeout:15000});
+      await expect(f.host.locator("#race-track")).toHaveAttribute("data-karts", "20");
+      expect(Number(await f.host.locator("#race-track").getAttribute("data-draw-calls"))).toBeLessThan(700);
+    }
     await expect(f.players[19].locator("#race-own-number")).toHaveText("#20");
     await f.players[19].reload();
     await expect(f.players[19].locator("#race-own-number")).toHaveText("#20");
     await f.host.reload();
     await expect(f.host.locator("#race-track")).toBeVisible();
     await expect(f.host.locator(".race-driver")).toHaveCount(20);
+    if (testInfo.project.name === "chromium") {
+      await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", "3d", {timeout:15000});
+      await expect(f.host.locator("#race-track")).toHaveAttribute("data-karts", "20");
+      expect(Number(await f.host.locator("#race-track").getAttribute("data-draw-calls"))).toBeLessThan(700);
+    }
     await expect(f.host.locator("#heading")).toContainText(f.code);
     for (const p of [f.players[0], f.players[19]]) { await cleanPage(p); await expect(p.locator("#race-own-place")).toContainText("/ 20"); }
     await cleanPage(f.host); expect(f.errors).toEqual([]);

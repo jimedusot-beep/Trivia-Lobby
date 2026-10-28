@@ -54,5 +54,20 @@
     "commit": "5161eb7022144ee26d46a5f94cdbc714ec8b560d",
     "license": "MIT",
     "reuse": "Quiz JSON schema interoperability only; original import implementation."
+  },
+  {
+    "id": "race-3d-reference",
+    "repository": "https://github.com/fecolinhares/super-kart-3djs",
+    "commit": "d94f63da26b6a01ecbfc1e301e5d754ea64649c2",
+    "license": "MIT",
+    "reuse": "Adapt selected renderer initialization (antialiasing, capped pixel ratio, tone mapping and color space) from src/render/SceneManager.js. Original Trivia Lobby geometry, kart/driver models, animation, state adapter and local 2D fallback. No upstream game assets or physics/network runtime."
+  },
+  {
+    "id": "three",
+    "repository": "https://github.com/mrdoob/three.js",
+    "commit": "0af9729d0c143a86a1d725d6e2c3ad83301f3f34",
+    "version": "0.180.0",
+    "license": "MIT",
+    "reuse": "Pinned Three.js 0.180.0 rendering dependency, bundled locally only for the Grand Prix host. No CDN or third-party models/textures."
   }
 ]
