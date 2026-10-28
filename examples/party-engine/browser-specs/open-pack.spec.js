@@ -71,7 +71,9 @@ test("Family Showdown: visible phone buzzer, private review, typed answers, thre
     const buzzer=await p.getByRole("button",{name:"BUZZ!",exact:true}).boundingBox();
     expect(buzzer.y+buzzer.height).toBeLessThan(844);
     await expect(p.locator(".feud-board-panel")).not.toHaveAttribute("open");
+    await p.getByRole("button", {name:"Game info",exact:true}).click();
     await p.getByText("View the answer board",{exact:true}).click();
+    await p.getByRole("button", {name:"Back to game",exact:true}).click();
     await p.getByRole("button", { name: "BUZZ!", exact: true }).click();
     await expect(p.locator(".feud-board-panel")).toHaveAttribute("open");
     await expect(f.host.locator("#content")).toContainText(
@@ -157,7 +159,9 @@ test("Doodle Dash: private word, pointer drawing, keyboard stroke, guess and can
     await expect(guesser.locator("#content")).not.toContainText(
       `Your private word: ${word}`,
     );
+    await artist.getByRole("button",{name:"Pen tools",exact:true}).click();
     await expect(artist.getByLabel("Pen color", {exact:true})).toBeVisible();
+    await artist.getByRole("button",{name:"Back to game",exact:true}).click();
     const pad = artist.locator(".doodle-pad");
     await expect(pad).toBeVisible();
     await pad.scrollIntoViewIfNeeded();
@@ -210,7 +214,7 @@ test("Color Clash: saved house settings, private hand, legal action and hand rec
     await f.start();
     const p = f.players[0];
     await expect(p.locator(".card-hand .color-card")).toHaveCount(7);
-    expect((await p.locator(".card-hand").boundingBox()).height).toBeLessThan(400);
+    expect((await p.locator(".card-hand:visible").first().boundingBox()).height).toBeLessThan(400);
     await expect(f.host.locator(".card-hand .color-card")).toHaveCount(0);
     await expect(p.locator("#content")).toContainText("Spark Bot 1");
     const before = await p.locator(".card-hand .color-card").allTextContents();
@@ -268,7 +272,8 @@ test("Guided poker: private hands, betting, card exchange, automatic payout and 
     const [other, first] = f.players;
     await expect(first.locator(".poker-hand .poker-card")).toHaveCount(5);
     await expect(first.locator(".poker-table-details")).not.toHaveAttribute("open");
-    expect(await first.locator(".poker-controller").evaluate(node=>node.nextElementSibling?.classList.contains("poker-table-details"))).toBe(true);
+    await expect(first.locator(".poker-controller")).toBeVisible();
+    await expect(first.locator(".poker-table-details")).not.toBeVisible();
     await expect(f.host.locator(".poker-hand")).toHaveCount(0);
     await expect(f.host.locator(".poker-revealed")).toHaveCount(0);
     await expect(first.getByRole("button", {name:"Roll two dice"})).toHaveCount(0);
@@ -301,11 +306,13 @@ test("Whist remains a manual private-hand table with host-controlled pot awards"
     await f.start();
     const p=f.players[0];
     await expect(p.locator(".card-hand .standard-card")).toHaveCount(13);
+    await p.getByRole("button",{name:"Game info",exact:true}).click();
     await p.getByLabel("Play chips to add to pot").fill("10");
     await p.getByRole("button",{name:"Add chips to pot",exact:true}).click();
     await expect(f.host.locator("#content")).toContainText("Pot: 10 play chips");
     await f.host.getByRole("button",{name:"Award pot to selected player",exact:true}).click();
     await expect(f.host.locator("#content")).toContainText("Pot: 0 play chips");
+    await p.getByRole("button",{name:"Back to game",exact:true}).click();
     await noOverflow(p);
   } finally { await f.close(); }
 });
@@ -440,7 +447,9 @@ test("Drawing waits for a slow submission instead of showing a stroke that was n
     await f.start();
     const [artist,guesser]=f.players;
     await artist.locator(".open-game button").first().click();
+    await artist.getByRole("button",{name:"Pen tools",exact:true}).click();
     await expect(artist.getByLabel("Pen color",{exact:true})).toBeVisible();
+    await artist.getByRole("button",{name:"Back to game",exact:true}).click();
     await artist.evaluate(()=>{
       const send=WebSocket.prototype.send, seen=new Set();
       window.__heldStrokes=[]; window.__drawingReleased=false;
@@ -484,8 +493,10 @@ test("Doodle Dash streams while drawing, preserves tools, groups undo/redo and e
     const word=await artist.locator(".open-game button").first().innerText();
     await artist.getByRole("button",{name:word,exact:true}).click();
     await artist.setViewportSize({width:320,height:780});
+    await artist.getByRole("button",{name:"Pen tools",exact:true}).click();
     await artist.getByLabel("Pen color",{exact:true}).selectOption("#2477db");
     await artist.getByLabel("Pen width",{exact:true}).selectOption("16");
+    await artist.getByRole("button",{name:"Back to game",exact:true}).click();
     const pad=artist.locator(".doodle-pad");
     await pad.scrollIntoViewIfNeeded();
     const box=await pad.boundingBox();

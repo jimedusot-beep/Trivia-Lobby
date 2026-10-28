@@ -84,7 +84,7 @@ test("Prompt Duel renders private writing, eligible votes and results", async ({
     for (const p of f.players)
       await expect(p.locator("#heading")).toContainText("voting");
     for (const p of f.players) {
-      const choices = p.locator("#content button");
+      const choices = p.locator(".phone-choices button");
       if (await choices.count()) {
         await choices.first().click();
         break;

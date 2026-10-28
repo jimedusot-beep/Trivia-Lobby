@@ -9,7 +9,9 @@ test("Grand Prix: decoded QR opens a no-login 320px controller; all four control
     await f.start();
     const p = f.players[0];
     await expect(p.locator("#race-own-number")).toHaveText("#1");
+    await p.getByRole("button",{name:"Game info",exact:true}).click();
     await expect(p.getByText("Watch your number on the big screen.", { exact: true })).toBeVisible();
+    await p.getByRole("button",{name:"Back to game",exact:true}).click();
     await expect(p.locator("#race-track")).toHaveCount(0);
     await expect(f.host.locator(".race-driver")).toHaveCount(2);
     await expect.poll(async () => Number(await p.locator("#race-own-place").getAttribute("data-speed"))).toBeGreaterThan(0);
@@ -54,8 +56,14 @@ test("Grand Prix: independent touch holds, cancel, keyboard release and assistan
     await p.evaluate(() => window.dispatchEvent(new Event("blur")));
     await expect.poll(() => frames.filter(m => m.type === "race_input").at(-1)?.steer).toBe(0);
     await p.keyboard.up("KeyD"); await p.keyboard.up("Shift");
+    await p.getByRole("button",{name:"Options",exact:true}).click();
     await p.getByLabel("Steering assistance", { exact: true }).uncheck();
+    await p.getByRole("button",{name:"Back to game",exact:true}).click();
     await expect.poll(async () => p.locator("#race-own-place").getAttribute("data-assist")).toBe("false");
+    await p.reload();
+    await p.getByRole("button",{name:"Options",exact:true}).click();
+    await expect(p.getByLabel("Steering assistance",{exact:true})).not.toBeChecked();
+    await p.getByRole("button",{name:"Back to game",exact:true}).click();
     await p.getByRole("button", { name: "Use racing item", exact: true }).click();
     await expect.poll(() => frames.some(m => m.type === "race_input" && m.item)).toBe(true);
     expect(f.errors).toEqual([]);
@@ -113,7 +121,7 @@ test("Grand Prix: heat results, next heat and host end return to the existing sa
     await f.host.getByLabel("Game mode").selectOption("four");
     await f.host.getByRole("button", { name: "Start match", exact: true }).click();
     await expect(f.host.locator("#heading")).toContainText("playing");
-    await expect(f.players[0].locator(".open-game")).toBeVisible();
+    await expect(f.players[0].locator(".phone-surface")).toBeVisible();
     expect(f.errors).toEqual([]);
   } finally { await f.close(); }
 });

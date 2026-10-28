@@ -287,7 +287,7 @@ function mountController(a, root, api) {
   const item = node("button", "USE\nITEM", controls, "race-control race-item"); item.setAttribute("aria-label", "Use racing item");
   for (const b of [left, right, drift, item]) { b.type = "button"; b.setAttribute("aria-pressed", "false"); }
   const assistance = node("label", undefined, root, "race-assist");
-  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = true;
+  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = own?.assist ?? true;
   node("span", "Steering assistance", assistance);
   const hint = node("p", "Auto-accelerate is on. A / D to steer · Shift to drift · E for item.", root, "race-keyboard-hint");
   const connection = node("p", "Your phone is connected.", root, "race-controller-status"); connection.id = "race-controller-status";
