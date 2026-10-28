@@ -178,7 +178,7 @@ for (const game of guestGames)
         [844, 390],
       ]) {
         await p.setViewportSize({ width, height });
-        await p.waitForTimeout(80);
+        await expect(p.locator("#game")).toHaveCSS("height", `${height}px`);
         while (
           await p
             .getByRole("button", {
@@ -437,6 +437,7 @@ if (guestGames.some((game) => game.id === "homeward"))
       await reach(opponent);
       await opponent.selectOption("1:0");
       await p.setViewportSize({ width: 568, height: 320 });
+      await expect(p.locator("#game")).toHaveCSS("height", "320px");
       const swap = p.getByRole("button", { name: "Swap pawns", exact: true });
       await reach(swap);
       await fits(p);

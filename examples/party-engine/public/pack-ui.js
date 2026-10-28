@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { renderPoker } from "./poker-ui.js";
 import { renderFeud } from "./feud-ui.js";
+import { renderHomeward } from "./homeward-ui.js";
+export { tickHomewardClocks } from "./homeward-ui.js";
 import { renderDrawing, disposeDrawing } from "./drawing-ui.js";
 export { drawingBusy } from "./drawing-ui.js";
 const selections = new Map();
@@ -17,6 +19,10 @@ export function renderPack(state, context) {
     playing = state.phase === "playing",
     me = actor(),
     play = (value) => action("play", value);
+  if(s.kind==="homeward") {
+    renderHomeward(state,{root,e,b,play,refresh,canAct});
+    return;
+  }
   function input(label, id, max = 60, parent = root) {
     const wrap = e("div", undefined, parent),
       caption = e("label", label, wrap),

@@ -87,3 +87,20 @@ PR #88 is a parallel standalone Grand Prix phone-layout change. Reconcile that
 presentation with this shared controller during release review. This branch
 preserves the current TV/game logic and retains the authoritative assistance
 setting on reload.
+
+## Release integration
+
+Homeward Hustle #89 is now merged into main, bringing the native catalog to 31.
+Its existing QR, keyboard, split, swap, Bump and result journeys use the shared
+controller; optional board inspection opens Game info. The complex-move fixture
+waits for the resized game surface before navigating controller pages, and passed
+three consecutive Chromium runs after that synchronization change.
+
+The first WebKit CI failure in #90 was the 20-player race reload test. The saved
+host snapshot showed a correctly completed first heat with twenty results
+(finish times 38.1–40.0 seconds). The test had assumed the heat was still playing.
+It now observes fresh authoritative socket state after reload, checks the same
+match/heat and twenty players, and requires the UI to show either the current
+live grid or all twenty completed results. The initial 20-kart/3D checks remain.
+This changes test synchronization and assertions; race duration and game rules
+are unchanged. CI must pass again on the combined release before deployment.
