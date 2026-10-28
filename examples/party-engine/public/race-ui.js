@@ -347,7 +347,7 @@ function mountController(a, root, api) {
     itemText.textContent = o.finished ? "You finished! Your place is locked." : o.item ? ITEM_LABELS[o.item] : "Pick up a purple box for an item.";
     item.dataset.available = String(!!o.item); item.disabled = o.finished;
     charge.value = o.charge; charge.dataset.stage = String(o.stage);
-    connection.textContent = o.finished ? "Watch the remaining racers on the big screen." : o.boost ? "BOOST!" : o.shield ? "Bubble shield active." : o.assisting ? "Steering assistance is helping." : "You're driving. Hold drift in a corner.";
+    connection.textContent = o.finished ? "Watch the remaining racers on the big screen." : o.boost ? "BOOST!" : o.shield ? "Bubble shield active." : o.assisting ? "Auto-accelerate · Assist on" : "Auto-accelerate · Hold drift in corners.";
     for (const b of [left, right, drift]) b.disabled = o.finished;
     hint.hidden = matchMedia("(pointer: coarse)").matches;
   };
