@@ -210,15 +210,13 @@ for (const mode of packIds)
           assert.equal(party.pack.seats.length, 10);
           await send(active, id, "play", { action: "draw" });
         } else if (mode === "table") {
-          const card = snapshot.pack.hand[0];
-          assert.equal(
-            party.view(players[1].credential.actor).pack.seats[0].cards,
-            undefined,
-          );
-          await send(active, id, "play", { action: "play", card: card.id });
-          await send(active, id, "play", { action: "bet", amount: 10 });
-          await send(host, "host", "play", { action: "settle", seat: 1 });
-          assert.equal(party.pack.pot, 0);
+          assert.equal(snapshot.pack.hand.length, 5);
+          assert.equal(party.pack.seats.length, 6);
+          assert.equal(party.view(players[1].credential.actor).pack.seats[0].cards, undefined);
+          const turn = party.pack.turn;
+          const bettor = players.find(player => player.credential.actor === turn);
+          await send(bettor.s, turn, "play", { action: "bet" });
+          assert.equal(party.pack.pot, 40);
         } else if (mode === "backgammon") {
           await send(active, id, "play", { action: "roll" });
           await send(active, id, "play", { action: "move", from: 0, to: 1 });

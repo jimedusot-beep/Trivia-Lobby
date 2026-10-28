@@ -135,13 +135,13 @@ export const packGames = Object.freeze([
     name: "Card & Dice Table",
     icon: "🃏",
     color: "pink",
-    players: "2–10 active · up to 20 in room",
+    players: "Poker: 2–6 active · Whist: 4 · up to 20 in room",
     min: 2,
     max: 20,
-    rounds: "Manual poker / Whist presets",
+    rounds: "Guided five-card draw / manual Whist",
     rules:
-      "A shared table with private hands, played cards, dice and play chips. Your group manages the rules and turns; the host deals and awards the pot. Whist needs exactly four active seats. Extra guests watch.",
-    tag: "Your house rules",
+      "Five-card draw with private cards, enforced betting turns, one card exchange, automatic hand rankings and pot payouts. Five hands, play chips only. Whist remains a manual four-seat card table. Extra guests watch.",
+    tag: "Guided poker & cards",
   },
   {
     id: "backgammon",

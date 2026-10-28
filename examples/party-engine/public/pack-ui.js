@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { renderPoker } from "./poker-ui.js";
+import { renderDrawing, disposeDrawing } from "./drawing-ui.js";
+export { drawingBusy } from "./drawing-ui.js";
 const selections = new Map();
-let drawing = false;
-export const drawingBusy = () => drawing;
 export function renderPack(state, context) {
-  drawing = false;
+  disposeDrawing();
   const { element: E, button: B, action, actor, refresh, canAct = () => true } = context,
     root = E("section");
   root.className = "open-game";
@@ -218,175 +219,7 @@ export function renderPack(state, context) {
     }
   }
   if (s.kind === "draw") {
-    e("h2", `Doodle Dash · ${s.artistName}'s turn`);
-    e("p", `Turn ${s.round} / ${s.total} · ${s.solved} correct guesses`);
-    if (s.choices) {
-      e("h3", "Choose your secret word");
-      s.choices.forEach((word, index) =>
-        b(word, () => play({ action: "choose", index })),
-      );
-    }
-    if (s.word)
-      e(
-        "h3",
-        `${state.phase === "reveal" ? "The word was" : "Your private word"}: ${s.word}`,
-      );
-    else if (s.hint) e("p", s.hint);
-    const ns = "http://www.w3.org/2000/svg",
-      svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("viewBox", "0 0 1000 1000");
-    svg.setAttribute(
-      "aria-label",
-      s.canDraw
-        ? "Drawing pad. Use pointer, or arrow keys to move and Enter to draw a line."
-        : "Live drawing",
-    );
-    svg.setAttribute("role", "img");
-    svg.classList.add("doodle-pad");
-    root.append(svg);
-    const line = (stroke) => {
-      const path = document.createElementNS(ns, "polyline");
-      path.setAttribute(
-        "points",
-        stroke.points.map((pt) => pt.join(",")).join(" "),
-      );
-      path.setAttribute("fill", "none");
-      path.setAttribute("stroke", stroke.color);
-      path.setAttribute("stroke-width", String(stroke.width));
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("stroke-linejoin", "round");
-      svg.append(path);
-      return path;
-    };
-    for (const stroke of s.strokes) line(stroke);
-    if (s.canDraw) {
-      svg.tabIndex = 0;
-      svg.setAttribute("aria-disabled", String(!canAct()));
-      const tools = e("div");
-      tools.className = "drawing-tools";
-      const color = e("select", undefined, tools);
-      color.setAttribute("aria-label", "Pen color");
-      for (const [name, value] of [
-        ["Ink", "#20264b"],
-        ["Rose", "#e23867"],
-        ["Blue", "#2477db"],
-        ["Green", "#158346"],
-        ["Gold", "#f0b83e"],
-        ["Purple", "#9455cc"],
-        ["Orange", "#ee7625"],
-        ["Eraser", "#ffffff"],
-      ]) {
-        const o = e("option", name, color);
-        o.value = value;
-      }
-      const width = e("select", undefined, tools);
-      width.setAttribute("aria-label", "Pen width");
-      for (const n of [4, 8, 16, 24]) {
-        const o = e("option", `${n} px`, width);
-        o.value = String(n);
-      }
-      width.value = "8";
-      b("Undo stroke", () => play({ action: "undo" }), tools);
-      b("Clear drawing", () => play({ action: "clear" }), tools);
-      e("p", "Keyboard: arrows move the pen; Enter draws a short line.");
-      let points = [],
-        preview,
-        startPoint = [500, 500],
-        endPoint = [500, 500];
-      const position = (event) => {
-        const rect = svg.getBoundingClientRect();
-        return [
-          Math.max(
-            0,
-            Math.min(
-              1000,
-              Math.round(((event.clientX - rect.left) / rect.width) * 1000),
-            ),
-          ),
-          Math.max(
-            0,
-            Math.min(
-              1000,
-              Math.round(((event.clientY - rect.top) / rect.height) * 1000),
-            ),
-          ),
-        ];
-      };
-      svg.onpointerdown = (event) => {
-        if (event.button !== 0 || !canAct()) return;
-        event.preventDefault();
-        svg.setPointerCapture(event.pointerId);
-        points = [position(event)];
-        drawing = true;
-        preview = line({
-          points,
-          color: color.value,
-          width: Number(width.value),
-        });
-      };
-      svg.onpointermove = (event) => {
-        if (!drawing || !preview) return;
-        const pt = position(event);
-        if (Math.hypot(pt[0] - points.at(-1)[0], pt[1] - points.at(-1)[1]) < 5)
-          return;
-        points.push(pt);
-        if (points.length > 64) points = points.filter((_, i) => i % 2 === 0);
-        preview.setAttribute(
-          "points",
-          points.map((pt) => pt.join(",")).join(" "),
-        );
-      };
-      svg.onpointerup = (event) => {
-        if (!drawing) return;
-        points.push(position(event));
-        if (points.length > 64) points.splice(1, 1);
-        if (points.length === 1) points.push([...points[0]]);
-        drawing = false;
-        play({
-          action: "stroke",
-          points,
-          color: color.value,
-          width: Number(width.value),
-        });
-      };
-      svg.onpointercancel = () => {
-        drawing = false;
-        refresh();
-      };
-      svg.onkeydown = (event) => {
-        const delta = {
-          ArrowLeft: [-30, 0],
-          ArrowRight: [30, 0],
-          ArrowUp: [0, -30],
-          ArrowDown: [0, 30],
-        }[event.key];
-        if (delta) {
-          event.preventDefault();
-          startPoint = [...endPoint];
-          endPoint = [
-            Math.max(0, Math.min(1000, endPoint[0] + delta[0])),
-            Math.max(0, Math.min(1000, endPoint[1] + delta[1])),
-          ];
-        }
-        if (event.key === "Enter") {
-          event.preventDefault();
-          play({
-            action: "stroke",
-            points: [startPoint, endPoint],
-            color: color.value,
-            width: Number(width.value),
-          });
-        }
-      };
-    }
-    if (s.canGuess)
-      entry("Guess the drawing", "drawing-guess", (text) =>
-        play({ action: "guess", text }),
-      );
-    const guesses = e("ol");
-    guesses.className = "drawing-guesses";
-    for (const guess of s.guesses)
-      e("li", `${guess.name}: ${guess.text}`, guesses);
+    renderDrawing(state,{e,b,play,refresh,canAct,getPack:context.getPack ?? (()=>s)});
   }
   if (s.kind === "colors") {
     e("h2", "Color Clash");
@@ -609,7 +442,10 @@ export function renderPack(state, context) {
         );
     }
   }
-  if (s.kind === "table") {
+  if (s.kind === "table" && s.guided) {
+    renderPoker(s,{e,b,play,host,playing,me,refresh,matchId:state.matchId});
+  }
+  if (s.kind === "table" && !s.guided) {
     e(
       "h2",
       `${s.preset === "whist" ? "Whist" : "Poker"} table · Hand ${s.handNumber}`,

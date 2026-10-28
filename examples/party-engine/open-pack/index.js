@@ -31,6 +31,7 @@ import {
   openTabletop,
   acceptTabletop,
   projectTabletop,
+  tickTabletop,
   openBackgammon,
   acceptBackgammon,
   projectBackgammon,
@@ -40,6 +41,7 @@ import { openRace, finishRace, nextRace, projectRace } from "./race.js";
 import { openTap, finishTap, nextTap, projectTap } from "./tap.js";
 import { openForbidden, acceptForbidden, tickForbidden, nextForbidden, projectForbidden } from "./forbidden.js";
 import { openTrails, finishTrails, nextTrails, projectTrails } from "./trails.js";
+import { finishPoker } from "./poker.js";
 export { packIds, packMin };
 export function validatePackSettings(mode, settings = {}) {
   requireFields(
@@ -92,6 +94,7 @@ export function acceptPack(p, actor, v) {
     requireFields(v, ["action"]);
     hostOnly(actor);
     p.endedByHost = true;
+    if (p.mode === "table" && p.pack.guided) finishPoker(p, true);
     p.enter("finished");
     return;
   }
@@ -115,6 +118,7 @@ export function tickPack(p) {
   else if (p.mode === "draw") tickDrawing(p);
   else if (p.mode === "colors") tickColors(p);
   else if (boardKinds.includes(p.mode)) tickBoards(p);
+  else if (p.mode === "table") tickTabletop(p);
   else p.enter("reveal");
 }
 export function nextPack(p) {
