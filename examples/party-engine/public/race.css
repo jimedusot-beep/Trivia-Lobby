@@ -24,7 +24,7 @@ body:is(.race-controller-active,.race-phone-results){overflow:hidden;overscroll-
   border:0;border-radius:0;box-shadow:none;background:#fffaf4;
 }
 :is(.race-controller-active,.race-phone-results) #status{
-  display:block;position:fixed;z-index:12;top:env(safe-area-inset-top);left:12px;right:12px;max-width:none;
+  display:block;position:fixed;z-index:12;top:env(safe-area-inset-top);left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));max-width:none;
   margin:0;padding:4px 8px;min-height:24px;font-size:.75rem;line-height:1.3;
 }
 :is(.race-controller-active,.race-phone-results) #game>:not(#content){display:none}
@@ -73,3 +73,6 @@ body:is(.race-controller-active,.race-phone-results){overflow:hidden;overscroll-
   .race-phone-results .race-results h2{font-size:1.2rem}
 }
 :is(.race-controller-active,.race-phone-results) main>:not(#game):not(#status){display:none}
+
+/* viewport-fit=cover also keeps ordinary party pages outside display cutouts. */
+body.public-party:not(.race-controller-active):not(.race-phone-results){padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
