@@ -416,14 +416,15 @@ test("Credits offer exact guest source, ten pinned upstream records and license 
 });
 
 
-test("Game categories keep all 30 modes easy to browse", async ({page}) => {
+test("Game categories keep all 31 modes easy to browse", async ({page}) => {
   await page.goto(base);
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(30);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(31);
   await page.getByRole("button",{name:"Cards & dice",exact:true}).click();
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(2);
   await expect(page.locator('[data-game="colors"]')).toBeVisible();
   await page.getByRole("button",{name:"Board games",exact:true}).click();
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(6);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(7);
+  await expect(page.locator('[data-game="homeward"]')).toBeVisible();
   await page.getByRole("button",{name:"Party & trivia",exact:true}).click();
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(22);
   await expect(page.locator('[data-game="no-say"]')).toBeVisible();
@@ -431,7 +432,7 @@ test("Game categories keep all 30 modes easy to browse", async ({page}) => {
   await expect(page.locator('[data-game="tap"]')).toBeVisible();
   await expect(page.locator('[data-game="race"]')).toBeVisible();
   await page.getByRole("button",{name:"All games",exact:true}).click();
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(30);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(31);
 });
 
 test("Drawing waits for a slow submission instead of showing a stroke that was never sent", async ({browser}) => {

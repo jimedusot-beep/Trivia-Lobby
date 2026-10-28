@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export const packGames = Object.freeze([
   {
+    id:"homeward",name:"Homeward Hustle",icon:"🏡",color:"teal",
+    players:"2–20 · boards of 2–4",min:2,max:20,
+    rounds:"Four pawns Home · 15-minute board limit",
+    rules:"Draw a card, choose a legal pawn move, and race four pawns Home. Bump rivals, ride slides, split sevens and swap track positions. One pawn starts out for a faster opening. The server checks every move. Larger rooms share balanced boards; no sign-in needed.",
+    tag:"Card & pawn race",
+  },
+  {
     id:"trails",name:"Light Trails Royale",icon:"⚡",color:"violet",
     players:"2–20",min:2,max:20,rounds:"3 survival heats · 45 seconds max each",
     rules:"Everyone steers a light trail with left and right phone taps. Avoid the walls and every existing trail. Last remaining rider wins the most points; the server controls all collisions.",

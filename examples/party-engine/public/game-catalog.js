@@ -31,7 +31,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     if (text !== undefined) node.textContent = text;
     return node;
   };
-  const cardModes = ["colors", "table"], boardModes = ["four", "chess", "checkers", "reversi", "mancala", "backgammon"];
+  const cardModes = ["colors", "table"], boardModes = ["homeward", "four", "chess", "checkers", "reversi", "mancala", "backgammon"];
   const groupFor = id => cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : "party";
   const play = id => { if (asHost) onChoose?.(id); else onHost?.(id); };
 

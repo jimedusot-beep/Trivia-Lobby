@@ -167,6 +167,18 @@ for (const mode of packIds)
           active.send({ v: 1, type: "race_input", matchId: party.matchId, heat: party.index, seq: 0,
             steer: 0.5, drift: true, item: false, assist: true });
           await active.wait(m => m.type === "race_frame" && m.own?.seq === 0);
+        } else if (mode === "homeward") {
+          assert.equal(snapshot.pack.tables.length,1);
+          assert.equal(snapshot.pack.tableCount,Math.ceil(size/4));
+          const tableIndex=party.pack.tables.findIndex(board=>board.seats.some(seat=>seat.id===id));
+          const board=party.pack.tables[tableIndex],turn=board.seats[board.turn].id;
+          const current=players.find(player=>player.credential.actor===turn);
+          await send(current.s,turn,"play",{action:"draw",table:tableIndex,tableVersion:board.version});
+          const state=party.view(turn).pack.tables[0];
+          assert(state.moves.length>0);
+          assert.doesNotMatch(JSON.stringify(party.view("host")),/"deck":|"discards":/);
+          await send(current.s,turn,"play",{action:"move",table:tableIndex,tableVersion:board.version,moveId:state.moves[0].id});
+          assert.equal(board.history.length,1);
         } else if (mode === "feud") {
           assert.ok(snapshot.pack.board.every((a) => a.hidden));
           assert.equal(snapshot.pack.judge, undefined);
