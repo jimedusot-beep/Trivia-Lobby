@@ -213,3 +213,26 @@ test("an elapsed-round guest replacement failure disconnects the displaced phone
   assert.equal(state.phase, "reveal");
   assert(state.players.every((player: any) => player.score === 0));
 });
+
+test("pending guest create/join intents recover once after restart without plaintext secrets", async t => {
+  const { randomBytes } = await import("node:crypto");
+  const store = new MemoryRoomCheckpointStore();
+  let server = await launch(store); t.after(() => server.close());
+  const entryToken = randomBytes(32).toString("base64url");
+  const host = await server.open(); host.send({ type: "create", entryToken });
+  const hc = await host.take("credential");
+  const playerToken = randomBytes(32).toString("base64url");
+  const join = { type: "join", code: hc.code, name: "Pending guest", entryToken: playerToken };
+  const player = await server.open(); player.send(join); const pc = await player.take("credential");
+  await server.close(); server = await launch(store);
+  const retryHost = await server.open(); retryHost.send({ type: "create", entryToken });
+  assert.deepEqual(await retryHost.take("credential"), hc);
+  const retryPlayer = await server.open(); retryPlayer.send(join);
+  assert.deepEqual(await retryPlayer.take("credential"), pc);
+  const state = (await retryPlayer.take("state")).state;
+  assert.equal(state.players.length, 1); assert.equal(state.players[0].id, pc.actor);
+  const stored = await store.load("party", hc.code); assert(stored);
+  assert(!JSON.stringify(stored.state).includes(entryToken));
+  assert(!JSON.stringify(stored.state).includes(playerToken));
+  assert(!JSON.stringify(state).includes(playerToken));
+});
