@@ -4,12 +4,20 @@ const hash = (token) => createHash("sha256").update(token).digest();
 /** Secret credentials and socket ownership never belong in public game state. */
 export class ParticipantSessions {
   #entries = new Map();
-  issue(actor, ws) {
+  issue(actor, ws, token = randomBytes(32).toString("base64url")) {
     if (this.#entries.has(actor))
       throw new Error("Participant already has a session.");
-    const token = randomBytes(32).toString("base64url");
+    if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token))
+      throw new Error("Invalid reconnect credential.");
     this.#entries.set(actor, { tokenHash: hash(token), ws });
     return token;
+  }
+  actorForToken(token) {
+    if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) return undefined;
+    const digest = hash(token);
+    for (const [actor, entry] of this.#entries)
+      if (timingSafeEqual(digest, entry.tokenHash)) return actor;
+    return undefined;
   }
   resume(actor, token, ws) {
     const entry = this.#entries.get(actor);

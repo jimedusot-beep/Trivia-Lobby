@@ -18,7 +18,7 @@ let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
 let preferredSettings = {};
 
-let connection, roomReady = false;
+let connection, roomReady = false, pendingEntry, entryTimer;
 let ws,
   state,
   credential,
@@ -68,8 +68,9 @@ function save() {
     );
   }
 }
-function connect(hello) {
+function connect() {
   clearTimeout(retryTimer);
+  clearTimeout(entryTimer);
   connection?.stop();
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -83,9 +84,16 @@ function connect(hello) {
         status("Restoring your party…");
         socket.send(JSON.stringify({ type: "resume", ...credential }));
       } else {
-        connection.ready(); status("Connected.");
-        if (hello) { socket.send(JSON.stringify(hello)); hello = null; }
+        if (pendingEntry) {
+          status("Joining your party…");
+          socket.send(JSON.stringify(pendingEntry));
+        } else { connection.ready(); status("Connected."); }
       }
+      if ((credential && resumeSavedParty) || pendingEntry)
+        entryTimer = setTimeout(() => {
+          if (socket === ws && socket.readyState === 1)
+            socket.close(4000, "Party synchronization timed out");
+        }, 10000);
     },
     onStatus(next) {
       roomReady = next === "connected";
@@ -99,6 +107,7 @@ function connect(hello) {
       if (m.type === "tap_frame") { receiveTapFrame(m); return; }
       if (m.type === "trails_frame") { receiveTrailsFrame(m); return; }
       if (m.type === "credential") {
+        pendingEntry = null;
         credential = { code: m.code, actor: m.actor, token: m.token };
         resumeSavedParty = true;
         if (m.actor !== "host") history.replaceState(null, "", guestInvitation(location.href, m.code));
@@ -108,6 +117,8 @@ function connect(hello) {
       }
       if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
+        clearTimeout(entryTimer);
+        pendingEntry = null;
         const resuming = !roomReady;
         const initialState = !seenState;
         seenState = true;
@@ -129,6 +140,7 @@ function connect(hello) {
       if (m.type === "error") {
         const temporary = /recovery.*(saved|unavailable)|temporarily unavailable/i.test(m.message);
         if (!temporary) { pending = null; clearTimeout(retryTimer); }
+        if (!temporary && !state) { pendingEntry = null; clearTimeout(entryTimer); }
         status(m.message);
         if (!state) entry.showError(m.message);
         if (!temporary && !state && credential && resumeSavedParty) {
@@ -139,6 +151,8 @@ function connect(hello) {
     },
     onClose(event, retrying) {
       clearTimeout(retryTimer);
+      clearTimeout(entryTimer);
+      if (!retrying) pendingEntry = null;
       releaseRaceControls(); disposeTap(); disposeTrails();
       status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
       if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
@@ -148,14 +162,22 @@ function connect(hello) {
   ws = connection.socket;
 }
 function hello(message) {
-  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
-  else if (ws?.readyState === WebSocket.CONNECTING) {
-    // Avoid opening a second socket on a fast tap before the initial connect.
+  // This secret identifies one entry attempt, including an accepted request whose
+  // credential reply was lost. Retain it until the server confirms the identity.
+  pendingEntry = { ...message, entryToken: btoa(String.fromCharCode(
+    ...crypto.getRandomValues(new Uint8Array(32)),
+  )).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") };
+  if (ws?.readyState === WebSocket.OPEN) {
+    roomReady = false;
+    status("Joining your party…");
+    ws.send(JSON.stringify(pendingEntry));
+    clearTimeout(entryTimer);
     const socket = ws;
-    socket.addEventListener("open", () => {
-      if (socket === ws && (!credential || !resumeSavedParty)) socket.send(JSON.stringify(message));
-    }, { once: true });
-  } else connect(message);
+    entryTimer = setTimeout(() => {
+      if (socket === ws && socket.readyState === 1)
+        socket.close(4000, "Party synchronization timed out");
+    }, 10000);
+  } else if (ws?.readyState !== WebSocket.CONNECTING) connect();
 }
 $("create").onclick = async () => {
   const localId = new URLSearchParams(location.search).get("deck");
@@ -184,6 +206,7 @@ $("join").onsubmit = (e) => {
   });
 };
 $("leave").onclick = () => {
+  pendingEntry = null; clearTimeout(entryTimer);
   credential = null;
   save();
   try { sessionStorage.removeItem(preferenceKey); } catch {}

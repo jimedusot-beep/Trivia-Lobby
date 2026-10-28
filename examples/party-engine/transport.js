@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
+import { createHash } from "node:crypto";
 import { Party, roomCode } from "./engine.js";
 import { ParticipantSessions } from "./sessions.js";
 import { DeadlineScheduler } from "./scheduler.js";
@@ -11,6 +12,10 @@ import { acceptTrailInput, trailsFrame } from "./open-pack/trails.js";
 import { snapshotParty, restoreParty } from "./party-checkpoint.js";
 import { deliver, withDeferredDelivery } from "./durable-delivery.js";
 class RecoveryStorageError extends Error {}
+// Stable routing for one secret create intent, including after a server restart.
+// A PIN is only a route: session authentication still requires the full token.
+const entryRoomCode = token => [...createHash("sha256").update(token).digest().subarray(0, 6)]
+  .map(byte => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[byte & 31]).join("");
 
 /** Attach the guest transport to an existing HTTP server without claiming other upgrades. */
 export function attachPartySocket(server, {
@@ -222,9 +227,24 @@ export function attachPartySocket(server, {
           validateHello(m);
           let candidate, id;
           if (m.type === "create") {
+            const code = m.entryToken ? entryRoomCode(m.entryToken) : roomCode(rooms);
+            const recovered = await recover(code);
+            candidate = recovered ?? rooms.get(code);
+            if (candidate) {
+              if (!m.entryToken) throw new Error("Room code is occupied. Please try again.");
+              await transact(candidate, () => {
+                if (candidate.sessions.actorForToken(m.entryToken) !== "host")
+                  throw new Error("Room code is occupied. Please try again.");
+                record = candidate; actor = "host";
+                record.sessions.resume(actor, m.entryToken, ws);
+                record.sockets.add(ws);
+                record.party.tick(); record.party.connected(actor, true);
+                send(ws, { type: "credential", code, actor, token: m.entryToken });
+                publish(record);
+              }, ws);
+              return;
+            }
             if (rooms.size >= 200) throw new Error("Server is full.");
-            const code = roomCode(rooms);
-            if (checkpointStore && await checkpointStore.load("party", code).catch(() => { throw new RecoveryStorageError(); })) throw new Error("Room code is occupied. Please try again.");
             candidate = recordFor(new Party(code, {
                 ...partyOptions,
                 ...(Object.hasOwn(m, "quiz") ? { customQuiz: validateGuestQuiz(m.quiz) } : {}),
@@ -238,9 +258,19 @@ export function attachPartySocket(server, {
             if (m.type === "join") {
               await transact(candidate, () => {
                 candidate.party.tick();
-                id = candidate.party.join(m.name);
+                id = m.entryToken ? candidate.sessions.actorForToken(m.entryToken) : undefined;
+                if (id === "host") throw new Error("Invalid player entry credential.");
+                let token;
+                if (id) {
+                  if (!candidate.party.players.has(id)) throw new Error("Participant no longer in this room.");
+                  candidate.sessions.resume(id, m.entryToken, ws);
+                  candidate.party.connected(id, true);
+                  token = m.entryToken;
+                } else {
+                  id = candidate.party.join(m.name);
+                  token = candidate.sessions.issue(id, ws, m.entryToken);
+                }
                 record = candidate; actor = id;
-                const token = record.sessions.issue(actor, ws);
                 record.sockets.add(ws);
                 send(ws, { type: "credential", code: record.party.code, actor, token });
                 publish(record);
@@ -264,7 +294,7 @@ export function attachPartySocket(server, {
           }
           record = candidate;
           actor = id;
-          await transact(record, () => { const token = record.sessions.issue(actor, ws);
+          await transact(record, () => { const token = record.sessions.issue(actor, ws, m.entryToken);
           record.sockets.add(ws);
           send(ws, {
             type: "credential",
