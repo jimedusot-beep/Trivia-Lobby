@@ -91,6 +91,7 @@
     "recharts": "^2.15.2",
     "sql.js": "1.15.1",
     "tailwind-merge": "3.7.0",
+    "three": "0.180.0",
     "ts-fsrs": "5.4.2",
     "tw-animate-css": "^1.2.5",
     "unpdf": "1.9.1",

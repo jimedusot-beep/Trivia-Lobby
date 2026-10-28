@@ -22,3 +22,4 @@ __pycache__/
 
 # Generated corresponding-source snapshot; rebuilt before serving and deployment
 examples/party-engine/public/open-source/
+examples/party-engine/public/race-3d.bundle.js

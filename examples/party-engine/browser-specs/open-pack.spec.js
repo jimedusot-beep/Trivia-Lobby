@@ -331,12 +331,12 @@ test("Razzia import: save locally and preserve timer and scoring while editing",
   await expect(page.locator("#status")).toContainText("Saved");
 });
 
-test("Credits offer exact guest source, eight pinned upstream records and license notices", async ({
+test("Credits offer exact guest source, ten pinned upstream records and license notices", async ({
   page,
   request,
 }) => {
   await page.goto(base + "/sources.html");
-  await expect(page.locator("#source-list article")).toHaveCount(9);
+  await expect(page.locator("#source-list article")).toHaveCount(11);
   const response = await request.get(base + "/open-source/source.json");
   expect(response.ok()).toBe(true);
   const source = await response.json();
@@ -349,6 +349,10 @@ test("Credits offer exact guest source, eight pinned upstream records and licens
   expect((await request.get(base + "/open-source/boards.txt")).ok()).toBe(true);
   expect((await request.get(base + "/open-source/race.txt")).ok()).toBe(true);
   expect((await request.get(base + "/open-source/phone-controllers.txt")).ok()).toBe(true);
+  expect((await request.get(base + "/open-source/three.txt")).ok()).toBe(true);
+  expect((await request.get(base + "/open-source/race-3d-reference.txt")).ok()).toBe(true);
+  expect(source.files.some(f => f.path.endsWith("render/race-3d-scene.js"))).toBe(true);
+  expect(source.files.some(f => f.path.endsWith("script/build-race-renderer.mjs"))).toBe(true);
 });
 
 
