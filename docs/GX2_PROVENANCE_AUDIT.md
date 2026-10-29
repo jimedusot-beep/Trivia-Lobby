@@ -55,7 +55,7 @@ Agents 03 and 08 need no third-party imports: original controller ergonomics and
 
 The generated source snapshot contains 180 files and baseline SHA. A local real-HTTP check against `createPartyServer()` returned 200 for `sources.html`, `sources.js`, `open-source/source.json`, `credits.json` and all ten manifest notices: **14/14**. Credits identify exact upstream revisions; source page links to the snapshot, AGPL text and complete repository. The standalone entrypoint regenerates source before listening; production root build invokes the same generator and serves `/party` static assets. This establishes local artifact availability, not production access or browser rendering. The HTTP check confirmed `shared/schema.ts` and `server/room-checkpoints.ts` absent from the JSON.
 
-No deployed URL was tested or changed. Source bundles generated with a dirty worktree can carry HEAD while containing uncommitted content; release automation should use a clean tree and match build SHA to public source. Current audit documents are not new shipped adaptations and are not added to the runtime manifest.
+At the initial audit stage no deployed URL had been tested or changed; the read-only live follow-up below supersedes that testing limitation. No deployment was changed. Source bundles generated with a dirty worktree can carry HEAD while containing uncommitted content; release automation should use a clean tree and match build SHA to public source. Current audit documents are not new shipped adaptations and are not added to the runtime manifest.
 
 ## Import and release checklist
 
@@ -72,7 +72,7 @@ No deployed URL was tested or changed. Source bundles generated with a dirty wor
 
 ## Integration handoff
 
-Owned files: this report, `GX2_SOURCE_CANDIDATES.json`, and follow-up `GX2_VERIFIED_ASSET_ARCHIVES.json`. No dependencies, runtime APIs, visuals or performance behavior changed. `OPEN_GAME_SOURCES.json` and production notices retain existing identity and claims; candidates are not falsely credited as shipped. Apply independently of #94 and #93. Rollback is a documentation revert. Before/after: previously scattered manifest/notice records; now bounded reuse decisions, immutable candidate pins and explicit release blockers. No screenshots or frame-time comparison applies to this documentation-only change. Browser/database/physical-phone suites and production verification remain unrun.
+Owned files: this report, `GX2_SOURCE_CANDIDATES.json`, `GX2_VERIFIED_ASSET_ARCHIVES.json`, follow-up `GX2_LIVE_SOURCE_VERIFICATION.json`, and one verified upstream license notice for PR #96 integration. No game logic changes. No dependencies, runtime APIs, visuals or performance behavior changed. `OPEN_GAME_SOURCES.json` and production notices retain existing identity and claims; candidates are not falsely credited as shipped. Apply independently of #94 and #93. Rollback is a documentation revert. Before/after: previously scattered manifest/notice records; now bounded reuse decisions, immutable candidate pins and explicit release blockers. No screenshots or frame-time comparison applies to this documentation-only change. Browser/database/physical-phone suites remain unrun; read-only production source verification is recorded below.
 
 ## Validation record
 
@@ -88,7 +88,7 @@ Local Node 24.22.1 (CI uses Node 22). Commands run on unchanged runtime:
 | Local source/credits HTTP probe | 14 passed, 0 failed; 180 source files; omissions recorded above |
 | Candidate JSON structure/pins | 5 entries, all full 40-character revision pins |
 
-Full browser suites, database integration, physical devices and deployed source endpoints were not tested for this documentation-only PR. No production readiness claim.
+At initial validation, full browser suites, database integration, physical devices and deployed source endpoints were not tested. The later read-only source verification below supersedes only the endpoint limitation. No production readiness claim.
 
 ## Follow-up evidence: archive and grant verification
 
@@ -109,3 +109,32 @@ Additional inventory check: standalone production lockfile contains 98 dependenc
 Remaining gates: integrated source completeness and actual deployed anonymous source access; combined-work scope/UI legal notice review; Quaternius acquisition-specific evidence; final notice recheck after implementation imports. Agent 09 can verify final imports when candidate PRs exist. No runtime/shared build patch is made here because Agent 00 owns coordination of those files.
 
 Follow-up validation: five ZIPs parsed, five embedded CC0 notices manually inspected, 11 selected files located/read/hashed, archive hashes independently rechecked, source candidate JSON parsed. Unchanged-runtime test/build results above still apply; they were not rerun solely for these documentation additions.
+
+## Live verification and candidate integration follow-up
+
+Read-only anonymous HTTP checks on 2026-10-29 verified the existing live service, without creating rooms, changing data or deploying:
+
+- **17 live endpoints returned HTTP 200:** party home, source page, source-page script, credits JSON, source JSON, health endpoint, ten upstream notices and chess notice.
+- Credits and source report the identical revision `55414cd7d3f8cc903897f5d40f3d0e914aea579b`; credits link to that immutable repository revision.
+- **180/180 embedded source files exactly match `git show <reported SHA>:<path>`**, with no missing tracked paths or content mismatches. This proves consistency of the included files, not completeness of the integrated application source.
+- A separate anonymous request fetched `server/room-checkpoints.ts` from the pinned public GitHub revision with HTTP 200. Thus at least this omitted integrated file is available through the alternate complete-repository source route. No full clean rebuild from that public revision was performed in this follow-up.
+
+Machine-readable endpoint status/type/size and pinned candidate review heads are in `GX2_LIVE_SOURCE_VERIFICATION.json`. These are HTTP/file checks, not rendered browser or physical-phone acceptance. Source availability is observed for this revision at this time; future releases must repeat the check.
+
+### PR #96: missing license destination repaired for integration
+
+At head `0e967a99989611aaf5e72d83ac02279cd0d63faf`, PR #96 adds `gx2-tv-lobby-reference` to the shipped source manifest. `sources.js` constructs `open-source/gx2-tv-lobby-reference.txt` for this record, but that notice path is absent from the pinned branch (GitHub file request returns 404). Its credits browser test verifies link DOM presence, not that each notice request succeeds. Existing CI success therefore does not establish this new destination works.
+
+This audit PR supplies `examples/party-engine/open-pack/licenses/gx2-tv-lobby-reference.txt`, containing the exact MIT notice from IACBI/matah at `049da257eb690e82d7c47d1f2d502b607adb054a`. No source or art is copied. The existing build generator already publishes all notices in that directory; no runtime/build patch is needed for this fix. Local generation plus real HTTP confirms the new notice returns **200 and exactly matches the retained notice bytes**.
+
+**Integration dependency:** combine this notice with PR #96's manifest change (merge audit #95 before #96, or carry the exact notice into the combined branch). The orphan notice alone does not add a shipped credit on main. Do not release #96's new manifest record without the notice. Agent 00 should also strengthen the existing credits test minimally: fetch every `open-source/${record.id}.txt` and assert success/nonempty content, instead of checking only that its anchor exists. That is the smallest proposed shared-test patch; this audit does not edit another agent's owned browser spec.
+
+### PR #97: no new reuse found in changed-file review
+
+At head `bb19f3184b4dce0399282ce8064825274300d9fb`, changed files contain controller code/styles, browser tests, documentation and screenshots, with no new dependency manifest, third-party asset or shipped-source manifest entry. The phone Options credits URL is preserved. This is a bounded diff review, not a provenance certification of screenshots or unchanged dependencies. Recheck if the PR head changes.
+
+### What remains
+
+The live source/notice availability gate for the **currently deployed revision** is verified. Remaining source-delivery work is to make the integrated download's advertised root build reproducible or describe its standalone scope accurately, and to repeat acceptance after the candidate changes are released. Agent 00 owns that shared build/UI patch coordination. Combined-work license scope and appropriate legal notices still require qualified review; Quaternius stays reference-only. Final third-party import checks remain contingent on actual imports.
+
+No full test/build rerun was needed for this license-text/evidence follow-up. Focused validation: 18 successful external HTTP requests (17 live + 1 pinned GitHub file), 180 exact file comparisons, one generated-notice HTTP/body check, JSON parsing and whitespace checks. The previous 364 passing runtime tests remain baseline evidence only.
