@@ -41,13 +41,10 @@ export async function lobby(browser, count = 2, viewport = { width: 390, height:
       for (const p of players) await expect(p.getByRole("group", { name: "Racing controls" })).toBeVisible();
     },
     async close() {
-      try {
-        const end = host.getByRole("button", { name: "End this match", exact: true });
-        if (await end.isVisible()) {
-          host.once("dialog", dialog => dialog.accept());
-          await end.click(); await expect(host.locator("#heading")).toContainText("finished");
-        }
-      } finally { await Promise.all(contexts.map(c => c.close())); }
+      // Teardown owns browser resources, not gameplay. A heat can reach reveal
+      // between finding End this match and clicking it, removing that button.
+      // Explicit match-ending/return-to-lobby assertions live in race.spec.js.
+      await Promise.all(contexts.map(c => c.close()));
     } };
 }
 export async function cleanPage(page) {
