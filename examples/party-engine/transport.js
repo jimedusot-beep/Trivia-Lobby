@@ -27,6 +27,10 @@ export function attachPartySocket(server, {
 } = {}) {
   const scheduler = new DeadlineScheduler({ clock: partyOptions.clock, ...schedulerOptions });
   const rooms = new Map(), limits = new Map(), loading = new Map();
+  // Limit queued inbound data per socket while a database checkpoint is stalled.
+  // Ordinary clients send one acknowledged action at a time; racing inputs use
+  // their existing transient, rate-limited fast path below.
+  const MAX_PENDING_MESSAGES = 16, MAX_PENDING_BYTES = 64 * 1024;
   let closing = false;
   const wss = new WebSocketServer({ noServer: true, maxPayload: 32768, perMessageDeflate: false });
   const send = (ws, data) => {
@@ -175,7 +179,7 @@ export function attachPartySocket(server, {
       ws.alive = true;
     });
     ws.on("error", () => {});
-    let connectionQueue = Promise.resolve();
+    let connectionQueue = Promise.resolve(), pendingMessages = 0, pendingBytes = 0;
     ws.on("message", (raw) => {
       // Fast controls are transient input. Authoritative positions, accepted
       // actions and championship points are committed on a bounded room tick.
@@ -210,6 +214,16 @@ export function attachPartySocket(server, {
           return;
         }
       }
+      const bytes = raw.length;
+      if (pendingMessages >= MAX_PENDING_MESSAGES || pendingBytes + bytes > MAX_PENDING_BYTES) {
+        // 1013 is retryable by the browser connection manager. Avoid acknowledging
+        // actions that have not been committed, and preserve pending client retries.
+        send(ws, { type: "error", message: "Party server temporarily unavailable: too many queued messages. Reconnecting..." });
+        ws.close(1013, "Incoming queue full; reconnect");
+        return;
+      }
+      pendingMessages++;
+      pendingBytes += bytes;
       connectionQueue = connectionQueue.then(async () => {
       try {
         if (Date.now() - windowStart > 10000) {
@@ -323,7 +337,10 @@ export function attachPartySocket(server, {
           message: e instanceof SyntaxError ? "Invalid JSON." : e.message,
         });
       }
-    }).catch(() => failRecovery(record, ws)); });
+    }).catch(() => failRecovery(record, ws)).finally(() => {
+      pendingMessages--;
+      pendingBytes -= bytes;
+    }); });
     ws.on("close", () => {
       record?.sockets.delete(ws);
       if (!closing && record) void transact(record, () => {
