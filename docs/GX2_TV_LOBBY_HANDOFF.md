@@ -41,3 +41,9 @@ MATAH `IACBI/matah` at `049da257eb690e82d7c47d1f2d502b607adb054a`: root LICENSE 
 ## Review / integration
 
 Inspect screenshots, rerun focused tests with a working Chromium executable, check every category/search reset and keyboard Preview/Host, then open a QR invitation at 320px. Existing invitation remains collapsible by the host. Catalog retains all entries through filters/search rather than introducing a new carousel or pagination system. No synthetic loading delay was added: catalog data is synchronous/local. Main changes after this base require normal rebase/conflict review. CI must pass before any later merge decision.
+
+## Follow-up: catalog recovery
+
+Added a keyboard-accessible Show all games action to empty results. It clears both search and category and returns focus to search. Escape clears search while preserving the selected category. No added dependencies, assets or shared-file changes.
+
+Repeated the focused Playwright command above: 9 passed, 0 failed/skipped; guest-engine tests: 253 passed, 0 failed/skipped; git diff --check passed. The new browser regression checks both reset paths, focus, category state and preview recovery. PR #96 remains a draft, with no merge/deployment or physical-device verification.
