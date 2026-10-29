@@ -42,7 +42,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const previewIcon = make("span", "pick-spotlight-icon"); previewIcon.setAttribute("aria-hidden", "true");
   const previewCopy = make("div", "pick-spotlight-copy");
   const previewLabel = make("span", "sakura-eyebrow", "YOUR NEXT GAME");
-  const previewName = make("h3"); const previewMeta = make("p", "pick-spotlight-meta");
+  const previewName = make("h3"); previewName.tabIndex = -1; const previewMeta = make("p", "pick-spotlight-meta");
   const previewRules = make("p", "pick-spotlight-rules");
   previewCopy.append(previewLabel, previewName, previewMeta, previewRules);
   const previewAction = make("button", "pick-spotlight-button");
@@ -132,7 +132,11 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const actions = make("div", "pick-game-actions");
     const preview = make("button", "pick-game-preview-button", "Preview");
     preview.type = "button";preview.setAttribute("aria-label", "Preview " + game.name);
-    preview.addEventListener("click", () => showPreview(game.id));
+    preview.addEventListener("click", () => {
+      showPreview(game.id);
+      previewName.focus({ preventScroll: true });
+      spotlight.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    });
     const host = make("button", "pick-game-button", (asHost ? "Choose " : "Host ") + game.name);
     host.type = "button";
     host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
