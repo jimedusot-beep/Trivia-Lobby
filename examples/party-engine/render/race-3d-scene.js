@@ -204,17 +204,12 @@ export function createRaceScene({ onContextLost }) {
     box(2.85, 0.5, 1.65, color, body, 0, 0.65, 0);
     box(0.9, 0.25, 1.42, color, body, 1.17, 0.78, 0);
     box(0.22, 0.22, 1.45, '#fff6df', body, 1.44, 0.93, 0);
-    box(0.3, 0.22, 1.86, '#26354d', body, 1.75, 0.52, 0);
     box(0.63, 0.7, 1, '#24334d', body, -0.27, 1.07, 0);
     for (const side of [-1, 1]) {
       box(1.22, 0.28, 0.43, color, body, -0.12, 0.61, side * 0.86);
-      box(0.63, 0.2, 0.52, '#fff2d1', body, 1.24, 0.7, side * 0.56);
       box(0.24, 0.12, 0.42, '#ffe8a0', body, 1.68, 0.71, side * 0.58);
-      box(0.15, 0.17, 0.45, '#ed6f84', body, -1.42, 0.74, side * 0.52);
-      box(0.14, 0.47, 0.17, '#24334d', body, -1.28, 1.04, side * 0.73);
     }
     box(0.54, 0.16, 2.16, color, body, -1.36, 1.3, 0);
-    box(0.32, 0.08, 1.68, '#fff6df', body, -1.36, 1.42, 0);
     const wheels = [], frontAxles = [];
     for (const x of [-0.96, 0.97]) for (const z of [-0.94, 0.94]) {
       const axle = new THREE.Group();
@@ -222,17 +217,12 @@ export function createRaceScene({ onContextLost }) {
       if (x > 0) frontAxles.push(axle);
       const w = mesh(geometry('wheel', () => new THREE.CylinderGeometry(0.44, 0.44, 0.37, 12)), material('#263344'), axle, 0, 0.44, 0);
       w.rotation.x = Math.PI / 2; wheels.push(w);
-      const hub = mesh(geometry('wheel-hub', () => new THREE.CylinderGeometry(0.23, 0.23, 0.385, 10)), material('#c5d9e4', { metalness: 0.35, roughness: 0.42 }), w);
-      hub.rotation.x = 0;
     }
     const helmet = ball(0.54, color, body, -0.1, 1.82, 0);
-    box(0.58, 0.13, 0.86, '#fff6df', body, -0.1, 2.11, 0);
     const visor = box(0.3, 0.27, 0.88, '#294a68', body, 0.32, 1.82, 0);
     const shield = mesh(geometry('shield', () => new THREE.SphereGeometry(1.75, 12, 8)), material('#8cddf2', { transparent: true, opacity: 0.3, depthWrite: false }), root, 0, 1.25, 0);
     const flame = new THREE.Group(); root.add(flame); flame.position.set(-1.82, 0.68, 0);
     for (const side of [-1, 1]) {
-      const exhaust = mesh(geometry('exhaust', () => new THREE.CylinderGeometry(0.26, 0.26, 0.64, 8)), material('#34455d', { metalness: 0.25 }), root, -1.59, 0.7, side * 0.45);
-      exhaust.rotation.z = Math.PI / 2;
       const plume = mesh(geometry('flame', () => new THREE.ConeGeometry(0.28, 1.15, 7)),
         material('#ffd46a', { emissive: '#ff8d36', emissiveIntensity: 1 }), flame, -0.55, 0, side * 0.45);
       plume.rotation.z = Math.PI / 2;
