@@ -100,3 +100,38 @@ test('long mobile catalog capture stays at CSS resolution on high-density screen
     expect(image.readUInt32BE(20)).toBeLessThan(32767);
   } finally { await context.close(); }
 });
+
+test('lower-card Preview brings its rules into view and moves keyboard focus', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const preview = page.locator('.pick-game-preview-button').last();
+  const name = (await preview.getAttribute('aria-label')).replace('Preview ', '');
+  await preview.click();
+  const heading = page.locator('.pick-spotlight-copy h3');
+  await expect(heading).toHaveText(name);
+  await expect(heading).toBeFocused();
+  await expect(page.locator('.pick-game-spotlight')).toBeInViewport();
+  await page.screenshot({ path: 'test-results/tv-preview-visible.png' });
+  await page.keyboard.press('Tab');
+  await expect(page.locator('.pick-spotlight-button').first()).toBeFocused();
+});
+
+test('TV lobby width and invitation styling exclude controllers and active play', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Create host screen', exact: true }).click();
+  await expect(page.locator('#mode')).toBeVisible();
+  await expect(page.locator('main')).toHaveCSS('max-width', '1560px');
+  await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '33.6px');
+  await page.screenshot({ path: 'test-results/tv-lobby-wide.png' });
+  for (const controller of ['phone-controller-active', 'race-controller-active']) {
+    await page.evaluate(c => document.body.classList.add(c), controller);
+    await expect(page.locator('main')).toHaveCSS('max-width', '1050px');
+    await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '20px');
+    await page.evaluate(c => document.body.classList.remove(c), controller);
+  }
+  await page.evaluate(() => { document.body.dataset.partyPhase = 'question'; });
+  await expect(page.locator('main')).toHaveCSS('max-width', '1050px');
+  await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '20px');
+});

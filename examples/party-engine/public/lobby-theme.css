@@ -71,9 +71,10 @@
 
 /* Host-only TV invitation emphasis; phone controller surfaces are excluded. */
 @media (min-width:1100px) {
-  body.public-party:not(.phone-controller-active) #heading { font-size:clamp(2rem,3vw,3rem); }
-  body.public-party:not(.phone-controller-active) #party-invitation > summary { font-size:1.2rem; padding:8px; }
-  body.public-party:not(.phone-controller-active) .lobby-invite-card { max-width:1100px; grid-template-columns:280px minmax(0,1fr); }
-  body.public-party:not(.phone-controller-active) .lobby-invite-card strong { font-size:2.1rem; }
-  body.public-party:not(.phone-controller-active) .lobby-invite-card p { font-size:1.1rem; }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) main { max-width:1560px; }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) #heading { font-size:clamp(2rem,3vw,3rem); }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) #party-invitation > summary { font-size:1.2rem; padding:8px; }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) .lobby-invite-card { max-width:1100px; grid-template-columns:280px minmax(0,1fr); }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) .lobby-invite-card strong { font-size:2.1rem; }
+  body.public-party[data-party-phase="lobby"]:has(#mode):not(.phone-controller-active):not(.race-controller-active) .lobby-invite-card p { font-size:1.1rem; }
 }
