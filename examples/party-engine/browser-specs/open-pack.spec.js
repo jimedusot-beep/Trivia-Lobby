@@ -398,12 +398,19 @@ test("Razzia import: save locally and preserve timer and scoring while editing",
   await expect(page.locator("#status")).toContainText("Saved");
 });
 
-test("Credits offer exact guest source, ten pinned upstream records and license notices", async ({
+test("Credits offer exact guest source, pinned upstream records and license notices", async ({
   page,
   request,
 }) => {
   await page.goto(base + "/sources.html");
-  await expect(page.locator("#source-list article")).toHaveCount(11);
+  const creditsResponse = await request.get(base + "/open-source/credits.json");
+  expect(creditsResponse.ok()).toBe(true);
+  const credits = await creditsResponse.json();
+  expect(credits.sources).toHaveLength(11);
+  await expect(page.locator("#source-list article")).toHaveCount(credits.sources.length + 1);
+  for (const record of credits.sources) {
+    await expect(page.locator(`#source-list a[href="./open-source/${record.id}.txt"]`)).toHaveCount(1);
+  }
   const response = await request.get(base + "/open-source/source.json");
   expect(response.ok()).toBe(true);
   const source = await response.json();
@@ -433,8 +440,11 @@ test("Game categories keep all 31 modes easy to browse", async ({page}) => {
   await expect(page.locator(".pick-game-card:visible")).toHaveCount(7);
   await expect(page.locator('[data-game="homeward"]')).toBeVisible();
   await page.getByRole("button",{name:"Party & trivia",exact:true}).click();
-  await expect(page.locator(".pick-game-card:visible")).toHaveCount(22);
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(17);
   await expect(page.locator('[data-game="no-say"]')).toBeVisible();
+  await expect(page.locator('[data-game="trails"]')).toBeHidden();
+  await page.getByRole("button",{name:"Racing & arcade",exact:true}).click();
+  await expect(page.locator(".pick-game-card:visible")).toHaveCount(5);
   await expect(page.locator('[data-game="trails"]')).toBeVisible();
   await expect(page.locator('[data-game="tap"]')).toBeVisible();
   await expect(page.locator('[data-game="race"]')).toBeVisible();
