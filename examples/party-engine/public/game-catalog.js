@@ -84,7 +84,16 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
   ];
   let activeCategory = "all";
-  const empty = make("div", "pick-game-empty", "No games found. Try another search or category.");
+  const empty = make("div", "pick-game-empty");
+  const emptyMessage = make("p", null, "No games found. Try another search or category.");
+  const reset = make("button", "pick-spotlight-button", "Show all games");
+  reset.type = "button";
+  reset.addEventListener("click", () => {
+    search.value = "";
+    chooseCategory("all");
+    search.focus();
+  });
+  empty.append(emptyMessage, reset);
   empty.hidden = true;
   const chooseCategory = category => {
     activeCategory = category;
@@ -133,6 +142,12 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     grid.append(card);cards.set(game.id,card);
   }
   search.addEventListener("input", () => chooseCategory(activeCategory));
+  search.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !search.value) return;
+    event.preventDefault();
+    search.value = "";
+    chooseCategory(activeCategory);
+  });
   toolbar.append(searchLabel, filters);
   container.append(spotlight, toolbar, status, empty, grid);
   showPreview(cards.has(selected) ? selected : guestGames[0].id);
