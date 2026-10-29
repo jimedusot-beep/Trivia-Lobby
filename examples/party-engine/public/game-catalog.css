@@ -60,3 +60,45 @@
 @media(max-width:760px){.pick-game-spotlight {grid-template-columns:65px 1fr;gap:13px;padding:15px;}.pick-spotlight-icon{width:62px;height:62px;font-size:2.3rem;border-radius:17px;}.pick-spotlight-button{grid-column:1 / -1;width:100%;}.pick-game-card{min-height:auto;}}
 @media(max-width:600px){.pick-game-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));}.pick-games{padding:19px 13px;}}
 @media(prefers-reduced-motion:reduce){.pick-game-card{transition:none;}}
+
+/* GX2 TV shelf. Original CSS artwork; no external image requests or assets. */
+.pick-games { background:linear-gradient(135deg,#181a36,#302755 65%,#423467); border:1px solid #81749e; box-shadow:0 20px 60px #241c4430; }
+.pick-games::before { content:none; }
+.pick-game-heading { max-width:900px; }
+.pick-game-toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:12px 24px; margin:22px 0 16px; }
+.pick-game-search-label { flex:1 1 260px; color:#fff5e9; font-size:.9rem; font-weight:850; }
+.pick-game-search { display:block; margin:6px 0 0; background:#fffaf5; }
+.pick-game-filters { flex:2 1 420px; gap:8px; margin:0; }
+.pick-game-filters button { box-shadow:none; font-size:.9rem; }
+.pick-game-filters button:focus-visible,.pick-game-search:focus-visible { outline:3px solid #ffdb88; outline-offset:3px; }
+.pick-game-status { font-size:1rem; color:#e5def5; margin-bottom:18px; }
+.pick-game-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr)); gap:22px; }
+.pick-game-card { position:relative; overflow:hidden; padding:18px; margin:0; border:1px solid var(--card-border); border-radius:20px; gap:10px; box-shadow:0 8px 20px #0a092b40; }
+.pick-game-card:hover { box-shadow:0 12px 24px #0a092b60; }
+.pick-game-card h3 { font-size:1.55rem; }
+.pick-game-art { position:relative; display:grid; place-items:center; height:132px; margin:-18px -18px 4px; overflow:hidden; isolation:isolate; background:radial-gradient(circle at 75% 20%,#ffffffcc,transparent 48%),linear-gradient(135deg,var(--card-border),var(--card-light)); }
+.pick-game-art::before,.pick-game-art::after { content:""; position:absolute; border:2px solid #ffffff90; width:130px; height:130px; transform:rotate(25deg); border-radius:30px; left:-35px; top:34px; }
+.pick-game-art::after { left:auto; right:-40px; top:-60px; width:180px; height:180px; }
+.pick-game-art-icon { z-index:1; font-size:4rem; filter:drop-shadow(0 8px 1px #241c4426); transform:rotate(-8deg); transition:transform .2s ease; }
+.pick-game-card:hover .pick-game-art-icon { transform:rotate(3deg) scale(1.08); }
+.pick-game-art-orbit { position:absolute; width:180px; height:60px; border:2px solid #fff9; border-radius:50%; transform:rotate(-18deg); }
+.pick-game-art[data-genre="arcade"] { background:repeating-linear-gradient(135deg,transparent 0 26px,#fff3 26px 30px),linear-gradient(125deg,var(--card-border),var(--card-light)); }
+.pick-game-art[data-genre="boards"]::before { border-radius:0; background:repeating-conic-gradient(#fff5 0 25%,transparent 0 50%) 0 / 32px 32px; }
+.pick-game-art[data-genre="cards"] .pick-game-art-orbit { height:100px; width:70px; border-radius:12px; background:#fff7; }
+.pick-game-players { font-size:1rem; }
+.pick-game-rules { font-size:1rem; }
+.pick-game-actions { margin-top:auto; }
+.pick-game-actions button { font-size:.95rem; }
+.pick-game-spotlight { grid-template-columns:140px minmax(0,1fr) minmax(170px,auto); padding:28px; background:radial-gradient(ellipse at top left,#7761ac55,transparent 65%),#24213f; border:1px solid #9e89bd; box-shadow:none; }
+.pick-spotlight-icon { width:120px; height:120px; font-size:4.5rem; border:1px solid #ffffff66; background:#f5c4da; box-shadow:0 10px 30px #0003; }
+.pick-spotlight-copy h3 { font-size:clamp(1.8rem,3vw,2.6rem); }
+.pick-spotlight-meta { font-size:1rem; color:#ffdb88; }
+.pick-spotlight-rules { font-size:1.05rem; max-width:66ch; }
+.pick-spotlight-button { font-size:1.05rem; }
+.pick-game-empty { padding:40px 20px; text-align:center; border:1px dashed #a697c1; border-radius:16px; font-size:1.2rem; }
+.pick-game-spotlight[hidden],.pick-game-empty[hidden] { display:none; }
+@media(min-width:1600px) { .pick-game-grid {grid-template-columns:repeat(4,minmax(0,1fr));} }
+@media(max-width:760px) { .pick-game-spotlight {grid-template-columns:70px minmax(0,1fr);padding:18px;gap:15px;} .pick-spotlight-icon {width:66px;height:76px;font-size:2.8rem;} .pick-spotlight-copy h3 {font-size:1.6rem;} .pick-spotlight-rules {font-size:1rem;} .pick-game-toolbar {gap:16px;} }
+@media(prefers-reduced-motion:reduce) { .pick-game-art-icon {transition:none;} .pick-game-card:hover .pick-game-art-icon {transform:rotate(-8deg);} }
+@media(min-width:1100px) { body.public-party main:has(#pick-games:not([hidden])) {max-width:1560px;} }
+@media(max-width:480px) { .pick-game-spotlight {grid-template-columns:1fr;} .pick-spotlight-icon {width:64px;height:64px;} .pick-spotlight-button {grid-column:auto;} }

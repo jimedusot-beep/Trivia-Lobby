@@ -214,6 +214,29 @@ test("an elapsed-round guest replacement failure disconnects the displaced phone
   assert(state.players.every((player: any) => player.score === 0));
 });
 
+test("pending guest create/join intents recover once after restart without plaintext secrets", async t => {
+  const { randomBytes } = await import("node:crypto");
+  const store = new MemoryRoomCheckpointStore();
+  let server = await launch(store); t.after(() => server.close());
+  const entryToken = randomBytes(32).toString("base64url");
+  const host = await server.open(); host.send({ type: "create", entryToken });
+  const hc = await host.take("credential");
+  const playerToken = randomBytes(32).toString("base64url");
+  const join = { type: "join", code: hc.code, name: "Pending guest", entryToken: playerToken };
+  const player = await server.open(); player.send(join); const pc = await player.take("credential");
+  await server.close(); server = await launch(store);
+  const retryHost = await server.open(); retryHost.send({ type: "create", entryToken });
+  assert.deepEqual(await retryHost.take("credential"), hc);
+  const retryPlayer = await server.open(); retryPlayer.send(join);
+  assert.deepEqual(await retryPlayer.take("credential"), pc);
+  const state = (await retryPlayer.take("state")).state;
+  assert.equal(state.players.length, 1); assert.equal(state.players[0].id, pc.actor);
+  const stored = await store.load("party", hc.code); assert(stored);
+  assert(!JSON.stringify(stored.state).includes(entryToken));
+  assert(!JSON.stringify(stored.state).includes(playerToken));
+  assert(!JSON.stringify(state).includes(playerToken));
+});
+
 test("countdown recovery retains the selected pack rules instead of defaulting", () => {
   for (const [mode, settings] of [["colors", { bots: 2, stacking: true, turnSeconds: 60 }], ["table", { preset: "whist" }]] as const) {
     let now = Date.now();
@@ -231,3 +254,53 @@ test("countdown recovery retains the selected pack rules instead of defaulting",
     } else assert.equal(restored.pack.preset, "whist");
   }
 });
+
+test("legacy countdown checkpoints without pack settings retain safe defaults", () => {
+  let now = 1000;
+  const party = new Party("ABC234", { clock: () => now, countdownMs: 3000 });
+  for (let i = 0; i < 4; i++) party.join(`Legacy ${i}`);
+  party.handle("host", { v: 1, type: "start", requestId: "legacy-settings", matchId: null, revision: 0, value: "colors", settings: {} });
+  const checkpoint = JSON.parse(JSON.stringify(snapshotParty(party)));
+  delete checkpoint.packSettings;
+  const restored = restoreParty("ABC234", checkpoint, { clock: () => now }, now);
+  now += 3001; restored.tick();
+  assert.equal(restored.phase, "playing");
+  assert.equal(restored.pack.stacking, false);
+  assert.equal(restored.pack.turnMs, 30000);
+  assert.equal(restored.pack.seats.length, 4);
+});
+
+for (const [mode, settings] of [["colors", { bots: 2, stacking: true, turnSeconds: 60 }], ["table", { preset: "whist" }]] as const) {
+  test(`${mode}: committed countdown rules survive a real socket server restart`, async t => {
+    let now = 1000;
+    const store = new MemoryRoomCheckpointStore();
+    let server = await launch(store, { clock: () => now, countdownMs: 3000 });
+    t.after(() => server.close());
+    const host = await server.open(); host.send({ type: "create" });
+    const credential = await host.take("credential");
+    const players = await Promise.all(Array.from({ length: 4 }, () => server.open()));
+    await Promise.all(players.map(async (player, i) => {
+      player.send({ type: "join", code: credential.code, name: `Restart ${i}` });
+      await player.take("credential");
+    }));
+    const lobby = (await host.take("state", m => m.state.players.length === 4)).state;
+    const requestId = `restart-settings-${mode}`;
+    host.send({ v: 1, type: "start", requestId, matchId: lobby.matchId, revision: lobby.revision, value: mode, settings });
+    await host.take("ack", m => m.requestId === requestId);
+    const saved = await store.load("party", credential.code); assert(saved);
+    assert.deepEqual(saved.state.party.packSettings, settings);
+    await server.close(); now += 3001;
+    server = await launch(store, { clock: () => now, countdownMs: 3000 });
+    const resumed = await server.open(); resumed.send({ ...credential, type: "resume" });
+    await resumed.take("ready");
+    const state = (await resumed.take("state", m => m.state.phase === "playing")).state;
+    assert.equal(state.matchId, saved.state.party.matchId);
+    const opened = await store.load("party", credential.code); assert(opened);
+    assert.deepEqual(opened.state.party.packSettings, settings);
+    if (mode === "colors") {
+      assert.equal(opened.state.party.pack.stacking, true);
+      assert.equal(opened.state.party.pack.turnMs, 60000);
+      assert.equal(opened.state.party.pack.seats.length, 6);
+    } else assert.equal(opened.state.party.pack.preset, "whist");
+  });
+}

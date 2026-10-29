@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Original shared-screen/phone interface; the phone never simulates a race.
 import { TRACK, TRACK_POINTS, trackPose, ITEM_SPOTS, BOOST_SPOTS, RACE_COLORS, ITEM_LABELS } from "./race-track.js";
+import { createTiltSteering } from "./race-tilt.js";
 import { clamp, lerp, wrapAngle } from "./race-math.js";
 let active;
 const node = (tag, text, parent, className) => {
@@ -152,10 +153,94 @@ function mountTV(a, root) {
     node("span", driver.name, row, "race-driver-name");
     const position = node("span", "Ready", row, "race-place"); rows.set(driver.number, { row, position });
   }
+  const viewControls = node("div", undefined, root, "race-view-controls");
+  const viewButton = node("button", "Use 2D view", viewControls, "race-view-toggle");
+  viewButton.type = "button";
+  const viewStatus = node("span", "Loading 3D broadcast view…", viewControls, "race-view-status");
+  viewStatus.setAttribute("role", "status");
+  const cameraLabel = node("label", "Race camera ", viewControls, "race-camera-label");
+  const cameraSelect = node("select", undefined, cameraLabel); cameraSelect.disabled = true;
+  cameraSelect.setAttribute("aria-label", "Race camera");
+  for (const [value, name] of [["overview", "Whole track"], ["director", "Race director"]]) {
+    const option = node("option", name, cameraSelect); option.value = value;
+  }
+  try { cameraSelect.value = sessionStorage.getItem("party-race-camera") || "overview"; } catch {}
+  const minimap = node("canvas", undefined, screen, "race-minimap");
+  minimap.width = 240; minimap.height = 144; minimap.hidden = true;
+  minimap.setAttribute("role", "img"); minimap.setAttribute("aria-label", "All racers on the full track. Numbered standings are below.");
+  const directorBadge = node("span", undefined, screen, "race-director-badge"); directorBadge.hidden = true;
+  const mapContext = minimap.getContext("2d");
   const c = canvas.getContext("2d"), background = staticTrack();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let scene3d = null, disposed = false, request = 0, prefer3d = true;
+  try { prefer3d = sessionStorage.getItem("party-race-view") !== "2d"; } catch {}
+  function saveView() { try { sessionStorage.setItem("party-race-view", prefer3d ? "3d" : "2d"); } catch {} }
+  function fallback(message = "2D broadcast view") {
+    viewButton.disabled = false; cameraSelect.disabled = true; minimap.hidden = true; directorBadge.hidden = true;
+    if (scene3d) { scene3d.canvas.replaceWith(canvas); scene3d.dispose(); scene3d = null; }
+    canvas.dataset.renderer = "2d";
+    viewButton.textContent = "Use 3D view"; viewStatus.textContent = message;
+  }
+  async function start3d() {
+    const token = ++request;
+    viewButton.disabled = true;
+    viewStatus.textContent = "Loading 3D broadcast view…";
+    try {
+      const { createRaceScene } = await import("./race-3d.bundle.js");
+      if (disposed || token !== request || !prefer3d) return;
+      const created = createRaceScene({ onContextLost() {
+        if (disposed) return;
+        ++request; prefer3d = false;
+        fallback("3D graphics interrupted. Racing continues in 2D.");
+      } });
+      if (disposed || token !== request) { created.dispose(); return; }
+      scene3d = created; created.setCamera(cameraSelect.value); cameraSelect.disabled = reducedMotion.matches;
+      created.canvas.id = "race-track";
+      created.canvas.setAttribute("role", "img");
+      created.canvas.setAttribute("aria-label", "Live 3D overhead race track. Player numbers and positions are listed below.");
+      // The fallback canvas remains available; a graphics failure never reloads a room.
+      created.render(frame, previous, 1, performance.now(), reducedMotion.matches);
+      canvas.replaceWith(created.canvas);
+      viewButton.textContent = "Use 2D view"; viewStatus.textContent = "3D broadcast · all racers on one screen";
+    } catch {
+      prefer3d = false;
+      fallback("3D is unavailable on this display. Racing continues in 2D.");
+    } finally { if (!disposed && token === request) viewButton.disabled = false; }
+  }
+  cameraSelect.addEventListener("change", () => {
+    scene3d?.setCamera(cameraSelect.value);
+    try { sessionStorage.setItem("party-race-camera", cameraSelect.value); } catch {}
+  });
+  viewButton.addEventListener("click", () => {
+    prefer3d = !scene3d; ++request; saveView();
+    if (prefer3d) void start3d(); else fallback();
+  });
   let frame = a.state.pack, previous = frame, receivedAt = performance.now(), animation;
   const draw = () => {
     if (active !== a) return;
+    if (document.hidden) { animation = requestAnimationFrame(draw); return; }
+    const interpolation = clamp((performance.now() - receivedAt) / 100, 0, 1);
+    if (scene3d) {
+      try {
+        scene3d.render(frame, previous, interpolation, performance.now(), reducedMotion.matches);
+        cameraSelect.disabled = reducedMotion.matches;
+        minimap.hidden = scene3d.canvas.dataset.camera !== "director";
+        directorBadge.hidden = minimap.hidden;
+        directorBadge.textContent = "Race director · #" + scene3d.canvas.dataset.focusNumber;
+        if (!minimap.hidden) {
+          mapContext.drawImage(background, 0, 0, 240, 144);
+          mapContext.font = "900 12px sans-serif"; mapContext.textAlign = "center";
+          for (const k of frame.karts || []) {
+            const x = k.x / 5, y = k.y / 5;
+            mapContext.fillStyle = color(k.number); mapContext.beginPath(); mapContext.arc(x, y, 4, 0, Math.PI * 2); mapContext.fill();
+            mapContext.lineWidth = 3; mapContext.strokeStyle = "#24324b"; mapContext.fillStyle = "#fff9e9";
+            mapContext.strokeText(String(k.number), x, y - 6); mapContext.fillText(String(k.number), x, y - 6);
+          }
+        }
+      }
+      catch { prefer3d = false; fallback("3D graphics interrupted. Racing continues in 2D."); }
+      animation = requestAnimationFrame(draw); return;
+    }
     c.drawImage(background, 0, 0);
     const t = clamp((performance.now() - receivedAt) / 100, 0, 1);
     for (let i = 0; i < ITEM_SPOTS.length; i++) if (frame.boxes?.[i]) {
@@ -179,7 +264,9 @@ function mountTV(a, root) {
     caption.textContent = a.state.hostConnected ? "Look for your number. Hold drift in a corner, then release for a boost." : "Host reconnecting. The server keeps the race moving.";
   };
   animation = requestAnimationFrame(draw);
-  a.cleanup = () => cancelAnimationFrame(animation);
+  a.cleanup = () => { disposed = true; ++request; cancelAnimationFrame(animation); scene3d?.dispose(); scene3d = null; };
+  canvas.dataset.renderer = "2d";
+  if (prefer3d) void start3d(); else fallback();
 }
 
 function mountController(a, root, api) {
@@ -195,23 +282,41 @@ function mountController(a, root, api) {
   const itemText = node("p", "Pick up a purple box for an item.", root, "race-item-status"); itemText.id = "race-own-item";
   const charge = node("progress", undefined, root, "race-charge"); charge.max = 3.2; charge.value = 0; charge.setAttribute("aria-label", "Drift boost charge");
   const controls = node("div", undefined, root, "race-controls"); controls.setAttribute("role", "group"); controls.setAttribute("aria-label", "Racing controls");
+  const tiltPanel = node("div", undefined, controls, "race-tilt-panel");
+  const enableTilt = node("button", "Tilt steering", tiltPanel, "race-tilt-enable"); enableTilt.type = "button";
+  enableTilt.title = "Hold the phone comfortably upright, then enable tilt to set the center.";
+  const tiltStatus = node("span", "Centered", tiltPanel, "race-tilt-status"); tiltStatus.hidden = true;
+  const centerTilt = node("button", "Center", tiltPanel); centerTilt.type = "button"; centerTilt.hidden = true;
+  const touchMode = node("button", "Touch", tiltPanel); touchMode.type = "button"; touchMode.hidden = true;
   const left = node("button", "←", controls, "race-control race-left"); left.setAttribute("aria-label", "Steer left");
   const right = node("button", "→", controls, "race-control race-right"); right.setAttribute("aria-label", "Steer right");
   const drift = node("button", "HOLD\nDRIFT", controls, "race-control race-drift"); drift.setAttribute("aria-label", "Hold drift, release for boost");
   const item = node("button", "USE\nITEM", controls, "race-control race-item"); item.setAttribute("aria-label", "Use racing item");
   for (const b of [left, right, drift, item]) { b.type = "button"; b.setAttribute("aria-pressed", "false"); }
   const assistance = node("label", undefined, root, "race-assist");
-  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = true;
+  const assist = node("input", undefined, assistance); assist.type = "checkbox"; assist.checked = own?.assist ?? true;
   node("span", "Steering assistance", assistance);
   const hint = node("p", "Auto-accelerate is on. A / D to steer · Shift to drift · E for item.", root, "race-keyboard-hint");
   const connection = node("p", "Your phone is connected.", root, "race-controller-status"); connection.id = "race-controller-status";
   const held = new Map(), keys = new Map(), cleanups = [], timeouts = new Set();
   let seq = Math.max(0, (own?.seq ?? -1) + 1), finished = false, lastSent = -Infinity, itemPulse = false;
   const on = (target, type, fn, options) => { target.addEventListener(type, fn, options); cleanups.push(() => target.removeEventListener(type, fn, options)); };
+  const tilt = createTiltSteering({onState({mode,message,value}) {
+    const enabled=mode==='tilt';controls.dataset.steering=enabled?'tilt':'touch';
+    enableTilt.hidden=enabled;enableTilt.disabled=mode==='pending';
+    enableTilt.textContent=mode==='touch' && message!=='Touch steering' ? message+' · Retry' : mode==='pending'?message:'Tilt steering';
+    tiltStatus.hidden=centerTilt.hidden=touchMode.hidden=!enabled;
+    left.hidden=right.hidden=enabled;tiltStatus.textContent=message;
+    tiltStatus.dataset.value=String(value);
+  }});
+  on(enableTilt,"click",()=>{release();void tilt.enable();});
+  on(centerTilt,"click",()=>{release();});
+  on(touchMode,"click",()=>{tilt.stop();release();});
   const isHeld = key => [...held.values()].includes(key) || [...keys.values()].includes(key);
   function send(force = false) {
     if (active !== a || finished || (document.hidden && !force)) return;
-    const input = { steer: Number(isHeld("right")) - Number(isHeld("left")), drift: isHeld("drift"), item: isHeld("item") || itemPulse, assist: assist.checked };
+    const manual = Number(isHeld("right")) - Number(isHeld("left"));
+    const input = { steer: manual || tilt.read(), drift: isHeld("drift"), item: isHeld("item") || itemPulse, assist: assist.checked };
     for (const [key, button] of [["left", left], ["right", right], ["drift", drift], ["item", item]]) button.setAttribute("aria-pressed", String(isHeld(key)));
     // Coalesce rapid touch transitions without exceeding the server input budget.
     // Keep a short item tap queued until a frame actually carries its rising edge.
@@ -219,7 +324,7 @@ function mountController(a, root, api) {
     lastSent = performance.now(); itemPulse = false;
     api.sendInput({ v: 1, type: "race_input", matchId: a.state.matchId, heat: a.state.index, seq: seq++, ...input });
   }
-  function release() { held.clear(); keys.clear(); itemPulse = false; send(true); }
+  function release() { held.clear(); keys.clear(); itemPulse = false; tilt.reset(); send(true); }
   a.release = release;
   for (const [key, button] of [["left", left], ["right", right], ["drift", drift], ["item", item]]) {
     on(button, "pointerdown", e => { e.preventDefault(); held.set(e.pointerId, key); if (key === "item") itemPulse = true; try { button.setPointerCapture(e.pointerId); } catch {} send(); });
@@ -235,8 +340,8 @@ function mountController(a, root, api) {
   const mapping = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "drift", ShiftRight: "drift", KeyE: "item" };
   on(window, "keydown", e => { const key = mapping[e.code]; if (!key || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; e.preventDefault(); if (!e.repeat) { keys.set(e.code, key); if (key === "item") itemPulse = true; send(); } });
   on(window, "keyup", e => { if (mapping[e.code]) { keys.delete(e.code); send(); } });
-  on(window, "blur", release); on(window, "pagehide", release);
-  on(document, "visibilitychange", () => { if (document.hidden) release(); else send(); });
+  on(window, "blur", () => { tilt.pause(); release(); }); on(window, "focus", () => tilt.resume()); on(window, "pagehide", release);
+  on(document, "visibilitychange", () => { if (document.hidden) { tilt.pause(); release(); } else { tilt.resume(); send(); } });
   on(assist, "change", () => send());
   const interval = setInterval(send, 50);
   a.frame = next => {
@@ -252,6 +357,6 @@ function mountController(a, root, api) {
     for (const b of [left, right, drift]) b.disabled = o.finished;
     hint.hidden = matchMedia("(pointer: coarse)").matches;
   };
-  a.cleanup = () => { held.clear(); keys.clear(); clearInterval(interval); for (const fn of cleanups) fn(); for (const timer of timeouts) clearTimeout(timer); };
+  a.cleanup = () => { tilt.dispose(); held.clear(); keys.clear(); clearInterval(interval); for (const fn of cleanups) fn(); for (const timer of timeouts) clearTimeout(timer); };
   send();
 }

@@ -1,0 +1,54 @@
+{
+  "scope": "Research candidates only; not shipped provenance. A=bounded code eligible with notices; B=reference only pending review; C=unsuitable for this integration.",
+  "sources": [
+    {
+      "repository": "https://github.com/IACBI/matah",
+      "commit": "049da257eb690e82d7c47d1f2d502b607adb054a",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/IACBI/matah/blob/049da257eb690e82d7c47d1f2d502b607adb054a/LICENSE",
+      "classification": "A",
+      "scope": "Code license verified; no artwork, audio, content, dependency stack or runtime import approved.",
+      "checked": "2026-10-29"
+    },
+    {
+      "repository": "https://github.com/grep-many/wemble-guys",
+      "commit": "c6027b0ef2a5b4a65efe4c85a79a762309b5f8f6",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/grep-many/wemble-guys/blob/c6027b0ef2a5b4a65efe4c85a79a762309b5f8f6/LICENSE",
+      "classification": "B",
+      "scope": "Code license verified; no artwork, audio, content, dependency stack or runtime import approved.",
+      "checked": "2026-10-29"
+    },
+    {
+      "repository": "https://github.com/yashkhatri012/skribble.io",
+      "commit": "33d3d04de6e67b27ee4ee44dae3d887374901acd",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/yashkhatri012/skribble.io/blob/33d3d04de6e67b27ee4ee44dae3d887374901acd/LICENSE",
+      "classification": "A",
+      "scope": "Only client/src/utils/drawLine.js and client/src/hooks/useCanvas.js reviewed for bounded code reuse with Apache license and modification notices. No NOTICE or nested license found in complete pinned tree. Other code/assets and Socket.IO transport not approved.",
+      "checked": "2026-10-29",
+      "reviewedFiles": [
+        "client/src/utils/drawLine.js",
+        "client/src/hooks/useCanvas.js"
+      ]
+    },
+    {
+      "repository": "https://github.com/phaserjs/phaser",
+      "commit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/phaserjs/phaser/blob/02d8931b626d9764c133cbb3fbf99966c03c757c/LICENSE.md",
+      "classification": "A",
+      "scope": "Code license verified; no artwork, audio, content, dependency stack or runtime import approved.",
+      "checked": "2026-10-29"
+    },
+    {
+      "repository": "https://github.com/boardgameio/boardgame.io",
+      "commit": "47adef2b46e375999931209ba7b41e9654c506e1",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/boardgameio/boardgame.io/blob/47adef2b46e375999931209ba7b41e9654c506e1/LICENSE",
+      "classification": "A",
+      "scope": "Code license verified; no artwork, audio, content, dependency stack or runtime import approved.",
+      "checked": "2026-10-29"
+    }
+  ]
+}

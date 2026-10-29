@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Party } from "../engine.js";
+import { DRAW_LIMITS } from "../open-pack/drawing.js";
 import {
   createBoard,
   legalMoves,
@@ -94,6 +95,8 @@ test("Feud: complete all boards and two private timed finalists without duplicat
   );
   for (const text of ["Lemon", "Airplane", "Milk", "Slide", "Tiger"])
     act(ids[2], { action: "final-answer", text });
+  assert.equal(p.pack.stage, "final-review");
+  act("host", { action: "final-publish" });
   assert.equal(p.phase, "reveal");
   assert.equal(p.pack.finalTotal, 350);
   next();
@@ -122,6 +125,7 @@ test("Feud timeouts release a buzzer and complete both lightning players", () =>
   assert.equal(p.pack.stage, "final-ready");
   act("host", { action: "final-start" });
   advance(25000);
+  act("host", { action: "final-publish" });
   assert.equal(p.pack.finalTotal, 0);
   next();
   assert.equal(p.phase, "finished");
@@ -219,7 +223,7 @@ test("Drawing timeout chooses a word, closes the drawing, and bounds canvas hist
   for (let n = 0; n < 18; n++)
     act(ids[1], { action: "guess", text: `Wrong ${n}` });
   assert.equal(p.pack.guesses.length, 16);
-  for (let n = 0; n < 160; n++)
+  for (let n = 0; n < DRAW_LIMITS.strokes; n++)
     act(ids[0], {
       action: "stroke",
       points: [
@@ -470,9 +474,9 @@ test("Mancala preserves 48 stones, captures across, grants extra turns and sweep
   assert.ok(end.cells.slice(0, 6).every((v) => v === 0));
 });
 
-test("Manual card table: private hands, ownership, chips conservation, dealing and host result", () => {
-  const { p, ids, act } = game("table", 4);
-  assert.equal(p.view(ids[0]).pack.hand.length, 5);
+test("Manual Whist table: private hands, ownership, chips conservation, dealing and host result", () => {
+  const { p, ids, act } = game("table", 4, { preset: "whist" });
+  assert.equal(p.view(ids[0]).pack.hand.length, 13);
   assert.equal(p.view("host").pack.hand.length, 0);
   assert.equal(p.view(ids[1]).pack.seats[0].cards, undefined);
   assert.throws(
@@ -498,7 +502,7 @@ test("Manual card table: private hands, ownership, chips conservation, dealing a
   act("host", { action: "deal" });
   assert.equal(p.pack.center.length, 0);
   act(ids[0], { action: "reveal-hand" });
-  assert.equal(p.view(ids[1]).pack.seats[0].cards.length, 5);
+  assert.equal(p.view(ids[1]).pack.seats[0].cards.length, 13);
   act("host", { action: "finish" });
   assert.equal(p.phase, "reveal");
 });

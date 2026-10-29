@@ -22,20 +22,27 @@ export const TRACK_LENGTH = TRACK_POINTS.reduce((sum, p, i) => {
   const n = TRACK_POINTS[(i + 1) % TRACK.samples];
   return sum + Math.hypot(n.x - p.x, n.y - p.y);
 }, 0);
+// Segment geometry is invariant; reuse it across all karts and simulation steps.
+const segments = TRACK_POINTS.map((a, i) => {
+  const b = TRACK_POINTS[(i + 1) % TRACK_POINTS.length];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  return { x: a.x, y: a.y, dx, dy, lengthSquared: dx * dx + dy * dy,
+    angle: Math.atan2(dy, dx) };
+});
 export function nearestTrack(x, y) {
-  let best = Infinity, result;
-  for (let i = 0; i < TRACK_POINTS.length; i++) {
-    const a = TRACK_POINTS[i], b = TRACK_POINTS[(i + 1) % TRACK_POINTS.length];
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const u = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
-    const px = a.x + dx * u, py = a.y + dy * u, d = (x - px) ** 2 + (y - py) ** 2;
+  let best = Infinity, bestIndex = -1, bestU = 0, bestX = 0, bestY = 0;
+  for (let i = 0; i < segments.length; i++) {
+    const s = segments[i];
+    const u = Math.max(0, Math.min(1, ((x - s.x) * s.dx + (y - s.y) * s.dy) / s.lengthSquared));
+    const px = s.x + s.dx * u, py = s.y + s.dy * u;
+    const d = (x - px) ** 2 + (y - py) ** 2;
     if (d < best) {
-      best = d;
-      result = { x: px, y: py, t: wrap01((i + u) / TRACK.samples),
-        angle: Math.atan2(dy, dx), distance: Math.sqrt(d) };
+      best = d; bestIndex = i; bestU = u; bestX = px; bestY = py;
     }
   }
-  return result;
+  if (bestIndex < 0) return undefined;
+  return { x: bestX, y: bestY, t: wrap01((bestIndex + bestU) / TRACK.samples),
+    angle: segments[bestIndex].angle, distance: Math.sqrt(best) };
 }
 export const ITEM_SPOTS = Object.freeze([0.13, 0.36, 0.62, 0.85]);
 export const BOOST_SPOTS = Object.freeze([0.24, 0.74]);

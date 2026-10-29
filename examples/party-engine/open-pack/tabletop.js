@@ -13,6 +13,7 @@ import {
   renewed,
   award,
 } from "./shared.js";
+import { openPoker, acceptPoker, projectPoker, tickPoker } from "./poker.js";
 const newDeck = () =>
   shuffle(
     ["♠", "♥", "♦", "♣"].flatMap((suit) =>
@@ -33,6 +34,7 @@ function deal(s) {
   s.handNumber++;
 }
 export function openTabletop(p) {
+  if ((p.packSettings?.preset ?? "poker") === "poker") { openPoker(p); return; }
   const preset = p.packSettings?.preset ?? "poker",
     seats = p.roster.slice(0, preset === "whist" ? 4 : 10);
   p.pack = {
@@ -48,6 +50,7 @@ export function openTabletop(p) {
   renewed(p, 1200000);
 }
 export function acceptTabletop(p, actor, v) {
+  if (p.pack.guided) { acceptPoker(p, actor, v); return; }
   const s = p.pack;
   requireFields(v, ["action"], ["card", "amount", "seat"]);
   if (["deal", "settle", "finish"].includes(v.action)) hostOnly(actor);
@@ -94,6 +97,7 @@ export function acceptTabletop(p, actor, v) {
   p.revision++;
 }
 export function projectTabletop(p, actor) {
+  if (p.pack.guided) return projectPoker(p, actor);
   const s = p.pack;
   return {
     kind: "table",
@@ -120,6 +124,9 @@ export function projectTabletop(p, actor) {
     hand: s.hands[actor]?.map((c) => ({ ...c })) ?? [],
     active: s.seats.includes(actor) && p.phase === "playing",
   };
+}
+export function tickTabletop(p) {
+  if (p.pack.guided) tickPoker(p); else p.enter("reveal");
 }
 export function openBackgammon(p) {
   const points = Array(24).fill(0);

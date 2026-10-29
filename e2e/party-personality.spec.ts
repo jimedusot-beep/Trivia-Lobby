@@ -22,7 +22,7 @@ async function ready(page: Page) {
 }
 async function shot(page: Page, name: string) {
   await ready(page);
-  await page.screenshot({ path: test.info().outputPath(name + ".png"), fullPage: true, animations: "disabled" });
+  await page.screenshot({ path: test.info().outputPath(name + ".png"), fullPage: true, scale: "css", animations: "disabled" });
 }
 const quiz = { format: "trivia-lobby-local-quiz", version: 1, deck: {
   title: "Color Club", questions: [{ prompt: "Which color mixes with blue to make green?",

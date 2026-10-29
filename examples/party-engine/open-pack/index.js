@@ -31,6 +31,7 @@ import {
   openTabletop,
   acceptTabletop,
   projectTabletop,
+  tickTabletop,
   openBackgammon,
   acceptBackgammon,
   projectBackgammon,
@@ -40,6 +41,8 @@ import { openRace, finishRace, nextRace, projectRace } from "./race.js";
 import { openTap, finishTap, nextTap, projectTap } from "./tap.js";
 import { openForbidden, acceptForbidden, tickForbidden, nextForbidden, projectForbidden } from "./forbidden.js";
 import { openTrails, finishTrails, nextTrails, projectTrails } from "./trails.js";
+import { finishPoker } from "./poker.js";
+import { openHomeward, acceptHomeward, tickHomeward, projectHomeward, finishHomeward } from "./homeward.js";
 export { packIds, packMin };
 export function validatePackSettings(mode, settings = {}) {
   requireFields(
@@ -74,7 +77,8 @@ export function validatePackSettings(mode, settings = {}) {
   return { ...settings };
 }
 export function openPack(p) {
-  if (p.mode === "trails") openTrails(p);
+  if (p.mode === "homeward") openHomeward(p);
+  else if (p.mode === "trails") openTrails(p);
   else if (p.mode === "no-say") openForbidden(p);
   else if (p.mode === "tap") openTap(p);
   else if (p.mode === "race") openRace(p);
@@ -92,10 +96,13 @@ export function acceptPack(p, actor, v) {
     requireFields(v, ["action"]);
     hostOnly(actor);
     p.endedByHost = true;
+    if (p.mode === "table" && p.pack.guided) finishPoker(p, true);
+    if (p.mode === "homeward") finishHomeward(p);
     p.enter("finished");
     return;
   }
-  if (p.mode === "trails") fail("Use the Light Trails phone controller.");
+  if (p.mode === "homeward") acceptHomeward(p, actor, v);
+  else if (p.mode === "trails") fail("Use the Light Trails phone controller.");
   else if (p.mode === "no-say") acceptForbidden(p, actor, v);
   else if (p.mode === "tap") fail("Use the Tap Dash phone controller.");
   else if (p.mode === "race") fail("Use the racing controller to drive.");
@@ -107,7 +114,8 @@ export function acceptPack(p, actor, v) {
   else acceptBackgammon(p, actor, v);
 }
 export function tickPack(p) {
-  if (p.mode === "trails") finishTrails(p);
+  if (p.mode === "homeward") tickHomeward(p);
+  else if (p.mode === "trails") finishTrails(p);
   else if (p.mode === "no-say") tickForbidden(p);
   else if (p.mode === "tap") finishTap(p);
   else if (p.mode === "race") finishRace(p);
@@ -115,6 +123,7 @@ export function tickPack(p) {
   else if (p.mode === "draw") tickDrawing(p);
   else if (p.mode === "colors") tickColors(p);
   else if (boardKinds.includes(p.mode)) tickBoards(p);
+  else if (p.mode === "table") tickTabletop(p);
   else p.enter("reveal");
 }
 export function nextPack(p) {
@@ -134,6 +143,7 @@ export function projectPack(p, actor) {
   )
     return null;
   if (p.mode === "trails") return projectTrails(p, actor);
+  if (p.mode === "homeward") return projectHomeward(p, actor);
   if (p.mode === "no-say") return projectForbidden(p, actor);
   if (p.mode === "tap") return projectTap(p, actor);
   if (p.mode === "race") return projectRace(p, actor);

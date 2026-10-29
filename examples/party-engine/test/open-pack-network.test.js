@@ -167,12 +167,31 @@ for (const mode of packIds)
           active.send({ v: 1, type: "race_input", matchId: party.matchId, heat: party.index, seq: 0,
             steer: 0.5, drift: true, item: false, assist: true });
           await active.wait(m => m.type === "race_frame" && m.own?.seq === 0);
+        } else if (mode === "homeward") {
+          assert.equal(snapshot.pack.tables.length,1);
+          assert.equal(snapshot.pack.tableCount,Math.ceil(size/4));
+          const tableIndex=party.pack.tables.findIndex(board=>board.seats.some(seat=>seat.id===id));
+          const board=party.pack.tables[tableIndex],turn=board.seats[board.turn].id;
+          const current=players.find(player=>player.credential.actor===turn);
+          await send(current.s,turn,"play",{action:"draw",table:tableIndex,tableVersion:board.version});
+          const state=party.view(turn).pack.tables[0];
+          assert(state.moves.length>0);
+          assert.doesNotMatch(JSON.stringify(party.view("host")),/"deck":|"discards":/);
+          await send(current.s,turn,"play",{action:"move",table:tableIndex,tableVersion:board.version,moveId:state.moves[0].id});
+          assert.equal(board.history.length,1);
         } else if (mode === "feud") {
           assert.ok(snapshot.pack.board.every((a) => a.hidden));
           assert.equal(snapshot.pack.judge, undefined);
           await send(active, id, "play", { action: "buzz" });
+          await send(active, id, "play", { action: "answer", text: "packed lunches" });
+          const privateState = await host.wait(m => m.type === "state" && m.state.pack?.submittedAnswer?.text === "packed lunches");
+          assert.equal(privateState.state.pack.waitingForHost, true);
+          const waiting = await players[1].s.wait(m => m.type === "state" && m.state.pack?.waitingForHost);
+          assert.equal(waiting.state.pack.submittedAnswer, undefined);
           await send(host, "host", "play", { action: "judge", index: 0 });
           assert.equal(party.pack.pot, 35);
+          await send(active, id, "play", { action: "answer", text: "Blanket" });
+          assert.equal(party.pack.pot, 60);
         } else if (mode === "draw") {
           assert.equal(party.view("host").pack.word, undefined);
           await send(active, id, "play", { action: "choose", index: 0 });
@@ -210,15 +229,13 @@ for (const mode of packIds)
           assert.equal(party.pack.seats.length, 10);
           await send(active, id, "play", { action: "draw" });
         } else if (mode === "table") {
-          const card = snapshot.pack.hand[0];
-          assert.equal(
-            party.view(players[1].credential.actor).pack.seats[0].cards,
-            undefined,
-          );
-          await send(active, id, "play", { action: "play", card: card.id });
-          await send(active, id, "play", { action: "bet", amount: 10 });
-          await send(host, "host", "play", { action: "settle", seat: 1 });
-          assert.equal(party.pack.pot, 0);
+          assert.equal(snapshot.pack.hand.length, 5);
+          assert.equal(party.pack.seats.length, 6);
+          assert.equal(party.view(players[1].credential.actor).pack.seats[0].cards, undefined);
+          const turn = party.pack.turn;
+          const bettor = players.find(player => player.credential.actor === turn);
+          await send(bettor.s, turn, "play", { action: "bet" });
+          assert.equal(party.pack.pot, 40);
         } else if (mode === "backgammon") {
           await send(active, id, "play", { action: "roll" });
           await send(active, id, "play", { action: "move", from: 0, to: 1 });

@@ -8,11 +8,13 @@ The six upstream applications are architectural sources, not interchangeable pac
 
 ## Scope
 
-- Friendly Feud: original team showdown with first-arrival phone buzzers, hidden answer board, host judging, three strikes, steal, round multipliers and a two-player timed lightning final. Original sample questions; no claim that curated points are real survey results. Host can import a bounded custom show.
+- [Homeward Hustle](HOMEWARD_HUSTLE_GAMEPLAY.md): original card-and-pawn race with four pawns, legal movement, captures, slides, split sevens, swaps, exact Home entry, timed turns and balanced 2–4-player boards for 2–20 guests. Original board/UI and authoritative rules; no commercial assets or source code copied.
+
+- Friendly Feud: [original guided team showdown](FAMILY_SHOWDOWN_GAMEPLAY.md) with a first-screen phone buzzer, typed exact matches, private host wording review, hidden answer board, three strikes, steal, multipliers and two timed lightning runs with host review before publication. Original sample questions and documented casual house rules; no claim that curated points are real survey results. Host can import a bounded custom show.
 - Scribble.rs: original drawing/guessing game with a private clue, a shared bounded stroke canvas, scoring, alternating artists, timer, undo/clear, and recovery of the current drawing.
 - Unoverse: licensed adaptations of deck generation, turn math and scoring, with original two-dimensional presentation, private hands, legal plays, skip/reverse/draw/wild actions, configurable draw stacking, bots, and timed turns. Up to ten seats; additional guests watch.
 - FreeBoardGames.org: selected rule adaptations for Four in a Row, Mancala and Checkers, independently implemented standard two-player Reversi, and a pinned chess.js dependency for chess. Parallel paired tables let 10–20 guests play in one room; an odd seat gets a bot.
-- VirtualTabletop: an original shared manual-rules card/dice table, poker and Whist presets, private hands, public played cards, card collection, dealing and shuffling; a backgammon board preset with manual checker moves and shared dice. This is a compact table, not the upstream game shelf or routine editor.
+- Card & Dice Table now offers [original guided five-card draw](DRAWING_POKER_GAMEPLAY.md) with enforced turns, card exchange, ranking and automatic pots. The VirtualTabletop-inspired manual surface remains for Whist and already-active legacy manual poker rooms. Backgammon still uses manual dice rules. This is a compact adaptation, not the upstream game shelf or routine editor.
 - Razzia: import supported single-answer quiz JSON into the existing local quiz editor; preserve explanations. Preserve single-answer timers, point values and wrong-answer penalties; reject incompatible multi-answer, estimation, survey, media and scoring-option files explicitly rather than silently changing their meaning. Razzia cooldown delays and category grouping are not imported; Trivia Lobby reveals when answers close. Existing Trivia Quiz remains the hosted trivia mode.
 
 ## Contracts and failure cases

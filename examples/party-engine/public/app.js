@@ -5,11 +5,12 @@ import { renderSocial } from "./social-ui.js";
 import { renderBonus } from "./bonus-ui.js";
 import { guestGames, mountGamePicker, gameById } from "./game-catalog.js";
 import { mountInvitationEntry } from "./invitation-entry.js";
-import { renderPack, drawingBusy } from "./pack-ui.js";
+import { renderPack, drawingBusy, tickHomewardClocks } from "./pack-ui.js";
 import { renderRace, updateRaceState, receiveRaceFrame, disposeRace, releaseRaceControls } from "./race-ui.js";
 import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui.js";
 import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
 import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
+import { mountPhoneController, disposePhoneController } from "./phone-controller.js";
 
 let invitationCode, invitationPhase;
 const launchGame = new URLSearchParams(location.search).get("game");
@@ -17,7 +18,7 @@ let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
 let preferredSettings = {};
 
-let connection, roomReady = false;
+let connection, roomReady = false, pendingEntry, entryTimer;
 let ws,
   state,
   credential,
@@ -67,8 +68,9 @@ function save() {
     );
   }
 }
-function connect(hello) {
+function connect() {
   clearTimeout(retryTimer);
+  clearTimeout(entryTimer);
   connection?.stop();
   const socketUrl = new URL("socket", partyUrl);
   socketUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -82,9 +84,16 @@ function connect(hello) {
         status("Restoring your party…");
         socket.send(JSON.stringify({ type: "resume", ...credential }));
       } else {
-        connection.ready(); status("Connected.");
-        if (hello) { socket.send(JSON.stringify(hello)); hello = null; }
+        if (pendingEntry) {
+          status("Joining your party…");
+          socket.send(JSON.stringify(pendingEntry));
+        } else { connection.ready(); status("Connected."); }
       }
+      if ((credential && resumeSavedParty) || pendingEntry)
+        entryTimer = setTimeout(() => {
+          if (socket === ws && socket.readyState === 1)
+            socket.close(4000, "Party synchronization timed out");
+        }, 10000);
     },
     onStatus(next) {
       roomReady = next === "connected";
@@ -98,6 +107,7 @@ function connect(hello) {
       if (m.type === "tap_frame") { receiveTapFrame(m); return; }
       if (m.type === "trails_frame") { receiveTrailsFrame(m); return; }
       if (m.type === "credential") {
+        pendingEntry = null;
         credential = { code: m.code, actor: m.actor, token: m.token };
         resumeSavedParty = true;
         if (m.actor !== "host") history.replaceState(null, "", guestInvitation(location.href, m.code));
@@ -107,6 +117,8 @@ function connect(hello) {
       }
       if (m.type === "ready") { resumed = true; status("Synchronizing your party…"); }
       if (m.type === "state") {
+        clearTimeout(entryTimer);
+        pendingEntry = null;
         const resuming = !roomReady;
         const initialState = !seenState;
         seenState = true;
@@ -128,6 +140,7 @@ function connect(hello) {
       if (m.type === "error") {
         const temporary = /recovery.*(saved|unavailable)|temporarily unavailable/i.test(m.message);
         if (!temporary) { pending = null; clearTimeout(retryTimer); }
+        if (!temporary && !state) { pendingEntry = null; clearTimeout(entryTimer); }
         status(m.message);
         if (!state) entry.showError(m.message);
         if (!temporary && !state && credential && resumeSavedParty) {
@@ -138,6 +151,8 @@ function connect(hello) {
     },
     onClose(event, retrying) {
       clearTimeout(retryTimer);
+      clearTimeout(entryTimer);
+      if (!retrying) pendingEntry = null;
       releaseRaceControls(); disposeTap(); disposeTrails();
       status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
       if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
@@ -147,14 +162,22 @@ function connect(hello) {
   ws = connection.socket;
 }
 function hello(message) {
-  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
-  else if (ws?.readyState === WebSocket.CONNECTING) {
-    // Avoid opening a second socket on a fast tap before the initial connect.
+  // This secret identifies one entry attempt, including an accepted request whose
+  // credential reply was lost. Retain it until the server confirms the identity.
+  pendingEntry = { ...message, entryToken: btoa(String.fromCharCode(
+    ...crypto.getRandomValues(new Uint8Array(32)),
+  )).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "") };
+  if (ws?.readyState === WebSocket.OPEN) {
+    roomReady = false;
+    status("Joining your party…");
+    ws.send(JSON.stringify(pendingEntry));
+    clearTimeout(entryTimer);
     const socket = ws;
-    socket.addEventListener("open", () => {
-      if (socket === ws && (!credential || !resumeSavedParty)) socket.send(JSON.stringify(message));
-    }, { once: true });
-  } else connect(message);
+    entryTimer = setTimeout(() => {
+      if (socket === ws && socket.readyState === 1)
+        socket.close(4000, "Party synchronization timed out");
+    }, 10000);
+  } else if (ws?.readyState !== WebSocket.CONNECTING) connect();
 }
 $("create").onclick = async () => {
   const localId = new URLSearchParams(location.search).get("deck");
@@ -183,6 +206,7 @@ $("join").onsubmit = (e) => {
   });
 };
 $("leave").onclick = () => {
+  pendingEntry = null; clearTimeout(entryTimer);
   credential = null;
   save();
   try { sessionStorage.removeItem(preferenceKey); } catch {}
@@ -239,12 +263,14 @@ function render() {
   const focusedId = document.activeElement?.id;
   const selectionStart = document.activeElement?.selectionStart;
   const selectionEnd = document.activeElement?.selectionEnd;
+  disposePhoneController();
   const selectedMode = $("mode")?.value || preferredMode;
   const selectedCategory = $("charades-category")?.value || preferredCategory;
   const previousPhase = phaseKey;
   document.body.classList.add("party-playing");
   document.body.classList.remove("party-invited");
   document.body.dataset.partyPhase = state.phase;
+  $("timer").hidden = state.pack?.kind === "homeward";
   $("entry").hidden = true;
   $("pick-games").hidden = true;
   $("game").hidden = false;
@@ -339,7 +365,7 @@ function render() {
           settingsSelect("Draw-card stacking", "stacking", [[false,"Off"],[true,"On"]], "colors", false);
           settingsSelect("Seconds per card turn", "turnSeconds", [15,30,60,90].map(n=>[n,String(n)]), "colors", 30);
         }
-        if (select.value === "table") settingsSelect("Card-table preset", "preset", [["poker","Five-card poker (manual rules)"],["whist","Whist (four seats, manual rules)"]], "table", "poker");
+        if (select.value === "table") settingsSelect("Card-table preset", "preset", [["poker","Five-card draw (guided, 2–6 seats)"],["whist","Whist (four seats, manual rules)"]], "table", "poker");
         if (select.value === "feud") { const link = element("a", "Make or import your own showdown questions", settingsBox); link.href = "./show.html"; }
         start.disabled = state.players.filter(p=>p.connected).length < (gameById(select.value)?.min ?? 3) || !!pending;
       }
@@ -384,7 +410,7 @@ function render() {
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
-  else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,canAct:()=>!pending && ws?.readyState === 1});
+  else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,getPack:()=>state.pack,canAct:()=>!pending && roomReady && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });
   });
@@ -534,6 +560,7 @@ function render() {
       }
     }
   }
+  mountPhoneController(state, { actor: credential?.actor, game: gameById(state.mode), releaseControls: releaseRaceControls });
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {
@@ -547,6 +574,7 @@ function render() {
 mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
+  if(state.pack?.kind==="homeward")tickHomewardClocks(Date.now()+offset);
   $("timer").textContent = state.deadline
     ? `${Math.max(0, Math.ceil((state.deadline - Date.now() - offset) / 1000))} seconds remaining`
     : "";

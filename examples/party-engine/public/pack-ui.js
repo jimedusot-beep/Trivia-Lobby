@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { renderPoker } from "./poker-ui.js";
+import { renderFeud } from "./feud-ui.js";
+import { renderHomeward } from "./homeward-ui.js";
+export { tickHomewardClocks } from "./homeward-ui.js";
+import { renderDrawing, disposeDrawing } from "./drawing-ui.js";
+export { drawingBusy } from "./drawing-ui.js";
 const selections = new Map();
-let drawing = false;
-export const drawingBusy = () => drawing;
 export function renderPack(state, context) {
-  drawing = false;
+  disposeDrawing();
   const { element: E, button: B, action, actor, refresh, canAct = () => true } = context,
     root = E("section");
   root.className = "open-game";
@@ -15,6 +19,10 @@ export function renderPack(state, context) {
     playing = state.phase === "playing",
     me = actor(),
     play = (value) => action("play", value);
+  if(s.kind==="homeward") {
+    renderHomeward(state,{root,e,b,play,refresh,canAct});
+    return;
+  }
   function input(label, id, max = 60, parent = root) {
     const wrap = e("div", undefined, parent),
       caption = e("label", label, wrap),
@@ -86,307 +94,11 @@ export function renderPack(state, context) {
     return;
   }
   if (s.kind === "feud") {
-    e("h2", s.title);
-    const teams = e("div");
-    teams.className = "feud-teams";
-    for (const team of s.teams) {
-      const card = e("article", undefined, teams);
-      e("h3", team.name, card);
-      e("strong", `${team.score} points`, card);
-      e("p", team.players.join(", "), card);
-    }
-    e("h3", s.question);
-    if (!s.stage.startsWith("final")) {
-      e(
-        "p",
-        `Board ${s.round} of ${s.total} · ×${s.multiplier} · Pot ${s.pot} · Strikes ${s.strikes} / 3`,
-      );
-      const board = e("ol");
-      board.className = "feud-board";
-      for (const answer of s.board)
-        e(
-          "li",
-          answer.hidden
-            ? `${answer.index + 1}. ?`
-            : `${answer.text} — ${answer.points}`,
-          board,
-        );
-      if (s.canBuzz && playing)
-        b("BUZZ!", () => play({ action: "buzz" })).className = "buzz-button";
-      if (s.buzzer)
-        e("p", `${s.buzzer} buzzed first! Say your answer aloud to the host.`);
-      if (s.team !== null && s.stage === "play")
-        e(
-          "p",
-          `${s.teams[s.team].name} controls the board. Say your answers aloud.`,
-        );
-      if (s.stage === "steal")
-        e("h3", `${s.teams[1 - s.team].name}: one answer to steal the pot!`);
-      if (host && playing) {
-        const controls = e("details");
-        e("summary", "Private host controls", controls);
-        e(
-          "p",
-          "Keep these answer controls off the shared screen. Judge the answers spoken by the teams.",
-          controls,
-        );
-        try {
-          controls.open =
-            sessionStorage.getItem("feud-controls-open") === "yes";
-        } catch {}
-        controls.ontoggle = () => {
-          try {
-            sessionStorage.setItem(
-              "feud-controls-open",
-              controls.open ? "yes" : "no",
-            );
-          } catch {}
-        };
-        if (["faceoff", "play", "steal"].includes(s.stage)) {
-          for (const a of s.judge)
-            b(
-              `Reveal ${a.text} (+${a.points})`,
-              () => play({ action: "judge", index: a.index }),
-              controls,
-              !s.board[a.index].hidden,
-            );
-          b(
-            s.stage === "faceoff"
-              ? "Miss — other team takes control"
-              : "Strike / missed steal",
-            () => play({ action: "judge", index: -1 }),
-            controls,
-          );
-          if (
-            s.stage === "play" &&
-            !s.strikes &&
-            !s.passed &&
-            s.board.filter((a) => !a.hidden).length === 1
-          )
-            b(
-              "Pass control to the other team",
-              () => play({ action: "pass" }),
-              controls,
-            );
-        }
-        for (let index = 0; index < 2; index++) {
-          const field = input(
-            `Team ${index + 1} name`,
-            `feud-team-${index}`,
-            24,
-            controls,
-          );
-          b(
-            "Save team name",
-            () => play({ action: "team-name", index, name: field.value }),
-            controls,
-          );
-        }
-      }
-    } else {
-      e(
-        "p",
-        `Lightning final · Player ${s.finalPlayer} · ${s.finalist} · Question ${Math.min(s.finalCursor, 5)} / 5`,
-      );
-      if (s.stage === "final-ready") {
-        e(
-          "p",
-          "Only the current finalist answers. Keep their phone private from the next finalist.",
-        );
-        if (host)
-          b("Start lightning timer", () => play({ action: "final-start" }));
-      }
-      if (s.canAnswer) {
-        entry("Your quick answer", "feud-final-answer", (text) =>
-          play({ action: "final-answer", text }),
-        );
-        b("Pass this question", () => play({ action: "final-pass" }));
-      }
-      if (s.finalAnswers) {
-        e(
-          "h3",
-          `${s.finalTotal} / ${s.goal} points${s.finalTotal >= s.goal ? " · Goal reached!" : ""}`,
-        );
-        s.questions.forEach((q, i) => {
-          e("h4", q);
-          for (let n = 0; n < 2; n++) {
-            const a = s.finalAnswers[n][i];
-            e("p", `Player ${n + 1}: ${a?.text ?? "Pass"} — ${a?.points ?? 0}`);
-          }
-        });
-      }
-    }
+    renderFeud(state,{root,e,b,play,input,canAct});
+    return;
   }
   if (s.kind === "draw") {
-    e("h2", `Doodle Dash · ${s.artistName}'s turn`);
-    e("p", `Turn ${s.round} / ${s.total} · ${s.solved} correct guesses`);
-    if (s.choices) {
-      e("h3", "Choose your secret word");
-      s.choices.forEach((word, index) =>
-        b(word, () => play({ action: "choose", index })),
-      );
-    }
-    if (s.word)
-      e(
-        "h3",
-        `${state.phase === "reveal" ? "The word was" : "Your private word"}: ${s.word}`,
-      );
-    else if (s.hint) e("p", s.hint);
-    const ns = "http://www.w3.org/2000/svg",
-      svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("viewBox", "0 0 1000 1000");
-    svg.setAttribute(
-      "aria-label",
-      s.canDraw
-        ? "Drawing pad. Use pointer, or arrow keys to move and Enter to draw a line."
-        : "Live drawing",
-    );
-    svg.setAttribute("role", "img");
-    svg.classList.add("doodle-pad");
-    root.append(svg);
-    const line = (stroke) => {
-      const path = document.createElementNS(ns, "polyline");
-      path.setAttribute(
-        "points",
-        stroke.points.map((pt) => pt.join(",")).join(" "),
-      );
-      path.setAttribute("fill", "none");
-      path.setAttribute("stroke", stroke.color);
-      path.setAttribute("stroke-width", String(stroke.width));
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("stroke-linejoin", "round");
-      svg.append(path);
-      return path;
-    };
-    for (const stroke of s.strokes) line(stroke);
-    if (s.canDraw) {
-      svg.tabIndex = 0;
-      svg.setAttribute("aria-disabled", String(!canAct()));
-      const tools = e("div");
-      tools.className = "drawing-tools";
-      const color = e("select", undefined, tools);
-      color.setAttribute("aria-label", "Pen color");
-      for (const [name, value] of [
-        ["Ink", "#20264b"],
-        ["Rose", "#e23867"],
-        ["Blue", "#2477db"],
-        ["Green", "#158346"],
-        ["Gold", "#f0b83e"],
-        ["Purple", "#9455cc"],
-        ["Orange", "#ee7625"],
-        ["Eraser", "#ffffff"],
-      ]) {
-        const o = e("option", name, color);
-        o.value = value;
-      }
-      const width = e("select", undefined, tools);
-      width.setAttribute("aria-label", "Pen width");
-      for (const n of [4, 8, 16, 24]) {
-        const o = e("option", `${n} px`, width);
-        o.value = String(n);
-      }
-      width.value = "8";
-      b("Undo stroke", () => play({ action: "undo" }), tools);
-      b("Clear drawing", () => play({ action: "clear" }), tools);
-      e("p", "Keyboard: arrows move the pen; Enter draws a short line.");
-      let points = [],
-        preview,
-        startPoint = [500, 500],
-        endPoint = [500, 500];
-      const position = (event) => {
-        const rect = svg.getBoundingClientRect();
-        return [
-          Math.max(
-            0,
-            Math.min(
-              1000,
-              Math.round(((event.clientX - rect.left) / rect.width) * 1000),
-            ),
-          ),
-          Math.max(
-            0,
-            Math.min(
-              1000,
-              Math.round(((event.clientY - rect.top) / rect.height) * 1000),
-            ),
-          ),
-        ];
-      };
-      svg.onpointerdown = (event) => {
-        if (event.button !== 0 || !canAct()) return;
-        event.preventDefault();
-        svg.setPointerCapture(event.pointerId);
-        points = [position(event)];
-        drawing = true;
-        preview = line({
-          points,
-          color: color.value,
-          width: Number(width.value),
-        });
-      };
-      svg.onpointermove = (event) => {
-        if (!drawing || !preview) return;
-        const pt = position(event);
-        if (Math.hypot(pt[0] - points.at(-1)[0], pt[1] - points.at(-1)[1]) < 5)
-          return;
-        points.push(pt);
-        if (points.length > 64) points = points.filter((_, i) => i % 2 === 0);
-        preview.setAttribute(
-          "points",
-          points.map((pt) => pt.join(",")).join(" "),
-        );
-      };
-      svg.onpointerup = (event) => {
-        if (!drawing) return;
-        points.push(position(event));
-        if (points.length > 64) points.splice(1, 1);
-        if (points.length === 1) points.push([...points[0]]);
-        drawing = false;
-        play({
-          action: "stroke",
-          points,
-          color: color.value,
-          width: Number(width.value),
-        });
-      };
-      svg.onpointercancel = () => {
-        drawing = false;
-        refresh();
-      };
-      svg.onkeydown = (event) => {
-        const delta = {
-          ArrowLeft: [-30, 0],
-          ArrowRight: [30, 0],
-          ArrowUp: [0, -30],
-          ArrowDown: [0, 30],
-        }[event.key];
-        if (delta) {
-          event.preventDefault();
-          startPoint = [...endPoint];
-          endPoint = [
-            Math.max(0, Math.min(1000, endPoint[0] + delta[0])),
-            Math.max(0, Math.min(1000, endPoint[1] + delta[1])),
-          ];
-        }
-        if (event.key === "Enter") {
-          event.preventDefault();
-          play({
-            action: "stroke",
-            points: [startPoint, endPoint],
-            color: color.value,
-            width: Number(width.value),
-          });
-        }
-      };
-    }
-    if (s.canGuess)
-      entry("Guess the drawing", "drawing-guess", (text) =>
-        play({ action: "guess", text }),
-      );
-    const guesses = e("ol");
-    guesses.className = "drawing-guesses";
-    for (const guess of s.guesses)
-      e("li", `${guess.name}: ${guess.text}`, guesses);
+    renderDrawing(state,{e,b,play,refresh,canAct,getPack:context.getPack ?? (()=>s)});
   }
   if (s.kind === "colors") {
     e("h2", "Color Clash");
@@ -609,7 +321,10 @@ export function renderPack(state, context) {
         );
     }
   }
-  if (s.kind === "table") {
+  if (s.kind === "table" && s.guided) {
+    renderPoker(s,{e,b,play,host,playing,me,refresh,matchId:state.matchId});
+  }
+  if (s.kind === "table" && !s.guided) {
     e(
       "h2",
       `${s.preset === "whist" ? "Whist" : "Poker"} table · Hand ${s.handNumber}`,

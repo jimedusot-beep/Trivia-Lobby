@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export const packGames = Object.freeze([
   {
+    id:"homeward",name:"Homeward Hustle",icon:"🏡",color:"teal",
+    players:"2–20 · boards of 2–4",min:2,max:20,
+    rounds:"Four pawns Home · 15-minute board limit",
+    rules:"Draw a card, choose a legal pawn move, and race four pawns Home. Bump rivals, ride slides, split sevens and swap track positions. One pawn starts out for a faster opening. The server checks every move. Larger rooms share balanced boards; no sign-in needed.",
+    tag:"Card & pawn race",
+  },
+  {
     id:"trails",name:"Light Trails Royale",icon:"⚡",color:"violet",
     players:"2–20",min:2,max:20,rounds:"3 survival heats · 45 seconds max each",
     rules:"Everyone steers a light trail with left and right phone taps. Avoid the walls and every existing trail. Last remaining rider wins the most points; the server controls all collisions.",
@@ -36,7 +43,7 @@ export const packGames = Object.freeze([
     max: 20,
     rounds: "3 boards + lightning final",
     rules:
-      "Split into teams. Buzz first, uncover the host's curated answers, avoid three strikes, and steal the pot. Finish with two timed answer sprints. Sample points are curated, not real poll results.",
+      "Split into two teams. Buzz first, type answers or speak to the host, avoid three strikes, and steal the pot. Exact matches reveal automatically; the host judges other wording and reviews the lightning final. Original sample questions and curated points; casual house rules.",
     tag: "Team game show",
   },
   {
@@ -135,13 +142,13 @@ export const packGames = Object.freeze([
     name: "Card & Dice Table",
     icon: "🃏",
     color: "pink",
-    players: "2–10 active · up to 20 in room",
+    players: "Poker: 2–6 active · Whist: 4 · up to 20 in room",
     min: 2,
     max: 20,
-    rounds: "Manual poker / Whist presets",
+    rounds: "Guided five-card draw / manual Whist",
     rules:
-      "A shared table with private hands, played cards, dice and play chips. Your group manages the rules and turns; the host deals and awards the pot. Whist needs exactly four active seats. Extra guests watch.",
-    tag: "Your house rules",
+      "Five-card draw with private cards, enforced betting turns, one card exchange, automatic hand rankings and pot payouts. Five hands, play chips only. Whist remains a manual four-seat card table. Extra guests watch.",
+    tag: "Guided poker & cards",
   },
   {
     id: "backgammon",

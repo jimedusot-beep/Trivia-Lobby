@@ -31,8 +31,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     if (text !== undefined) node.textContent = text;
     return node;
   };
-  const cardModes = ["colors", "table"], boardModes = ["four", "chess", "checkers", "reversi", "mancala", "backgammon"];
-  const groupFor = id => cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : "party";
+  const cardModes = ["colors", "table"], boardModes = ["homeward", "four", "chess", "checkers", "reversi", "mancala", "backgammon"];
+  const arcadeModes = ["race", "turbo", "wave", "tap", "trails"];
+  const groupFor = id => cardModes.includes(id) ? "cards" : boardModes.includes(id) ? "boards" : arcadeModes.includes(id) ? "arcade" : "party";
   const play = id => { if (asHost) onChoose?.(id); else onHost?.(id); };
 
   const spotlight = make("section", "pick-game-spotlight");
@@ -40,8 +41,8 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   spotlight.setAttribute("aria-live", "polite");
   const previewIcon = make("span", "pick-spotlight-icon"); previewIcon.setAttribute("aria-hidden", "true");
   const previewCopy = make("div", "pick-spotlight-copy");
-  const previewLabel = make("span", "sakura-eyebrow", "✿ FEATURED GAME");
-  const previewName = make("h3"); const previewMeta = make("p", "pick-spotlight-meta");
+  const previewLabel = make("span", "sakura-eyebrow", "YOUR NEXT GAME");
+  const previewName = make("h3"); previewName.tabIndex = -1; const previewMeta = make("p", "pick-spotlight-meta");
   const previewRules = make("p", "pick-spotlight-rules");
   previewCopy.append(previewLabel, previewName, previewMeta, previewRules);
   const previewAction = make("button", "pick-spotlight-button");
@@ -67,6 +68,11 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
       if (preview) preview.setAttribute("aria-pressed", String(cardId === id));
     }
   };
+  const toolbar = make("div", "pick-game-toolbar");
+  const searchLabel = make("label", "pick-game-search-label", "Find your next game");
+  const search = make("input", "pick-game-search");
+  search.type = "search"; search.placeholder = "Search games or play styles";
+  searchLabel.append(search);
   const filters = make("div", "pick-game-filters");
   filters.setAttribute("role", "group");
   filters.setAttribute("aria-label", "Game categories");
@@ -75,16 +81,34 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const grid = make("div", "pick-game-grid");
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
-    ["cards", "Cards & dice"], ["boards", "Board games"],
+    ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
   ];
+  let activeCategory = "all";
+  const empty = make("div", "pick-game-empty");
+  const emptyMessage = make("p", null, "No games found. Try another search or category.");
+  const reset = make("button", "pick-spotlight-button", "Show all games");
+  reset.type = "button";
+  reset.addEventListener("click", () => {
+    search.value = "";
+    chooseCategory("all");
+    search.focus();
+  });
+  empty.append(emptyMessage, reset);
+  empty.hidden = true;
   const chooseCategory = category => {
+    activeCategory = category;
+    const query = search.value.trim().toLocaleLowerCase();
     let visible = 0, firstVisible = null;
     for (const [id, card] of cards) {
-      card.hidden = category !== "all" && category !== groupFor(id);
+      const game = gameById(id);
+      card.hidden = (category !== "all" && category !== groupFor(id)) ||
+        ![game.name, game.tag, game.rules].join(" ").toLocaleLowerCase().includes(query);
       if (!card.hidden) { visible++; firstVisible ??= id; }
     }
     for (const filter of filters.children) filter.setAttribute("aria-pressed", String(filter.dataset.category === category));
-    status.textContent = visible + " games to choose from. Select Preview to read the rules.";
+    status.textContent = visible + " of " + guestGames.length + " games · Preview the rules, then " + (asHost ? "choose your game." : "host a party.");
+    empty.hidden = visible !== 0;
+    spotlight.hidden = visible === 0;
     if (firstVisible && cards.get(previewId)?.hidden) showPreview(firstVisible);
   };
   for (const [category,label] of choices) {
@@ -97,23 +121,39 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const card = make("article", "pick-game-card");
     card.dataset.tone = game.color; card.dataset.game = game.id;
     if (selected === game.id && asHost) card.dataset.selected = "true";
-    const title = make("h3", null, game.icon + "  " + game.name);
+    const art = make("div", "pick-game-art");
+    art.dataset.genre = groupFor(game.id);
+    art.setAttribute("aria-hidden", "true");
+    art.append(make("span", "pick-game-art-orbit"), make("span", "pick-game-art-icon", game.icon));
+    const title = make("h3", null, game.name);
     const marker = make("span", "pick-game-tag", game.tag);
     const people = make("p", "pick-game-players", game.players + " players · " + game.rounds);
     const rules = make("p", "pick-game-rules", game.rules);
     const actions = make("div", "pick-game-actions");
     const preview = make("button", "pick-game-preview-button", "Preview");
     preview.type = "button";preview.setAttribute("aria-label", "Preview " + game.name);
-    preview.addEventListener("click", () => showPreview(game.id));
+    preview.addEventListener("click", () => {
+      showPreview(game.id);
+      previewName.focus({ preventScroll: true });
+      spotlight.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    });
     const host = make("button", "pick-game-button", (asHost ? "Choose " : "Host ") + game.name);
     host.type = "button";
     host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
     host.addEventListener("click", () => play(game.id));
     actions.append(preview, host);
-    card.append(marker, title, people, rules, actions);
+    card.append(art, marker, title, people, rules, actions);
     grid.append(card);cards.set(game.id,card);
   }
-  container.append(spotlight, filters, status, grid);
+  search.addEventListener("input", () => chooseCategory(activeCategory));
+  search.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !search.value) return;
+    event.preventDefault();
+    search.value = "";
+    chooseCategory(activeCategory);
+  });
+  toolbar.append(searchLabel, filters);
+  container.append(spotlight, toolbar, status, empty, grid);
   showPreview(cards.has(selected) ? selected : guestGames[0].id);
   chooseCategory("all");
 }
