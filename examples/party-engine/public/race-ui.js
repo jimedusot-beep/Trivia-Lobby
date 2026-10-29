@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Original shared-screen/phone interface; the phone never simulates a race.
 import { TRACK, TRACK_POINTS, trackPose, ITEM_SPOTS, BOOST_SPOTS, RACE_COLORS, ITEM_LABELS } from "./race-track.js";
+import { createTiltSteering } from "./race-tilt.js";
 import { clamp, lerp, wrapAngle } from "./race-math.js";
 let active;
 const node = (tag, text, parent, className) => {
@@ -281,6 +282,12 @@ function mountController(a, root, api) {
   const itemText = node("p", "Pick up a purple box for an item.", root, "race-item-status"); itemText.id = "race-own-item";
   const charge = node("progress", undefined, root, "race-charge"); charge.max = 3.2; charge.value = 0; charge.setAttribute("aria-label", "Drift boost charge");
   const controls = node("div", undefined, root, "race-controls"); controls.setAttribute("role", "group"); controls.setAttribute("aria-label", "Racing controls");
+  const tiltPanel = node("div", undefined, controls, "race-tilt-panel");
+  const enableTilt = node("button", "Tilt steering", tiltPanel, "race-tilt-enable"); enableTilt.type = "button";
+  enableTilt.title = "Hold the phone comfortably upright, then enable tilt to set the center.";
+  const tiltStatus = node("span", "Centered", tiltPanel, "race-tilt-status"); tiltStatus.hidden = true;
+  const centerTilt = node("button", "Center", tiltPanel); centerTilt.type = "button"; centerTilt.hidden = true;
+  const touchMode = node("button", "Touch", tiltPanel); touchMode.type = "button"; touchMode.hidden = true;
   const left = node("button", "←", controls, "race-control race-left"); left.setAttribute("aria-label", "Steer left");
   const right = node("button", "→", controls, "race-control race-right"); right.setAttribute("aria-label", "Steer right");
   const drift = node("button", "HOLD\nDRIFT", controls, "race-control race-drift"); drift.setAttribute("aria-label", "Hold drift, release for boost");
@@ -294,10 +301,22 @@ function mountController(a, root, api) {
   const held = new Map(), keys = new Map(), cleanups = [], timeouts = new Set();
   let seq = Math.max(0, (own?.seq ?? -1) + 1), finished = false, lastSent = -Infinity, itemPulse = false;
   const on = (target, type, fn, options) => { target.addEventListener(type, fn, options); cleanups.push(() => target.removeEventListener(type, fn, options)); };
+  const tilt = createTiltSteering({onState({mode,message,value}) {
+    const enabled=mode==='tilt';controls.dataset.steering=enabled?'tilt':'touch';
+    enableTilt.hidden=enabled;enableTilt.disabled=mode==='pending';
+    enableTilt.textContent=mode==='touch' && message!=='Touch steering' ? message+' · Retry' : mode==='pending'?message:'Tilt steering';
+    tiltStatus.hidden=centerTilt.hidden=touchMode.hidden=!enabled;
+    left.hidden=right.hidden=enabled;tiltStatus.textContent=message;
+    tiltStatus.dataset.value=String(value);
+  }});
+  on(enableTilt,"click",()=>{release();void tilt.enable();});
+  on(centerTilt,"click",()=>{release();});
+  on(touchMode,"click",()=>{tilt.stop();release();});
   const isHeld = key => [...held.values()].includes(key) || [...keys.values()].includes(key);
   function send(force = false) {
     if (active !== a || finished || (document.hidden && !force)) return;
-    const input = { steer: Number(isHeld("right")) - Number(isHeld("left")), drift: isHeld("drift"), item: isHeld("item") || itemPulse, assist: assist.checked };
+    const manual = Number(isHeld("right")) - Number(isHeld("left"));
+    const input = { steer: manual || tilt.read(), drift: isHeld("drift"), item: isHeld("item") || itemPulse, assist: assist.checked };
     for (const [key, button] of [["left", left], ["right", right], ["drift", drift], ["item", item]]) button.setAttribute("aria-pressed", String(isHeld(key)));
     // Coalesce rapid touch transitions without exceeding the server input budget.
     // Keep a short item tap queued until a frame actually carries its rising edge.
@@ -305,7 +324,7 @@ function mountController(a, root, api) {
     lastSent = performance.now(); itemPulse = false;
     api.sendInput({ v: 1, type: "race_input", matchId: a.state.matchId, heat: a.state.index, seq: seq++, ...input });
   }
-  function release() { held.clear(); keys.clear(); itemPulse = false; send(true); }
+  function release() { held.clear(); keys.clear(); itemPulse = false; tilt.reset(); send(true); }
   a.release = release;
   for (const [key, button] of [["left", left], ["right", right], ["drift", drift], ["item", item]]) {
     on(button, "pointerdown", e => { e.preventDefault(); held.set(e.pointerId, key); if (key === "item") itemPulse = true; try { button.setPointerCapture(e.pointerId); } catch {} send(); });
@@ -321,8 +340,8 @@ function mountController(a, root, api) {
   const mapping = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ShiftLeft: "drift", ShiftRight: "drift", KeyE: "item" };
   on(window, "keydown", e => { const key = mapping[e.code]; if (!key || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return; e.preventDefault(); if (!e.repeat) { keys.set(e.code, key); if (key === "item") itemPulse = true; send(); } });
   on(window, "keyup", e => { if (mapping[e.code]) { keys.delete(e.code); send(); } });
-  on(window, "blur", release); on(window, "pagehide", release);
-  on(document, "visibilitychange", () => { if (document.hidden) release(); else send(); });
+  on(window, "blur", () => { tilt.pause(); release(); }); on(window, "focus", () => tilt.resume()); on(window, "pagehide", release);
+  on(document, "visibilitychange", () => { if (document.hidden) { tilt.pause(); release(); } else { tilt.resume(); send(); } });
   on(assist, "change", () => send());
   const interval = setInterval(send, 50);
   a.frame = next => {
@@ -338,6 +357,6 @@ function mountController(a, root, api) {
     for (const b of [left, right, drift]) b.disabled = o.finished;
     hint.hidden = matchMedia("(pointer: coarse)").matches;
   };
-  a.cleanup = () => { held.clear(); keys.clear(); clearInterval(interval); for (const fn of cleanups) fn(); for (const timer of timeouts) clearTimeout(timer); };
+  a.cleanup = () => { tilt.dispose(); held.clear(); keys.clear(); clearInterval(interval); for (const fn of cleanups) fn(); for (const timer of timeouts) clearTimeout(timer); };
   send();
 }
