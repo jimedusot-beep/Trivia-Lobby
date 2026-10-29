@@ -47,3 +47,11 @@ Inspect screenshots, rerun focused tests with a working Chromium executable, che
 Added a keyboard-accessible Show all games action to empty results. It clears both search and category and returns focus to search. Escape clears search while preserving the selected category. No added dependencies, assets or shared-file changes.
 
 Repeated the focused Playwright command above: 9 passed, 0 failed/skipped; guest-engine tests: 253 passed, 0 failed/skipped; git diff --check passed. The new browser regression checks both reset paths, focus, category state and preview recovery. PR #96 remains a draft, with no merge/deployment or physical-device verification.
+
+## CI follow-up
+
+At remote head 5ac5ab1, four workflows passed; Guest party engine failed on two obsolete assertions in each browser (11 vs 12 source cards and 22 vs 17 party games). Integrated acceptance passed Chromium/Firefox but WebKit exceeded its 32767-pixel full-page screenshot limit.
+
+Updated open-pack browser expectations for the added provenance record and separate arcade category, checking notice links and all 31 games. Small shared test patch in e2e/party-personality.spec.ts sets screenshot scale to CSS pixels while retaining full-page capture and all accessibility/layout assertions; integration lead should retain this option when resolving shared test edits. No runtime/shared UI patch. Added high-density capture regression.
+
+Validation: focused credits/categories plus catalog recovery: 4 passed, 0 failed/skipped. TV catalog/mobile invite suite: 10 passed, 0 failed/skipped. npm run check and git diff --check passed. Commands use the documented Chromium executable and party-engine Playwright config; focused command adds --grep 'Credits offer|Game categories|TV library|empty catalog'. WebKit and complete integrated suite await remote CI; no local claim of their passing.
