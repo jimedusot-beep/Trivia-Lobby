@@ -24,9 +24,13 @@
       "commit": "33d3d04de6e67b27ee4ee44dae3d887374901acd",
       "license": "Apache-2.0",
       "licenseUrl": "https://github.com/yashkhatri012/skribble.io/blob/33d3d04de6e67b27ee4ee44dae3d887374901acd/LICENSE",
-      "classification": "B",
-      "scope": "Code license verified; no artwork, audio, content, dependency stack or runtime import approved.",
-      "checked": "2026-10-29"
+      "classification": "A",
+      "scope": "Only client/src/utils/drawLine.js and client/src/hooks/useCanvas.js reviewed for bounded code reuse with Apache license and modification notices. No NOTICE or nested license found in complete pinned tree. Other code/assets and Socket.IO transport not approved.",
+      "checked": "2026-10-29",
+      "reviewedFiles": [
+        "client/src/utils/drawLine.js",
+        "client/src/hooks/useCanvas.js"
+      ]
     },
     {
       "repository": "https://github.com/phaserjs/phaser",
