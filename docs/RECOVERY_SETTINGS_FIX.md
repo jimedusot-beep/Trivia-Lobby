@@ -37,3 +37,29 @@ The checkpoint remains internal server state; it is not sent directly to guests.
 
 Local environment: Linux, Node 24.22.1. Hosted CI, database-backed acceptance and
 physical-device checks remain separate gates. No merge into main or deployment.
+
+## Guest-browser CI follow-up
+
+The first updated head `3632d63` passed database/integrated browser acceptance,
+production startup, recovery and application checks. Guest-browser jobs failed on
+unrelated TV tests: shallow checkouts lacked historical `55414cd`, and Firefox /
+WebKit computed the 33.6px font as 33.625px / 33.599998px. No recovery test failed.
+
+The combined candidate incorporates main #106 (`0c0ebfb`) and the exact reviewed
+#107 head `55d6e44`. Historical capture is retained as an explicit manual script,
+while routine functional browser tests need only current source. Font assertions
+use a 0.05px bound; tilt checks retain CSS min-height >=44px and allow only 0.01px
+geometry rounding. No controller styling or game rules are relaxed.
+
+This is a branch integration only: neither #107 nor #81 is merged into main by
+this work. #107 remains independently reviewable; its commits are preserved as
+ancestors, so do not reimplement or duplicate them when releasing the combination.
+Once #107 is merged, #81's diff reduces to its recovery-specific files again.
+The existing main #106 fetch step is retained; no new workflow change is made.
+
+Validation repeated on this combined tree: typecheck and build passed; 115 root
+and 259 guest tests passed with zero failures/skips. Chromium TV catalog, tilt and
+entry-recovery suites passed 21/21, zero failures/skips, in 1.1 minutes. Manual
+capture script syntax and the diff whitespace check passed. Hosted cross-browser
+CI must pass on the newly published head; prior failed runs are not described as
+successful. No merge or deployment.

@@ -22,7 +22,13 @@ jobs:
       run:
         working-directory: examples/party-engine
     steps:
+      # TV before/after screenshot coverage uses git show on the pinned pre-GX2
+      # baseline. The checkout default (depth=1) omits that commit in CI.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify the historical TV screenshot baseline is available
+        run: git cat-file -e '55414cd7d3f8cc903897f5d40f3d0e914aea579b^{commit}'
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
