@@ -86,3 +86,17 @@ test('empty catalog reset restores every game and Escape keeps the chosen catego
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
   await expect(page.locator('.pick-game-spotlight')).toBeVisible();
 });
+
+test('long mobile catalog capture stays at CSS resolution on high-density screens', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 850 }, deviceScaleFactor: 2 });
+  try {
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('.pick-game-card')).toHaveCount(31);
+    await page.evaluate(() => document.fonts.ready);
+    const image = await page.screenshot({ fullPage: true, scale: 'css', animations: 'disabled' });
+    // PNG IHDR width/height are CSS pixels, even on a 2x display.
+    expect(image.readUInt32BE(16)).toBe(390);
+    expect(image.readUInt32BE(20)).toBeLessThan(32767);
+  } finally { await context.close(); }
+});
