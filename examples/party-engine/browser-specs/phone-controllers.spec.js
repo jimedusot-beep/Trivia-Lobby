@@ -445,6 +445,86 @@ test("short-landscape prompt remains a full-size touch target", async ({ browser
   } finally { await f.close(); }
 });
 
+test("rotation keeps the focused candidate visible when page capacity changes", async ({ browser }) => {
+  const f = await controller(browser, "likely", 20, { width: 844, height: 390 });
+  try {
+    const p = f.page;
+    const choice = p.locator(".phone-choices:visible button:enabled").last();
+    const label = await choice.textContent();
+    await choice.focus();
+    await p.setViewportSize({ width: 320, height: 480 });
+    await expect(p.locator("#game")).toHaveCSS("height", "480px");
+    const sameChoice = p.locator(".phone-choices button").filter({ hasText: label });
+    await expect(sameChoice).toBeVisible();
+    await expect(sameChoice).toBeFocused();
+    await fits(p);
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    await p.keyboard.press("Enter");
+    await expect(p.locator("#status")).toHaveText("Submission accepted.");
+    expect(await p.evaluate(() => window.controllerActions)).toEqual(["respond"]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("closing full-prompt help returns to its opener after a room update", async ({ browser }) => {
+  const f = await controller(browser, "closest");
+  try {
+    const p = f.page;
+    const prompt = p.locator(".phone-prompt");
+    await prompt.focus();
+    await p.keyboard.press("Enter");
+    await expect(p.getByRole("dialog")).toBeVisible();
+    f.host.ws.close();
+    await expect(p.locator(".phone-originals")).toContainText("Host disconnected");
+    await p.keyboard.press("Escape");
+    await expect(prompt).toBeFocused();
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("rotation preserves the current candidate group while focus stays on the menu", async ({ browser }) => {
+  const f = await controller(browser, "likely", 20, { width: 844, height: 390 });
+  try {
+    const p = f.page;
+    await p.getByRole("button", { name: "Next →", exact: true }).click();
+    const label = await p.locator(".phone-choices:visible button").first().textContent();
+    const menu = p.getByRole("button", { name: "Game info", exact: true });
+    await menu.focus();
+    for (const viewport of [{ width: 320, height: 480 }, { width: 844, height: 390 }]) {
+      await p.setViewportSize(viewport);
+      await expect(p.locator("#game")).toHaveCSS("height", `${viewport.height}px`);
+      await expect(p.locator(".phone-choices button").filter({ hasText: label })).toBeVisible();
+      await expect(menu).toBeFocused();
+      await fits(p);
+    }
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("pen tools return to the drawing controller with preferences intact", async ({ browser }) => {
+  const f = await controller(browser, "draw");
+  try {
+    const p = f.page;
+    await p.locator(".phone-choices:visible button").first().click();
+    const pen = p.getByRole("button", { name: "Pen tools", exact: true });
+    await pen.click();
+    await p.getByRole("combobox", { name: "Pen color", exact: true }).selectOption("#2477db");
+    await p.getByRole("combobox", { name: "Pen width", exact: true }).selectOption("16");
+    await p.getByRole("button", { name: "Back to game", exact: true }).click();
+    await expect(pen).toBeFocused();
+    await p.keyboard.press("Enter");
+    await expect(p.getByRole("combobox", { name: "Pen color", exact: true })).toHaveValue("#2477db");
+    await expect(p.getByRole("combobox", { name: "Pen width", exact: true })).toHaveValue("16");
+    await p.keyboard.press("Escape");
+    await expect(pen).toBeFocused();
+    await expect(p.locator(".phone-surface .doodle-pad")).toBeVisible();
+    expect(await p.evaluate(() => window.controllerActions)).toEqual(["play"]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
 test("Prompt Duel keeps both the draft and primary action above a simulated keyboard", async ({ browser }) => {
   const f = await controller(browser, "duel", 4, { width: 390, height: 844 });
   try {
