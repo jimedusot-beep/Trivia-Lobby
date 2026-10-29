@@ -110,7 +110,10 @@ test('TV lobby width and invitation styling exclude controllers and active play'
   await page.getByRole('button', { name: 'Create host screen', exact: true }).click();
   await expect(page.locator('#mode')).toBeVisible();
   await expect(page.locator('main')).toHaveCSS('max-width', '1560px');
-  await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '33.6px');
+  // Engines quantize fractional font sizes differently (Firefox reports 33.625px).
+  // Keep a tight 0.05px bound so the 20px controller style cannot pass here.
+  await expect.poll(async () => Math.abs(await page.locator('.lobby-invite-card strong')
+    .evaluate(node => parseFloat(getComputedStyle(node).fontSize)) - 33.6)).toBeLessThan(0.05);
   await page.screenshot({ path: 'test-results/tv-lobby-wide.png' });
   for (const controller of ['phone-controller-active', 'race-controller-active']) {
     await page.evaluate(c => document.body.classList.add(c), controller);
