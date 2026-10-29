@@ -69,5 +69,12 @@
     "version": "0.180.0",
     "license": "MIT",
     "reuse": "Pinned Three.js 0.180.0 rendering dependency, bundled locally only for the Grand Prix host. No CDN or third-party models/textures."
+  },
+  {
+    "id": "gx2-tv-lobby-reference",
+    "repository": "https://github.com/IACBI/matah",
+    "commit": "049da257eb690e82d7c47d1f2d502b607adb054a",
+    "license": "MIT",
+    "reuse": "Conceptual reference only: README TV/phone separation and Home.tsx QR-prefilled guest entry studied. No source, illustrations, audio, fonts or other assets copied. Original CSS catalog artwork uses existing platform emoji and existing locally bundled OFL fonts. Existing component licenses remain unchanged."
   }
 ]
