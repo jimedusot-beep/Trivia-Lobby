@@ -978,3 +978,16 @@ body.phone-controller-active #status {
     grid-row: 3;
   }
 }
+/* Tilt keeps drift/item in the same viewport-sized surface. */
+.phone-surface .race-controls{grid-template-rows:44px repeat(2,minmax(44px,1fr))}
+.race-tilt-panel{grid-column:1/-1;display:flex;gap:6px;align-items:center;min-width:0}
+.race-tilt-panel button{min-height:44px;padding:4px 8px;margin:0;font-size:.8rem;line-height:1.15}
+.race-tilt-enable{flex:1}
+.race-tilt-status{flex:1;min-width:0;font-size:.8rem;font-weight:800}
+.race-tilt-panel button:not(.race-tilt-enable){width:auto;min-width:60px}
+.race-tilt-panel [hidden],.race-controls .race-control[hidden]{display:none}
+.phone-surface .race-controls[data-steering="tilt"]{grid-template-rows:44px minmax(44px,1fr)}
+@media(max-height:500px) and (orientation:landscape){
+ .phone-surface .race-controls{grid-template-rows:44px minmax(44px,1fr)}
+ .phone-surface .race-controls[data-steering="tilt"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
