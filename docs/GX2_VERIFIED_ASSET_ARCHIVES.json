@@ -1,0 +1,156 @@
+{
+  "checked": "2026-10-29",
+  "scope": "Official Kenney downloads; archival license evidence and bounded candidates, not shipped assets. Fresh downloads must match recorded archive hashes or be re-audited.",
+  "archives": [
+    {
+      "id": "car-kit",
+      "page": "https://kenney.nl/assets/car-kit",
+      "checked": "2026-10-29",
+      "archiveSha256": "fac7dacac5c7874348cf19729af3ef205f3d366493edaf0a827d93f4fdf3d0c4",
+      "archiveBytes": 4814237,
+      "license": "CC0-1.0",
+      "licenses": [
+        {
+          "path": "License.txt",
+          "text": "\t\r\n\r\n\tCar Kit (3.1)\r\n\r\n\tCreated/distributed by Kenney (www.kenney.nl)\r\n\tCreation date: 02-04-2026 14:03\r\n\t\r\n\t\t\t------------------------------\r\n\r\n\tLicense: (Creative Commons Zero, CC0)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tYou can use this content for personal, educational, and commercial purposes.\r\n\r\n\tSupport by crediting 'Kenney' or 'www.kenney.nl' (this is not a requirement)\r\n\r\n\t\t\t------------------------------\r\n\r\n\t\u2022 Website : www.kenney.nl\r\n\t\u2022 Donate  : www.kenney.nl/donate\r\n\r\n\t\u2022 Patreon : patreon.com/kenney\r\n\t\r\n\tFollow on social media for updates:\r\n\r\n\t\u2022 Twitter:\t twitter.com/KenneyNL\r\n\t\u2022 BlueSky:\t kenney.bsky.social\r\n\t\u2022 Instagram: instagram.com/kenney_nl"
+        }
+      ],
+      "versionFromArchiveNotice": "3.1",
+      "classification": "A",
+      "scope": "Verified candidate files only; no production import or runtime manifest entry. Record local destinations and modifications when actually used.",
+      "candidateFiles": [
+        {
+          "path": "Models/GLB format/kart-oobi.glb",
+          "bytes": 251516,
+          "sha256": "035c80531d201f050fb38c3edb348833fd0f6be0b2a132fe8d804f52a15e5756"
+        },
+        {
+          "path": "Models/GLB format/kart-oodi.glb",
+          "bytes": 230984,
+          "sha256": "1a6d7dc227d7f1edb8aebcecaeef0749c614dcb168b69a59e0127ad6a3a71a59"
+        },
+        {
+          "path": "Models/GLB format/wheel-racing.glb",
+          "bytes": 29120,
+          "sha256": "5d8dbff9da004a2aabc471a12be0a4b70725c49463ec36ec3465b15c0cf64571"
+        }
+      ]
+    },
+    {
+      "id": "racing-kit",
+      "page": "https://kenney.nl/assets/racing-kit",
+      "checked": "2026-10-29",
+      "archiveSha256": "8a71ea16219315a01d00d5a90c4f6b5c090faddbc56d80ecf727e2b3b853c6c0",
+      "archiveBytes": 6082755,
+      "license": "CC0-1.0",
+      "licenses": [
+        {
+          "path": "License.txt",
+          "text": "\t\r\n\r\n\tRacing Kit (2.0)\r\n\r\n\tCreated/distributed by Kenney (www.kenney.nl)\r\n\tCreation date: 07-11-2018 00:26\r\n\r\n\t\t\t------------------------------\r\n\r\n\tLicense: (Creative Commons Zero, CC0)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tThis content is free to use in personal, educational and commercial projects.\r\r\n\tSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\r\n\r\n\t\t\t------------------------------\r\n\r\n\tDonate:   http://support.kenney.nl\r\n\tRequest:  http://request.kenney.nl\r\n\tPatreon:  http://patreon.com/kenney/\r\n\r\n\tFollow on Twitter for updates:\r\n\thttp://twitter.com/KenneyNL"
+        }
+      ],
+      "versionFromArchiveNotice": "2.0",
+      "classification": "A",
+      "scope": "Verified candidate files only; no production import or runtime manifest entry. Record local destinations and modifications when actually used.",
+      "candidateFiles": [
+        {
+          "path": "Models/GLTF format/barrierRed.glb",
+          "bytes": 3244,
+          "sha256": "6d7de595a92507af6fcb40fe5a62730925ea23f1f8c727b8ecdec9eba9b98156"
+        },
+        {
+          "path": "Models/GLTF format/barrierWhite.glb",
+          "bytes": 3252,
+          "sha256": "44bf654b08bb96bd0e9a70c00dab35b0b23df955d3390ec8ede89c20ad64871a"
+        }
+      ]
+    },
+    {
+      "id": "boardgame-pack",
+      "page": "https://kenney.nl/assets/boardgame-pack",
+      "checked": "2026-10-29",
+      "archiveSha256": "3b6a7dd5af658d1ffa0071429d5dde10ff63121e88bd06d4904e721e60b2c398",
+      "archiveBytes": 2221570,
+      "license": "CC0-1.0",
+      "licenses": [
+        {
+          "path": "license.txt",
+          "text": "\r\n\r\n\tBoardgame pack v2 by Kenney Vleugels (www.kenney.nl)\r\n\r\n\t------------------------------\r\n\r\n\tCC0 License (Creative Commons Zero)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tYou may use these graphics in personal and commercial projects.\r\n\tCredit (Kenney or www.kenney.nl) would be nice but is not mandatory.\r\n\r\n\t------------------------------\r\n\r\n\tMore information:\r\n\twww.kenney.nl"
+        }
+      ],
+      "versionFromArchiveNotice": "2",
+      "classification": "A",
+      "scope": "Verified candidate files only; no production import or runtime manifest entry. Record local destinations and modifications when actually used.",
+      "candidateFiles": [
+        {
+          "path": "PNG/Chips/chipBlue.png",
+          "bytes": 1144,
+          "sha256": "d4152e87a35a9673c79b32c09e6c8dc4cdf32341d026911ad1f2ebc809c4f2e7"
+        },
+        {
+          "path": "Bonus/cardPlace1.ogg",
+          "bytes": 21967,
+          "sha256": "f43576f02058e11ac605be148a072a5a9901b616a45c64752716d58847fe98b9"
+        }
+      ]
+    },
+    {
+      "id": "interface-sounds",
+      "page": "https://kenney.nl/assets/interface-sounds",
+      "checked": "2026-10-29",
+      "archiveSha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+      "archiveBytes": 834536,
+      "license": "CC0-1.0",
+      "licenses": [
+        {
+          "path": "License.txt",
+          "text": "\t\r\n\r\n\tInterface Sounds (1.0)\r\n\r\n\tCreated/distributed by Kenney (www.kenney.nl)\r\n\tCreation date: 11-02-2020\r\n\r\n\t\t\t------------------------------\r\n\r\n\tLicense: (Creative Commons Zero, CC0)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tThis content is free to use in personal, educational and commercial projects.\r\r\n\tSupport us by crediting Kenney or www.kenney.nl (this is not mandatory)\r\n\r\n\t\t\t------------------------------\r\n\r\n\tDonate:   http://support.kenney.nl\r\n\tPatreon:  http://patreon.com/kenney/\r\n\r\n\tFollow on Twitter for updates:\r\n\thttp://twitter.com/KenneyNL"
+        }
+      ],
+      "versionFromArchiveNotice": "1.0",
+      "classification": "A",
+      "scope": "Verified candidate files only; no production import or runtime manifest entry. Record local destinations and modifications when actually used.",
+      "candidateFiles": [
+        {
+          "path": "Audio/click_001.ogg",
+          "bytes": 4876,
+          "sha256": "ccfb7fa0cccdd9faec0eb16033c732b1e308d139d80f799161495d58f7adcdb9"
+        },
+        {
+          "path": "Audio/back_001.ogg",
+          "bytes": 6997,
+          "sha256": "07db973f79f6ae0f2edc34561e7592e24d0577455919fb602cb8ecc0da991dcf"
+        }
+      ]
+    },
+    {
+      "id": "casino-audio",
+      "page": "https://kenney.nl/assets/casino-audio",
+      "checked": "2026-10-29",
+      "archiveSha256": "f36250766ac5bc378c13708ddf12a23a8e54a3251f8d482c7536e51b5dbafa18",
+      "archiveBytes": 876839,
+      "license": "CC0-1.0",
+      "licenses": [
+        {
+          "path": "License.txt",
+          "text": "\t\r\n\r\n\tCasino Audio (1.1)\r\n\r\n\tby  Kenney Vleugels (Kenney.nl)\r\n\r\n\t\t\t------------------------------\r\n\r\n\tLicense (Creative Commons Zero, CC0)\r\n\thttp://creativecommons.org/publicdomain/zero/1.0/\r\n\r\n\tYou may use these assets in personal and commercial projects.\r\n\tCredit (Kenney or www.kenney.nl) would be nice but is not mandatory.\r\n\r\n\t\t\t------------------------------\r\n\r\n\tDonate:   http://support.kenney.nl\r\n\tRequest:  http://request.kenney.nl\r\n\r\n\tFollow on Twitter for updates:\r\n\t@KenneyNL"
+        }
+      ],
+      "versionFromArchiveNotice": "1.1",
+      "classification": "A",
+      "scope": "Verified candidate files only; no production import or runtime manifest entry. Record local destinations and modifications when actually used.",
+      "candidateFiles": [
+        {
+          "path": "Audio/card-place-1.ogg",
+          "bytes": 9624,
+          "sha256": "d8f26c33a665dcbdcc6f632f6050bc9dd548feb0d4942d4547615926d3926810"
+        },
+        {
+          "path": "Audio/chip-lay-1.ogg",
+          "bytes": 5720,
+          "sha256": "4b2111252ccb64eed67f171e061053849cfbb29873536c03948646f244a3905c"
+        }
+      ]
+    }
+  ]
+}

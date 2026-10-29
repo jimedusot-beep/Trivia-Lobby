@@ -1,0 +1,142 @@
+{
+  "checkedDate": "2026-10-29",
+  "scope": "Unauthenticated read-only HTTP checks; not browser/gameplay or legal compliance certification.",
+  "liveBase": "https://trivia-lobby.onrender.com",
+  "liveCommit": "55414cd7d3f8cc903897f5d40f3d0e914aea579b",
+  "initialRequests": [
+    {
+      "path": "/party/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "bytes": 5822
+    },
+    {
+      "path": "/party/sources.html",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "bytes": 1893
+    },
+    {
+      "path": "/party/sources.js",
+      "status": 200,
+      "type": "text/javascript; charset=utf-8",
+      "bytes": 1557
+    },
+    {
+      "path": "/party/open-source/credits.json",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 3840,
+      "commit": "55414cd7d3f8cc903897f5d40f3d0e914aea579b",
+      "files": 0,
+      "sources": 10
+    },
+    {
+      "path": "/party/open-source/source.json",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 1638760,
+      "commit": "55414cd7d3f8cc903897f5d40f3d0e914aea579b",
+      "files": 180,
+      "sources": 0
+    },
+    {
+      "path": "/health/live",
+      "status": 200,
+      "type": "application/json; charset=utf-8",
+      "bytes": 15
+    }
+  ],
+  "noticeAndRepositoryRequests": [
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/race.txt",
+      "status": 200,
+      "bytes": 1228,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/phone-controllers.txt",
+      "status": 200,
+      "bytes": 1744,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/feud.txt",
+      "status": 200,
+      "bytes": 1068,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/draw.txt",
+      "status": 200,
+      "bytes": 1519,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/cards.txt",
+      "status": 200,
+      "bytes": 1070,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/boards.txt",
+      "status": 200,
+      "bytes": 34523,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/table.txt",
+      "status": 200,
+      "bytes": 35149,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/trivia.txt",
+      "status": 200,
+      "bytes": 1062,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/race-3d-reference.txt",
+      "status": 200,
+      "bytes": 1070,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/three.txt",
+      "status": 200,
+      "bytes": 1081,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://trivia-lobby.onrender.com/party/open-source/chess.txt",
+      "status": 200,
+      "bytes": 1315,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/jimedusot-beep/Trivia-Lobby/55414cd7d3f8cc903897f5d40f3d0e914aea579b/server/room-checkpoints.ts",
+      "status": 200,
+      "bytes": 5124,
+      "contentType": "text/plain; charset=utf-8"
+    }
+  ],
+  "embeddedSourceComparison": {
+    "checked": 180,
+    "match": 180,
+    "different": [],
+    "notTrackedAtCommit": []
+  },
+  "candidateReviews": [
+    {
+      "pr": 96,
+      "head": "0e967a99989611aaf5e72d83ac02279cd0d63faf",
+      "finding": "New gx2-tv-lobby-reference manifest record lacks matching notice at pinned head; audit PR supplies it for integration."
+    },
+    {
+      "pr": 97,
+      "head": "bb19f3184b4dce0399282ce8064825274300d9fb",
+      "finding": "Changed-file review shows no added third-party dependencies/assets or manifest change; existing phone credits route preserved."
+    }
+  ]
+}
