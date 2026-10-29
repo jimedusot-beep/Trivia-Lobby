@@ -23,6 +23,7 @@ export function disposePhoneController() {
   delete document.body.dataset.controllerMode;
   document.documentElement.style.removeProperty("--controller-height");
   document.documentElement.style.removeProperty("--controller-top");
+  document.documentElement.style.removeProperty("--controller-status-height");
 }
 function titleFor(state) {
   return (
@@ -84,14 +85,18 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     ["info", "Game info"],
     ["scores", "Scores"],
     ["options", "Options"],
-  ])
+  ]) {
     menuButtons[name] = control(label, () => open(name), footer);
+    // app.js restores focus by ID after an authoritative state broadcast.
+    menuButtons[name].id = `phone-menu-${name}`;
+  }
   const dialog = make("dialog", undefined, content, "phone-dialog");
   const dialogBar = make("div", undefined, dialog, "phone-dialog-bar"),
     dialogTitle = make("h2", "", dialogBar);
   dialogTitle.id = "phone-dialog-title";
   dialog.setAttribute("aria-labelledby", dialogTitle.id);
   const close = control("Back to game", () => dialog.close(), dialogBar);
+  close.id = "phone-dialog-close";
   const dialogFeedback = make(
     "p",
     byId("status").textContent,
@@ -102,6 +107,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   const panels = {};
   for (const name of ["info", "scores", "options"]) {
     panels[name] = make("div", undefined, dialog, "phone-dialog-body");
+    panels[name].id = `phone-panel-${name}`;
     panels[name].tabIndex = 0;
   }
   const fullPrompt = make(
@@ -376,16 +382,26 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     panels.options,
   );
   credits.href = new URL("./sources.html", location.href).href;
-  control(
+  credits.id = "phone-credits";
+  const leave = control(
     "Leave party",
     () => {
       if (confirm("Leave this party on this device?")) byId("leave").click();
     },
     panels.options,
   );
+  leave.id = "phone-leave";
   let pages = [],
     destroyed = false,
     requested;
+  const choiceGroups = [
+    ...surface.querySelectorAll(".phone-choices,.card-hand:not(.poker-hand)"),
+  ].map((root) => ({
+    root,
+    children: [...root.children],
+    parts: [root],
+    count: 0,
+  }));
   function open(name) {
     releaseControls?.();
     saved.dialog = name;
@@ -401,6 +417,9 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   }
   const closed = () => {
     const name = saved.dialog;
+    saved.scroll = Object.fromEntries(
+      Object.entries(panels).map(([key, panel]) => [key, panel.scrollTop]),
+    );
     saved.dialog = "";
     menuButtons[name]?.focus({ preventScroll: true });
   };
@@ -462,22 +481,35 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
             (viewport?.height ?? innerHeight) < 450)),
     );
     surface.style.setProperty("--play-height", `${stage.clientHeight}px`);
-    // Divide long homogeneous lists at item boundaries. The same button nodes
-    // keep handlers, disabled states and keyboard behavior; no actions are sent.
-    for (const group of [
-      ...surface.querySelectorAll(".phone-choices,.card-hand:not(.poker-hand)"),
-    ]) {
-      if (group.dataset.grouped) continue;
-      group.dataset.grouped = "yes";
-      const children = [...group.children],
-        count = compact ? 4 : 6;
-      for (let i = count; i < children.length; i += count) {
-        const part = group.cloneNode(false);
+    // Repartition on rotation as well as first mount. Reuse the actual action
+    // nodes so handlers, private hands, and input values stay intact.
+    const focused = surface.contains(document.activeElement)
+      ? document.activeElement
+      : null;
+    const anchor = focused ??
+      pages[saved.page]?.[0]?.querySelector("button,input,textarea,select") ??
+      pages[saved.page]?.[0];
+    let regrouped = false;
+    for (const group of choiceGroups) {
+      const count = compact ? 4 : 6;
+      if (group.count === count) continue;
+      regrouped = true;
+      group.count = count;
+      for (const part of group.parts.slice(1)) {
+        blocks.splice(blocks.indexOf(part), 1);
+        part.remove();
+      }
+      group.root.replaceChildren(...group.children.slice(0, count));
+      group.parts = [group.root];
+      let previous = group.root;
+      for (let i = count; i < group.children.length; i += count) {
+        const part = group.root.cloneNode(false);
         part.removeAttribute("id");
-        part.dataset.grouped = "yes";
-        part.append(...children.slice(i, i + count));
-        group.after(part);
-        blocks.splice(blocks.indexOf(group) + Math.ceil(i / count), 0, part);
+        part.append(...group.children.slice(i, i + count));
+        previous.after(part);
+        blocks.splice(blocks.indexOf(previous) + 1, 0, part);
+        group.parts.push(part);
+        previous = part;
       }
     }
     blocks.forEach((n) => {
@@ -511,7 +543,18 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       pages[pages.length - 1].push(block);
       used += height;
     }
+    if (regrouped && anchor) {
+      const index = pages.findIndex((nodes) =>
+        nodes.some((node) => node === anchor || node.contains(anchor)),
+      );
+      if (index >= 0) saved.page = index;
+    }
     show(saved.page);
+    if (
+      focused && regrouped &&
+      document.activeElement !== focused && !focused.disabled
+    )
+      focused.focus({ preventScroll: true });
     surface.style.setProperty("--play-height", `${stage.clientHeight}px`);
     window.scrollTo(0, 0);
   }
@@ -523,6 +566,8 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   document.addEventListener("focusin", resized);
   document.addEventListener("focusout", resized);
   window.visualViewport?.addEventListener("resize", resized);
+  // Keyboard focus can pan the visual viewport without changing its height.
+  window.visualViewport?.addEventListener("scroll", resized);
   const clock = () => {
     timer.textContent = byId("timer").textContent;
     timer.dataset.urgent = byId("timer").dataset.urgent;
@@ -543,10 +588,17 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       document.removeEventListener("focusin", resized);
       document.removeEventListener("focusout", resized);
       window.visualViewport?.removeEventListener("resize", resized);
+      window.visualViewport?.removeEventListener("scroll", resized);
       timerObserver.disconnect();
       statusObserver.disconnect();
       dialog.removeEventListener("close", closed);
       if (dialog.open) {
+        saved.focusId = dialog.contains(document.activeElement)
+          ? document.activeElement.id
+          : "";
+        saved.scroll = Object.fromEntries(
+          Object.entries(panels).map(([key, panel]) => [key, panel.scrollTop]),
+        );
         const name = saved.dialog;
         dialog.close();
         saved.dialog = name;
@@ -557,5 +609,13 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   document.fonts?.ready.then(() => {
     if (!destroyed) resized();
   });
-  if (saved.dialog) open(saved.dialog);
+  if (saved.dialog) {
+    open(saved.dialog);
+    const focused = byId(saved.focusId);
+    if (focused && dialog.contains(focused) && !focused.disabled)
+      focused.focus({ preventScroll: true });
+    for (const [name, panel] of Object.entries(panels))
+      panel.scrollTop = saved.scroll?.[name] ?? 0;
+    saved.focusId = "";
+  }
 }

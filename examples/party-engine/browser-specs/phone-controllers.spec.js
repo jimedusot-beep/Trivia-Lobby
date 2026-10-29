@@ -2,9 +2,17 @@ import { test, expect } from "@playwright/test";
 import { WebSocket } from "ws";
 import { createPartyServer } from "../server.js";
 import { guestGames } from "../public/game-catalog.js";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+
+async function preview(page, name) {
+  if (!process.env.PHONE_UX_SCREENSHOT_DIR) return;
+  await mkdir(process.env.PHONE_UX_SCREENSHOT_DIR, { recursive: true });
+  await page.screenshot({ path: path.join(process.env.PHONE_UX_SCREENSHOT_DIR, name) });
+}
 
 // Only this fixture can manipulate its own clock. Production exposes no test API.
-async function controller(browser, mode, count = 4) {
+async function controller(browser, mode, count = 4, viewport = { width: 320, height: 480 }) {
   let now = Date.now();
   const jobs = [],
     sockets = [],
@@ -35,7 +43,7 @@ async function controller(browser, mode, count = 4) {
     schedulerOptions: time,
   });
   const context = await browser.newContext({
-    viewport: { width: 320, height: 480 },
+    viewport,
   });
   const close = async () => {
     await context.close();
@@ -121,6 +129,12 @@ async function fits(page) {
         )) {
           if (!node.getClientRects().length) continue;
           const b = node.getBoundingClientRect();
+          // Dense game boards retain named squares; ordinary controls use a
+          // 44px minimum rather than merely hiding overflow on small screens.
+          if (node.matches("button,input,textarea,select") &&
+              !node.matches(".board-cell,.board-four > button,.board-mancala > button") &&
+              (b.height < 43.9 || b.width < 43.9))
+            failures.push({ name: node.textContent.slice(0, 40), touchWidth: b.width, touchHeight: b.height });
           if (
             b.x < stage.x - 1 ||
             b.y < stage.y - 1 ||
@@ -168,7 +182,9 @@ for (const game of guestGames)
   test(`${game.id}: all controller pages fit portrait and landscape without sending an action`, async ({
     browser,
   }) => {
-    const f = await controller(browser, game.id);
+    // Join on a tall phone first: initial compact grouping used to be the only
+    // route tested before every rotation. Exercise the other branch as well.
+    const f = await controller(browser, game.id, 4, { width: 390, height: 844 });
     try {
       const p = f.page;
       for (const [width, height] of [
@@ -193,6 +209,10 @@ for (const game of guestGames)
             .click();
         for (let group = 0; group < 20; group++) {
           await fits(p);
+          if (game.id === "colors" && width === 320 && group === 0)
+            await preview(p, "cards-after.png");
+          if (game.id === "backgammon" && width === 568 && group === 0)
+            await preview(p, "backgammon-after.png");
           const next = p.getByRole("button", {
             name: "Next →",
             exact: true,
@@ -205,6 +225,8 @@ for (const game of guestGames)
       }
       await p.getByRole("button", { name: "Game info", exact: true }).click();
       await expect(p.getByRole("dialog")).toBeVisible();
+      expect((await p.locator(".phone-dialog-bar h2").boundingBox()).height).toBeLessThan(90);
+      expect(await p.locator(".phone-dialog-body:visible").evaluate(node => node.clientHeight)).toBeGreaterThan(44);
       await p.keyboard.press("Escape");
       await expect(
         p.getByRole("button", { name: "Game info", exact: true }),
@@ -326,6 +348,176 @@ test("typing controls fit a reduced visual viewport and restore after the keyboa
 });
 
 // Runs automatically once the separate Homeward feature joins the catalog.
+test("tall-first candidate groups remain reachable after rotating to a short phone", async ({ browser }) => {
+  const f = await controller(browser, "likely", 20, { width: 390, height: 844 });
+  try {
+    const p = f.page;
+    for (const viewport of [{ width: 320, height: 480 }, { width: 568, height: 320 }]) {
+      await p.setViewportSize(viewport);
+      await expect(p.locator("#game")).toHaveCSS("height", `${viewport.height}px`);
+      while (await p.getByRole("button", { name: "← Previous", exact: true, includeHidden: true }).isEnabled())
+        await p.getByRole("button", { name: "← Previous", exact: true }).click();
+      for (let n = 0; n < 20; n++) {
+        await fits(p);
+        const next = p.getByRole("button", { name: "Next →", exact: true, includeHidden: true });
+        if (!(await next.isEnabled())) break;
+        await next.click();
+      }
+    }
+    await p.locator(".phone-choices:visible button:enabled").last().click();
+    await expect(p.locator("#status")).toHaveText("Submission accepted.");
+    expect(await p.evaluate(() => window.controllerActions)).toEqual(["respond"]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("keyboard panning follows visual viewport scroll without losing the draft or submit", async ({ browser }) => {
+  const f = await controller(browser, "closest");
+  try {
+    const p = f.page;
+    await p.setViewportSize({ width: 390, height: 844 });
+    await p.getByLabel("Your closest estimate (whole number)").fill("42");
+    await p.evaluate(() => {
+      Object.defineProperty(visualViewport, "height", { configurable: true, get: () => 260 });
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(p.locator(".phone-shell")).toHaveAttribute("data-keyboard", "true");
+    await p.evaluate(() => {
+      Object.defineProperty(visualViewport, "offsetTop", { configurable: true, get: () => 130 });
+      visualViewport.dispatchEvent(new Event("scroll"));
+    });
+    await expect(p.locator("#game")).toHaveCSS("top", "130px");
+    const submit = p.getByRole("button", { name: "Lock answer", exact: true });
+    const box = await submit.boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(130);
+    expect(box.y + box.height).toBeLessThanOrEqual(390);
+    await preview(p, "keyboard-panned.png");
+    await p.evaluate(() => {
+      delete visualViewport.offsetTop;
+      delete visualViewport.height;
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(p.locator("#game")).toHaveCSS("top", "0px");
+    await expect(p.getByLabel("Your closest estimate (whole number)")).toHaveValue("42");
+    await submit.click();
+    await expect(p.locator("#status")).toHaveText("Submission accepted.");
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("controller dialog keeps keyboard focus and reading position during a room update", async ({ browser }) => {
+  const f = await controller(browser, "closest");
+  try {
+    const p = f.page;
+    await p.setViewportSize({ width: 568, height: 320 });
+    await p.getByRole("button", { name: "Options", exact: true }).click();
+    expect((await p.locator(".phone-dialog-bar h2").boundingBox()).height).toBeLessThan(90);
+    expect(await p.locator(".phone-dialog-body:visible").evaluate(node => node.clientHeight)).toBeGreaterThan(44);
+    const credits = p.getByRole("link", { name: "Game credits, licenses & source code" });
+    await credits.focus();
+    await p.locator(".phone-dialog-body:visible").evaluate(node => { node.scrollTop = node.scrollHeight; });
+    const scrollTop = await p.locator(".phone-dialog-body:visible").evaluate(node => node.scrollTop);
+    expect(scrollTop).toBeGreaterThan(0);
+    f.host.ws.close();
+    await expect(p.locator(".phone-originals")).toContainText("Host disconnected");
+    await expect(credits).toBeFocused();
+    expect(await p.locator(".phone-dialog-body:visible").evaluate(node => node.scrollTop)).toBe(scrollTop);
+    await preview(p, "options-after.png");
+    await p.keyboard.press("Escape");
+    await expect(p.getByRole("button", { name: "Options", exact: true })).toBeFocused();
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("short-landscape prompt remains a full-size touch target", async ({ browser }) => {
+  const f = await controller(browser, "closest");
+  try {
+    const p = f.page;
+    await p.setViewportSize({ width: 568, height: 320 });
+    await expect(p.locator("#game")).toHaveCSS("height", "320px");
+    expect((await p.locator(".phone-prompt").boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await fits(p);
+    await preview(p, "prompt-after.png");
+    await p.locator(".phone-prompt").click();
+    await expect(p.getByRole("dialog")).toBeVisible();
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("Prompt Duel keeps both the draft and primary action above a simulated keyboard", async ({ browser }) => {
+  const f = await controller(browser, "duel", 4, { width: 390, height: 844 });
+  try {
+    const p = f.page;
+    const field = p.locator(".phone-surface textarea:visible");
+    await field.fill("My keyboard-safe draft");
+    await p.evaluate(() => {
+      Object.defineProperty(visualViewport, "height", { configurable: true, get: () => 260 });
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(p.locator(".phone-shell")).toHaveAttribute("data-keyboard", "true");
+    await fits(p);
+    const submit = p.getByRole("button", { name: "Lock response", exact: true }).filter({ visible: true });
+    const box = await submit.boundingBox();
+    expect(box.y + box.height).toBeLessThanOrEqual(260);
+    await preview(p, "duel-keyboard.png");
+    await p.evaluate(() => {
+      delete visualViewport.height;
+      visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await expect(p.locator(".phone-shell")).toHaveAttribute("data-keyboard", "false");
+    await expect(field).toHaveValue("My keyboard-safe draft");
+    await submit.click();
+    await expect(p.locator("#status")).toHaveText("Submission accepted.");
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("leaving restores the ordinary page and removes viewport tracking", async ({ browser }) => {
+  const f = await controller(browser, "closest");
+  try {
+    const p = f.page;
+    await p.getByRole("button", { name: "Options", exact: true }).click();
+    p.once("dialog", dialog => dialog.accept());
+    await p.getByRole("button", { name: "Leave party", exact: true }).click();
+    await expect(p.locator("body")).not.toHaveClass(/phone-controller-active/);
+    await expect(p.getByRole("button", { name: "Join party", exact: true })).toBeVisible();
+    await p.evaluate(() => visualViewport.dispatchEvent(new Event("scroll")));
+    expect(await p.evaluate(() => ["--controller-height", "--controller-top", "--controller-status-height"].map(name => document.documentElement.style.getPropertyValue(name)))).toEqual(["", "", ""]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+test("controller and reference dialog respect browser safe-area insets", async ({ browser, browserName }) => {
+  test.skip(browserName !== "chromium", "Safe-area env override uses Chromium's CDP; physical iOS remains a separate check.");
+  const f = await controller(browser, "closest", 4, { width: 390, height: 844 });
+  try {
+    const p = f.page;
+    const cdp = await p.context().newCDPSession(p);
+    for (const [viewport, insets] of [
+      [{ width: 390, height: 844 }, { top: 44, left: 0, right: 0, bottom: 34 }],
+      [{ width: 568, height: 320 }, { top: 0, left: 44, right: 44, bottom: 21 }],
+    ]) {
+      await p.setViewportSize(viewport);
+      await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets });
+      await p.evaluate(() => window.dispatchEvent(new Event("resize")));
+      await expect(p.locator("#status")).toHaveCSS("top", `${insets.top}px`);
+      await fits(p);
+      await p.getByRole("button", { name: "Options", exact: true }).click();
+      await preview(p, insets.top ? "safe-area-portrait.png" : "safe-area-landscape.png");
+      for (const selector of [".phone-dialog", ".phone-dialog-bar button"]) {
+        const box = await p.locator(selector).boundingBox();
+        expect(box.x).toBeGreaterThanOrEqual(insets.left);
+        expect(box.y).toBeGreaterThanOrEqual(insets.top);
+        expect(box.x + box.width).toBeLessThanOrEqual(viewport.width - insets.right);
+        expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - insets.bottom);
+      }
+      await p.getByRole("button", { name: "Back to game", exact: true }).click();
+    }
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
 if (guestGames.some((game) => game.id === "homeward"))
   test("Homeward split choices fit both orientations and commit the previewed move", async ({
     browser,
