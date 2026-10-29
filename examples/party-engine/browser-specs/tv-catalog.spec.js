@@ -64,3 +64,25 @@ test('every host and lobby catalog entry retains its existing launch ID',async({
   });
   for(const result of results) expect(result.actual).toEqual(result.expected);
 });
+
+
+test('empty catalog reset restores every game and Escape keeps the chosen category', async ({ page }) => {
+  await page.goto('/');
+  const search = page.getByRole('searchbox', { name: 'Find your next game' });
+  const racing = page.getByRole('button', { name: 'Racing & arcade', exact: true });
+  await racing.click();
+  await search.fill('no matching game');
+  await expect(page.locator('.pick-game-card:visible')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show all games', exact: true }).click();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('.pick-game-card:visible')).toHaveCount(31);
+  await expect(page.getByRole('button', { name: 'All games', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await racing.click();
+  await search.fill('no matching game');
+  await search.press('Escape');
+  await expect(search).toHaveValue('');
+  await expect(racing).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
+  await expect(page.locator('.pick-game-spotlight')).toBeVisible();
+});
