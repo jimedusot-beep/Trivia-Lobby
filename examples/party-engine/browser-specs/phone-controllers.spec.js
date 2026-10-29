@@ -117,6 +117,7 @@ async function controller(browser, mode, count = 4, viewport = { width: 320, hei
 }
 async function fits(page) {
   await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => new Promise(requestAnimationFrame));
   await expect
     .poll(async () =>
       page.evaluate(() => {
@@ -514,6 +515,139 @@ test("controller and reference dialog respect browser safe-area insets", async (
       await p.getByRole("button", { name: "Back to game", exact: true }).click();
     }
     expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
+for (const mode of ["duel", "closest"])
+  test(`${mode}: keyboard controls fit with notch and home-indicator insets`, async ({ browser, browserName }) => {
+    test.skip(browserName !== "chromium", "CSS safe-area emulation requires CDP.");
+    const f = await controller(browser, mode, 4, { width: 390, height: 844 });
+    try {
+      const p = f.page;
+      const cdp = await p.context().newCDPSession(p);
+      await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 47, bottom: 34, left: 0, right: 0 } });
+      const field = p.locator(".phone-surface input:visible,.phone-surface textarea:visible").first();
+      const draft = mode === "closest" ? "42" : "Keep this notched-phone draft";
+      const submit = p.getByRole("button", { name: mode === "closest" ? "Lock answer" : "Lock response", exact: true }).filter({ visible: true });
+      for (const scale of [100, 150]) {
+        await p.evaluate(scale => document.documentElement.style.setProperty("font-size", `${scale}%`, "important"), scale);
+        await expect(p.locator("html")).toHaveCSS("font-size", scale === 150 ? "24px" : "16px");
+        await field.fill(draft);
+        await p.evaluate(() => {
+          Object.defineProperty(visualViewport, "height", { configurable: true, get: () => 260 });
+          visualViewport.dispatchEvent(new Event("resize"));
+        });
+        await expect(p.locator(".phone-shell")).toHaveAttribute("data-keyboard", "true");
+        await preview(p, `${mode}-safe-keyboard-${scale}.png`);
+        await fits(p);
+        const box = await submit.boundingBox();
+        expect(box.y).toBeGreaterThanOrEqual(47);
+        expect(box.y + box.height).toBeLessThanOrEqual(260 - 34);
+      }
+      await p.evaluate(() => {
+        delete visualViewport.height;
+        visualViewport.dispatchEvent(new Event("resize"));
+      });
+      await expect(p.locator(".phone-shell")).toHaveAttribute("data-keyboard", "false");
+      await expect(field).toHaveValue(draft);
+      await submit.click();
+      await expect(p.locator("#status")).toHaveText("Submission accepted.");
+      expect(f.errors).toEqual([]);
+    } finally { await f.close(); }
+  });
+
+for (const mode of ["colors", "backgammon"])
+  test(`${mode}: safe-area controller pages keep ordinary touch targets reachable`, async ({ browser, browserName }) => {
+    test.skip(browserName !== "chromium", "CSS safe-area emulation requires CDP.");
+    const f = await controller(browser, mode, 4, { width: 390, height: 664 });
+    try {
+      const p = f.page;
+      const cdp = await p.context().newCDPSession(p);
+      for (const [viewport, insets] of [
+        [{ width: 390, height: 664 }, { top: 47, bottom: 34, left: 0, right: 0 }],
+        [{ width: 568, height: 320 }, { top: 0, bottom: 21, left: 44, right: 44 }],
+      ]) {
+        await p.setViewportSize(viewport);
+        await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets });
+        await p.evaluate(() => window.dispatchEvent(new Event("resize")));
+        await expect(p.locator("#status")).toHaveCSS("top", `${insets.top}px`);
+        while (await p.getByRole("button", { name: "← Previous", exact: true, includeHidden: true }).isEnabled())
+          await p.getByRole("button", { name: "← Previous", exact: true }).click();
+        for (let n = 0; n < 20; n++) {
+          await preview(p, `${mode}-safe-${viewport.width}.png`);
+          await fits(p);
+          const next = p.getByRole("button", { name: "Next →", exact: true, includeHidden: true });
+          if (!(await next.isEnabled())) break;
+          await next.click();
+          if (n === 19) throw Error("Unbounded controller pagination");
+        }
+      }
+      expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+      expect(f.errors).toEqual([]);
+    } finally { await f.close(); }
+  });
+
+for (const mode of ["quiz", "closest"])
+  test(`${mode}: larger text keeps every controller page usable`, async ({ browser }) => {
+    const f = await controller(browser, mode);
+    try {
+      const p = f.page;
+      await p.evaluate(() => document.documentElement.style.setProperty("font-size", "150%", "important"));
+      await expect(p.locator("html")).toHaveCSS("font-size", "24px");
+      for (const viewport of [{ width: 320, height: 480 }, { width: 568, height: 320 }]) {
+        await p.setViewportSize(viewport);
+        await expect(p.locator("#game")).toHaveCSS("height", `${viewport.height}px`);
+        while (await p.getByRole("button", { name: "← Previous", exact: true, includeHidden: true }).isEnabled())
+          await p.getByRole("button", { name: "← Previous", exact: true }).click();
+        for (let n = 0; n < 20; n++) {
+          await fits(p);
+          await preview(p, `${mode}-large-text-${viewport.width}.png`);
+          const next = p.getByRole("button", { name: "Next →", exact: true, includeHidden: true });
+          if (!(await next.isEnabled())) break;
+          await next.click();
+          if (n === 19) throw Error("Unbounded controller pagination");
+        }
+      }
+      expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+      expect(f.errors).toEqual([]);
+    } finally { await f.close(); }
+  });
+
+test("Backgammon paged points preserve order and submit the selected source and destination", async ({ browser, browserName }) => {
+  test.skip(browserName !== "chromium", "CSS safe-area emulation requires CDP.");
+  const f = await controller(browser, "backgammon", 4, { width: 568, height: 320 });
+  try {
+    const p = f.page;
+    f.party.pack.dice = [1, 2];
+    f.party.revision++;
+    await p.reload();
+    const cdp = await p.context().newCDPSession(p);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, bottom: 21, left: 44, right: 44 } });
+    await p.evaluate(() => window.dispatchEvent(new Event("resize")));
+    const order = [];
+    for (let n = 0; n < 10; n++) {
+      await fits(p);
+      order.push(...await p.locator(".backgammon-points:visible button").evaluateAll(nodes => nodes.map(node => Number(node.textContent.split(":")[0]))));
+      const next = p.getByRole("button", { name: "Next →", exact: true, includeHidden: true });
+      if (!(await next.isEnabled())) break;
+      await next.click();
+    }
+    expect(order).toEqual([...Array.from({ length: 12 }, (_, n) => 24 - n), ...Array.from({ length: 12 }, (_, n) => n + 1)]);
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    await p.getByRole("button", { name: "12: ● 5", exact: true }).click();
+    await expect(p.locator(".backgammon-points button[data-selected=true]")).toContainText("12:");
+    const destination = p.getByRole("button", { name: "14: ·", exact: true });
+    for (let n = 0; n < 10 && !(await destination.isVisible()); n++) {
+      await p.getByRole("button", { name: "← Previous", exact: true }).click();
+      await fits(p);
+    }
+    await expect(destination).toBeVisible();
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    await destination.click();
+    await expect.poll(() => f.party.pack.points[11]).toBe(4);
+    expect(f.party.pack.points[13]).toBe(1);
+    expect(await p.evaluate(() => window.controllerActions)).toEqual(["play"]);
     expect(f.errors).toEqual([]);
   } finally { await f.close(); }
 });

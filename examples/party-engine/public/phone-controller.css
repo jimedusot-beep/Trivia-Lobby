@@ -187,6 +187,9 @@ body.phone-controller-active #status {
   min-height: 58px;
   overflow-wrap: anywhere;
 }
+.phone-surface .phone-choices:has(> button:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
 .phone-surface :is(.social-entry, .pack-entry) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -436,6 +439,7 @@ body.phone-controller-active #status {
   font-size: 0.75rem;
 }
 .phone-surface .backgammon-points {
+  grid-template-columns: repeat(var(--controller-board-columns, 6), minmax(0, 1fr));
   gap: 3px;
   margin: 0;
 }
@@ -720,6 +724,24 @@ body.phone-controller-active #status {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* On very short keyboard viewports, keep the current response and submit
+   together. The full private prompt remains in Game info after dismissing it. */
+.phone-shell[data-keyboard="true"][data-cramped="true"] > .phone-pager {
+  display: none;
+}
+.phone-shell[data-keyboard="true"][data-cramped="true"] .phone-surface > article {
+  padding: 6px;
+}
+.phone-shell[data-keyboard="true"][data-cramped="true"] .phone-surface > article > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.phone-controller-active #content .phone-shell[data-keyboard="true"][data-cramped="true"] .phone-surface > article > h2 {
+  -webkit-line-clamp: 1;
+}
 @media (max-height: 550px) {
   .phone-hud {
     flex-wrap: nowrap;
@@ -921,7 +943,7 @@ body.phone-controller-active #status {
     font-size: 0.75rem !important;
   }
   .phone-surface .backgammon-points {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--controller-board-columns, 12), minmax(0, 1fr));
     gap: 1px;
   }
   .phone-surface .family-bingo-board {

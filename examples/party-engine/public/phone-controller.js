@@ -395,7 +395,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     destroyed = false,
     requested;
   const choiceGroups = [
-    ...surface.querySelectorAll(".phone-choices,.card-hand:not(.poker-hand)"),
+    ...surface.querySelectorAll(".phone-choices,.card-hand:not(.poker-hand),.backgammon-points"),
   ].map((root) => ({
     root,
     children: [...root.children],
@@ -480,6 +480,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
           (matchMedia("(pointer:coarse)").matches &&
             (viewport?.height ?? innerHeight) < 450)),
     );
+    shell.dataset.cramped = String((viewport?.height ?? innerHeight) < 300);
     surface.style.setProperty("--play-height", `${stage.clientHeight}px`);
     // Repartition on rotation as well as first mount. Reuse the actual action
     // nodes so handlers, private hands, and input values stay intact.
@@ -490,8 +491,28 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       pages[saved.page]?.[0]?.querySelector("button,input,textarea,select") ??
       pages[saved.page]?.[0];
     let regrouped = false;
+    // Reserve navigation before sizing board groups, including the width lost
+    // to landscape safe areas. Point buttons keep their existing action nodes.
+    blocks.forEach((node) => { node.hidden = false; });
+    pager.hidden = false;
     for (const group of choiceGroups) {
-      const count = compact ? 4 : 6;
+      let count = compact ? 4 : 6;
+      if (group.root.matches(".backgammon-points")) {
+        const landscape = matchMedia("(max-height:450px) and (orientation:landscape)").matches;
+        const style = getComputedStyle(group.root);
+        const columnGap = parseFloat(style.columnGap) || 0;
+        const rowGap = parseFloat(style.rowGap) || 0;
+        const paddingX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+        const paddingY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+        const columns = landscape && group.root.clientWidth >= 12 * 44 + 11 * columnGap + paddingX ? 12 : 6;
+        for (const part of group.parts)
+          part.style.setProperty("--controller-board-columns", columns);
+        const fixedHeight = blocks.filter((node) => node.dataset.pinned)
+          .reduce((sum, node) => sum + node.getBoundingClientRect().height + 8, 0);
+        const available = stage.clientHeight - fixedHeight - paddingY - 16;
+        const rows = Math.max(1, Math.min(4, Math.floor((available + rowGap) / (44 + rowGap))));
+        count = Math.min(group.children.length, columns * rows);
+      }
       if (group.count === count) continue;
       regrouped = true;
       group.count = count;

@@ -1,5 +1,10 @@
 # Phone controller ergonomics — Agent 03
 
+This records the first pass at `197420d`. The [device-readiness follow-up](PHONE_DEVICE_READINESS_FOLLOWUP.md)
+adds combined keyboard/safe-area/large-text checks and paged Backgammon targets;
+its verification record supersedes the first-pass totals below. Current hosted CI
+results are recorded in PR #97.
+
 Branch: `feature/gx2-phone-ux`. Baseline: `55414cd` (main, October 29, 2026).
 Scope: shared controller adapter, its CSS and controller-specific tests. No host
 renderer, race physics, scoring, protocol, server or account changes.
