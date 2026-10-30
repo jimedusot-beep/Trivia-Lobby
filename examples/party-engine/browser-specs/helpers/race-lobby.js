@@ -41,13 +41,28 @@ export async function lobby(browser, count = 2, viewport = { width: 390, height:
       for (const p of players) await expect(p.getByRole("group", { name: "Racing controls" })).toBeVisible();
     },
     async close() {
+      const acceptEnd = dialog => dialog.accept();
+      host.once("dialog", acceptEnd);
       try {
-        const end = host.getByRole("button", { name: "End this match", exact: true });
-        if (await end.isVisible()) {
-          host.once("dialog", dialog => dialog.accept());
-          await end.click(); await expect(host.locator("#heading")).toContainText("finished");
+        // Fixture housekeeping, not a user-click assertion: find and activate in
+        // one DOM task so a heat transition cannot strand a locator click.
+        // Keep ending active matches so later tests do not hit the race limit.
+        const ending = await host.evaluate(() => {
+          const end = [...document.querySelectorAll("button")]
+            .find(button => button.textContent === "End this match");
+          if (!end) return false; // The heat may already have reached reveal.
+          end.click();
+          return true;
+        });
+        if (ending) {
+          // The server can complete the heat while the end request is in flight.
+          // Actual user-click/end/return behavior remains asserted in race.spec.js.
+          await expect.poll(() => snapshots.get(host)?.phase).toMatch(/^(finished|reveal)$/);
         }
-      } finally { await Promise.all(contexts.map(c => c.close())); }
+      } finally {
+        host.removeListener("dialog", acceptEnd);
+        await Promise.all(contexts.map(c => c.close()));
+      }
     } };
 }
 export async function cleanPage(page) {

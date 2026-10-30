@@ -1,65 +1,32 @@
-# Preserve chosen rules across countdown recovery
+# Countdown recovery: preserve selected game rules
 
-A restart during countdown previously discarded validated `packSettings`. Color
-Clash then opened with default bot/stacking/timer settings; a selected Whist table
-could open as Poker. The explicit checkpoint allowlist now retains this field.
-Older checkpoints without it continue to load with existing defaults.
+Milestone 2 integration — 2026-10-30.
 
-## Current-main integration
+## Problem and minimal fix
 
-Updated PR #81 against main `4f7c3211e91fb1568dd3fa60c3929df87df83b39`.
-The sole merge conflict was the appended recovery tests: preserve both the newer
-pending-create/join-intent recovery test and the selected-settings regression.
-All newer poker/Homeward validation, queue limits, controller, tilt, TV and race
-changes remain from main. No duplicate merge of the combined PR #84 is needed.
+A server restart during a countdown could discard the validated `packSettings` for the selected game. Color Clash then fell back to the wrong bots, stacking or timer; Whist could open with Poker rules.
 
-The runtime change is one explicit field in `party-checkpoint.js`. No schema,
-dependency, credential, game rules, private-state projection or deployment change.
-The checkpoint remains internal server state; it is not sent directly to guests.
+The existing fix from [PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81) adds only `packSettings` to the explicit checkpoint field allowlist in `examples/party-engine/party-checkpoint.js`. The checkpoint remains private server state. No protocol, schema, dependencies, deployment configuration, scoring, or extra networking engine is added.
 
-## Validation
+## Integration with Milestone 1
 
-- Pre-fix regression demonstrated: removing only the allowlist field made the
-  selected-settings test fail with `undefined` instead of the chosen settings.
-- JSON checkpoint round-trip preserves Color Clash bot count, stacking and turn
-  timer, and the Whist preset; the recovered countdown opens those actual rules.
-- A legacy checkpoint with no settings still opens Color Clash with safe defaults.
-- Two real-WebSocket tests persist an acknowledged countdown, stop the server,
-  advance the clock and resume the host after restart. The same match opens with
-  the exact saved Color Clash or Whist settings.
-- `npm run check`: passed.
-- `npm test`: 115 passed, 0 failed, 0 skipped.
-- `cd examples/party-engine && npm test`: 259 passed, 0 failed, 0 skipped.
-- `npm run build`: passed with the existing chunk/SVG warnings.
-- Focused Chromium `entry-recovery.spec.js`: 8 passed, 0 failed, 0 skipped
-  using Chrome for Testing headless shell 156.0.8078.47.
-- Diff against the integrated main baseline passes whitespace checks.
+This branch now combines latest `main` `b255470fa93357fc4c0e13d713377ef4bde6ba1c` (including [PR #110](https://github.com/jimedusot-beep/Trivia-Lobby/pull/110)) with PR #81's recovery-specific runtime fix and tests only. It intentionally **does not** replay the superseded TV/tilt files, capture script, or #107/#109 history. The merged Milestone 1 browser fixes, the bounded input queues from #82, the existing 31 games, QR entry, the original host UI, and current database migrations are preserved.
 
-Local environment: Linux, Node 24.22.1. Hosted CI, database-backed acceptance and
-physical-device checks remain separate gates. No merge into main or deployment.
+Do not merge historical combined [PR #84](https://github.com/jimedusot-beep/Trivia-Lobby/pull/84) wholesale: its queue and Grand Prix changes overlap commits already on `main`. Evaluate only genuinely missing recovery compatibility scenarios separately.
 
-## Guest-browser CI follow-up
+## Regression coverage
 
-The first updated head `3632d63` passed database/integrated browser acceptance,
-production startup, recovery and application checks. Guest-browser jobs failed on
-unrelated TV tests: shallow checkouts lacked historical `55414cd`, and Firefox /
-WebKit computed the 33.6px font as 33.625px / 33.599998px. No recovery test failed.
+`tests/party-recovery.test.ts` already includes:
+- JSON checkpoint round-trips for custom Color Clash rules and the Whist preset.
+- Fallback to safe defaults for legacy snapshots without the field.
+- Two actual WebSocket server-restart tests that commit the countdown, wait for acknowledgment, restart and advance time, resume the host, and confirm that the original match and saved rules survive.
+- All preexisting create/join/recovery tests retained.
 
-The combined candidate incorporates main #106 (`0c0ebfb`) and the exact reviewed
-#107 head `55d6e44`. Historical capture is retained as an explicit manual script,
-while routine functional browser tests need only current source. Font assertions
-use a 0.05px bound; tilt checks retain CSS min-height >=44px and allow only 0.01px
-geometry rounding. No controller styling or game rules are relaxed.
+The original PR's earlier local evidence was 115 root application tests, 259 standalone tests, TypeScript and build passing; **those results predate this merge and must not be reported as verification of the new head**. Required gates for this integrated branch: root CI, standalone guest engine plus Chromium/Firefox/WebKit browsers, PostgreSQL 16/18 recovery, production artifact startup/restart, encrypted backup fixture, local WebSocket evidence, and Render blueprint checks.
 
-This is a branch integration only: neither #107 nor #81 is merged into main by
-this work. #107 remains independently reviewable; its commits are preserved as
-ancestors, so do not reimplement or duplicate them when releasing the combination.
-Once #107 is merged, #81's diff reduces to its recovery-specific files again.
-The existing main #106 fetch step is retained; no new workflow change is made.
+## Remaining work and limitations
 
-Validation repeated on this combined tree: typecheck and build passed; 115 root
-and 259 guest tests passed with zero failures/skips. Chromium TV catalog, tilt and
-entry-recovery suites passed 21/21, zero failures/skips, in 1.1 minutes. Manual
-capture script syntax and the diff whitespace check passed. Hosted cross-browser
-CI must pass on the newly published head; prior failed runs are not described as
-successful. No merge or deployment.
+- Inspect all CI results on this PR's exact new SHA before approval.
+- Synthetic or in-memory server restart testing is not a physical-phone test or production-capacity guarantee.
+- Live Render still requires separate explicit deployment approval and release validation.
+- No live database mutation, paid resource creation, or production deployment is part of this integration.

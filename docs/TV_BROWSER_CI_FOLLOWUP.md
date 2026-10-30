@@ -1,3 +1,7 @@
+# Historical handoff from PR #107
+
+This records the standalone patch's validation and scope. The consolidated Milestone 1 branch additionally removes the obsolete workflow history prerequisite; see `RELEASE_READINESS_2026_10_30.md` and its PR for current integration evidence.
+
 # TV browser CI follow-up
 
 Base: main `4f7c3211e91fb1568dd3fa60c3929df87df83b39` (merged #105).
