@@ -25,4 +25,3 @@ Existing Playwright and axe-core remain development/test dependencies. Three.js 
 ## Changed original project files
 
 The TV/tilt corrections and manual capture script originate from this repository's PR #107 (`abdb767`, `55d6e44`); racing housekeeping originates from PR #109 (final head `01bf86e`). Both source heads are preserved as ancestors on the integration branch. They adapt the project's own tests using public Playwright APIs; they do not copy upstream Playwright implementation. `.github/workflows/party-engine.yml` removes obsolete historical-fixture fetching. No third-party modified-file list or new NOTICE is required for this milestone.
-
