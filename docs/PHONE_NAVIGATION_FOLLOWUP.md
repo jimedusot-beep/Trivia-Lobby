@@ -1,87 +1,38 @@
-# Phone navigation continuity
+# Phone controller navigation continuity — Milestone 3
 
-Follow-up to merged phone PR #97, initially based on main `4f7c321` and updated
-through `0c0ebfb` / #106 (including TV, race visual and tilt changes).
-This branch changes only the phone
-presentation adapter, its browser spec and this handoff. No new dependencies,
-assets, protocols, game rules or TV/tilt implementation changes.
+Integration date: 2026-10-30.
+Reference: [original PR #108](https://github.com/jimedusot-beep/Trivia-Lobby/pull/108).
+Integrated against current `main` `b255470fa93357fc4c0e13d713377ef4bde6ba1c`, which contains completed [Milestone 1 PR #110](https://github.com/jimedusot-beep/Trivia-Lobby/pull/110). This branch contains only the phone-controller changes originally developed and locally validated in #108, their browser regressions, and this refreshed handoff.
 
-## Problems reproduced
+## The bugs
 
-- In a twenty-player Who's Most Likely game, focus the last visible candidate
-  at 844×390, then rotate to 320×480. The original code hides that candidate
-  because page capacity changes without changing the choice-group size.
-- Open the full question from the prompt button, receive a room update, then
-  press Escape. The original code sends focus to Game info rather than back
-  to the prompt that opened it.
-- A room broadcast also drops focus from nomination buttons in Who's Most
-  Likely and Secret Impostor voting. They had no identity for the application's
-  existing focus restoration to find. The new regression failed before the fix.
+- A focused candidate can vanish when a 20-player nomination screen changes from 844×390 landscape to 320×480 portrait. Page capacity changes, even if the choice-group size stays the same.
+- Following a room broadcast, closing the full-prompt dialog can return keyboard focus to Game info rather than the actual opener.
+- Nomination buttons in Who's Most Likely and Secret Impostor lose focus after an authoritative room update because they lack stable IDs.
 
-Both new regression tests failed against the unchanged main adapter before the
-fix. A further round-trip rotation check caught an intermediate implementation
-that shifted its reference to the first item on each newly computed page.
+## Behavior introduced
 
-## Behavior
+- Preserve the same real DOM task node as the page anchor during viewport recalculation; deliberate Previous/Next actions still change the anchor. No action is submitted merely by rotating or navigating.
+- Track the actual help-dialog activation button; preserve stable identities for prompt, round details and Pen tools. Restore focus to an enabled, visible opener after Escape/Back, or use the existing menu fallback.
+- Give social nomination buttons stable IDs derived from the server's public candidate player IDs, never nickname text, and reuse existing vote actions. No extra network protocol or state mutation.
 
-Layout retains the same task node across page recalculations and repeated
-rotations. Explicit Previous/Next navigation selects a new reference. Focusing
-the menu does not discard it. Existing button nodes and action closures are
-preserved; resizing and browsing never submit a nomination.
+## Browser regressions included
 
-Game-help dialogs remember the actual activation target, including pointer
-activation in browsers that do not focus clicked buttons. Prompt, round-details
-and Pen tools buttons have stable identities across authoritative remounts.
-Closing help returns to that visible, enabled opener, with the appropriate menu
-button retained as a fallback. Existing modal keyboard isolation remains.
+Six originally developed Playwright cases cover: focused nomination surviving rotation with exactly one Enter submission; prompt focus return through a host-disconnected broadcast; preserving candidate group through portrait→landscape while menu has focus; Pen tools preferences and Back/Escape return; and 20-player broadcast nomination identity continuity in both Who's Most Likely and Secret Impostor. All verify no unintended action during navigation or broadcast.
 
-Nomination buttons use the candidate's existing public player ID, preserving
-any native ID. A real broadcast can now restore the exact player's button using
-the existing same-phase focus logic. No ID is inferred from nickname text, and
-the existing action closures remain responsible for sending the vote.
+The prior PR head `29f2adf68f035b2ce0a8a5b41bd69cfb389379cb` passed local TypeScript, 111 root tests, 259 guest tests, build and 55 focused Chromium phone tests with zero failures/skips. **These are historical local results only**, not verification of the integrated head; hosted full CI, PostgreSQL recovery and Chromium/Firefox/WebKit remain mandatory gates. Existing browser-specific graphics/CDP skips, if any, must be counted and disclosed rather than described as passes.
 
-Six added cross-browser cases cover:
+## Integration boundaries
 
-1. Focused candidate continuity after rotation, followed by a real socket
-   submission using Enter: exactly one accepted nomination.
-2. Full-prompt focus return after a host-disconnection broadcast/remount.
-3. Candidate-group continuity through portrait and back to landscape while
-   focus stays on the menu, with no game action.
-4. Pen tools focus return through both Back and Escape, preserving selected
-   blue ink and bold width, with no extra play action after word selection.
-5. Twenty-player nomination focus after a host-disconnection broadcast in both
-   Who's Most Likely and Secret Impostor voting (two cases). Each checks that
-   navigation/broadcasts send no action, Enter sends exactly one response and
-   the authoritative server map contains the intended target player ID.
+Current `main` supplies the base tree. Only `examples/party-engine/public/phone-controller.js` and `examples/party-engine/browser-specs/phone-controllers.spec.js` from #108 were applied. All other files are left exactly as in current main. In particular, TV/tilt/browser test corrections, racing fixture fixes and CI history changes from #110 remain unchanged; bounded WebSocket queues from #82 remain in place. No CSS, renderer, host UI, server, schema, auth, game rules, scoring, migrations, dependencies, copied third-party source or assets are changed.
 
-These cases add no browser-specific skips. Existing CDP/GPU skips are unchanged.
+[Milestone 2 PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81) is separately open and must not be accidentally merged here. Its checkpoint-only changes do not overlap these phone UI files. Check both PRs against their latest merge bases when integrating later.
 
-## Verification
+## Required follow-up
 
-Local environment: Node 24.22.1, Playwright 1.64.1, Chrome for Testing headless
-shell 156.0.8078.47 on Linux/software rendering.
+1. Run all six hosted workflows on this **exact** combined head. Inspect any failed/retried browser journeys and artifacts rather than weakening assertions, adding skips or merely extending timeouts.
+2. Review regression behavior for Enter once, correct nominated player ID, correct focus after repeated broadcast, 31-game catalog, pointer/touch behavior and no scrolling at 320px.
+3. Validate manually on a real iPhone Safari and Android Chrome, including rotation, soft keyboard and, where relevant, hardware keyboard/switch or assistive technology. Hosted emulation alone cannot prove physical-device behavior.
+4. Keep this PR draft and unmerged until review; do not deploy Render or touch production data without separate explicit approval.
 
-- `npm run check`: passed.
-- `npm test`: 111 passed, zero failed/skipped.
-- `npm --prefix examples/party-engine test`: 259 passed, zero failed/skipped.
-- `npm run build`: passed, with existing bundle-size warnings.
-- All 55 controller Chromium cases passed, zero failures/skips, in 1.1 minutes.
-  The two new broadcast cases also passed in a focused run (3.2 seconds).
-  Supplemental drawing/tilt results and hosted CI status are in the pull request;
-  earlier hosted results are identified separately from this updated runtime.
-
-Run the full phone suite with:
-
-```sh
-CHROMIUM_EXECUTABLE_PATH=/path/to/chrome-headless-shell \
-  npm --prefix examples/party-engine run test:browser -- \
-  phone-controllers.spec.js --reporter=line
-```
-
-The adapter grows from 25,011 to 26,470 bytes, or 7,182 to 7,677 bytes gzipped
-with Node zlib defaults: 495 additional compressed bytes. The broadcast addition
-accounts for 174 bytes of that compressed growth. No new network calls
-or per-frame gameplay work. No physical phone or screen-reader results are
-claimed. Repeat the same rotation/help checks on iPhone/Safari and
-Android/Chrome, including external keyboard or switch navigation where used.
-No merge or deployment is performed by this follow-up.
+Rollback: revert this focused phone controller PR. No database migration required.
