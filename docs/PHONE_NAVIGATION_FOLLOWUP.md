@@ -1,7 +1,8 @@
 # Phone navigation continuity
 
-Follow-up to merged phone PR #97, based on main `4f7c321` (which also includes
-the TV, race visual and tilt changes). This branch changes only the phone
+Follow-up to merged phone PR #97, initially based on main `4f7c321` and updated
+through `0c0ebfb` / #106 (including TV, race visual and tilt changes).
+This branch changes only the phone
 presentation adapter, its browser spec and this handoff. No new dependencies,
 assets, protocols, game rules or TV/tilt implementation changes.
 
@@ -13,6 +14,9 @@ assets, protocols, game rules or TV/tilt implementation changes.
 - Open the full question from the prompt button, receive a room update, then
   press Escape. The original code sends focus to Game info rather than back
   to the prompt that opened it.
+- A room broadcast also drops focus from nomination buttons in Who's Most
+  Likely and Secret Impostor voting. They had no identity for the application's
+  existing focus restoration to find. The new regression failed before the fix.
 
 Both new regression tests failed against the unchanged main adapter before the
 fix. A further round-trip rotation check caught an intermediate implementation
@@ -31,7 +35,12 @@ and Pen tools buttons have stable identities across authoritative remounts.
 Closing help returns to that visible, enabled opener, with the appropriate menu
 button retained as a fallback. Existing modal keyboard isolation remains.
 
-Four added cross-browser cases cover:
+Nomination buttons use the candidate's existing public player ID, preserving
+any native ID. A real broadcast can now restore the exact player's button using
+the existing same-phase focus logic. No ID is inferred from nickname text, and
+the existing action closures remain responsible for sending the vote.
+
+Six added cross-browser cases cover:
 
 1. Focused candidate continuity after rotation, followed by a real socket
    submission using Enter: exactly one accepted nomination.
@@ -40,6 +49,10 @@ Four added cross-browser cases cover:
    focus stays on the menu, with no game action.
 4. Pen tools focus return through both Back and Escape, preserving selected
    blue ink and bold width, with no extra play action after word selection.
+5. Twenty-player nomination focus after a host-disconnection broadcast in both
+   Who's Most Likely and Secret Impostor voting (two cases). Each checks that
+   navigation/broadcasts send no action, Enter sends exactly one response and
+   the authoritative server map contains the intended target player ID.
 
 These cases add no browser-specific skips. Existing CDP/GPU skips are unchanged.
 
@@ -52,8 +65,10 @@ shell 156.0.8078.47 on Linux/software rendering.
 - `npm test`: 111 passed, zero failed/skipped.
 - `npm --prefix examples/party-engine test`: 259 passed, zero failed/skipped.
 - `npm run build`: passed, with existing bundle-size warnings.
-- Four new focused browser cases: passed. Full controller and supplemental
-  drawing/tilt results, plus hosted CI status, are recorded in the pull request.
+- All 55 controller Chromium cases passed, zero failures/skips, in 1.1 minutes.
+  The two new broadcast cases also passed in a focused run (3.2 seconds).
+  Supplemental drawing/tilt results and hosted CI status are in the pull request;
+  earlier hosted results are identified separately from this updated runtime.
 
 Run the full phone suite with:
 
@@ -63,8 +78,9 @@ CHROMIUM_EXECUTABLE_PATH=/path/to/chrome-headless-shell \
   phone-controllers.spec.js --reporter=line
 ```
 
-The adapter grows from 25,011 to 26,017 bytes, or 7,182 to 7,503 bytes gzipped
-with Node zlib defaults: 321 additional compressed bytes. No new network calls
+The adapter grows from 25,011 to 26,470 bytes, or 7,182 to 7,677 bytes gzipped
+with Node zlib defaults: 495 additional compressed bytes. The broadcast addition
+accounts for 174 bytes of that compressed growth. No new network calls
 or per-frame gameplay work. No physical phone or screen-reader results are
 claimed. Repeat the same rotation/help checks on iPhone/Safari and
 Android/Chrome, including external keyboard or switch navigation where used.

@@ -466,6 +466,38 @@ test("rotation keeps the focused candidate visible when page capacity changes", 
   } finally { await f.close(); }
 });
 
+for (const mode of ["likely", "impostor"])
+test(`${mode}: a room broadcast keeps the focused nomination on its current page`, async ({ browser }) => {
+  const f = await controller(browser, mode, 20);
+  try {
+    const p = f.page;
+    if (mode === "impostor") {
+      f.time.advance(45001);
+      await expect(p.locator("#heading")).toContainText("voting");
+    }
+    await p.getByRole("button", { name: "Next →", exact: true }).click();
+    const choice = p.locator(".phone-choices:visible button:enabled").last();
+    const name = await choice.textContent();
+    const index = await choice.evaluate(button =>
+      [...document.querySelectorAll(".phone-choices button")].indexOf(button));
+    const target = f.party.roster[index];
+    expect(target).toBeTruthy();
+    await choice.focus();
+    f.host.ws.close();
+    await expect(p.locator(".phone-originals")).toContainText("Host disconnected");
+    const restored = p.locator(".phone-choices button").filter({ hasText: name });
+    await expect(restored).toBeVisible();
+    await expect(restored).toBeFocused();
+    expect(await p.evaluate(() => window.controllerActions)).toEqual([]);
+    await p.keyboard.press("Enter");
+    await expect(p.locator("#status")).toHaveText("Submission accepted.");
+    await expect.poll(() => (mode === "impostor" ? f.party.social.votes : f.party.social.responses)
+      .get(f.party.roster[0])).toBe(target);
+    expect(await p.evaluate(() => window.controllerActions)).toEqual(["respond"]);
+    expect(f.errors).toEqual([]);
+  } finally { await f.close(); }
+});
+
 test("closing full-prompt help returns to its opener after a room update", async ({ browser }) => {
   const f = await controller(browser, "closest");
   try {

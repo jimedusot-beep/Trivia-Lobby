@@ -337,6 +337,14 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       for (const node of take(selector)) add(node);
     if (state.charades?.canMark) add(originals.querySelector("#current-clue"));
     const buttons = direct.filter((n) => n.matches("button"));
+    // Social renderers emit one button per candidate, in projection order.
+    // Player identity keeps focus stable across broadcasts without depending
+    // on nickname text. Preserve IDs supplied by the native renderer.
+    const candidates = state.social?.candidates;
+    if (candidates?.length === buttons.length)
+      buttons.forEach((button, index) => {
+        if (!button.id) button.id = `phone-candidate-${candidates[index].id}`;
+      });
     choices(buttons);
   }
   // A waiting player gets useful feedback, not a blank panel. Full state remains
