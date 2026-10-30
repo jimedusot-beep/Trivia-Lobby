@@ -1,0 +1,57 @@
+name: Measured UI performance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/measured-ui-performance.yml"
+      - "script/measure-build-assets.mjs"
+      - "examples/party-engine/performance-playwright.config.js"
+      - "examples/party-engine/performance-specs/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: measured-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Record actual compiled bundle and gzip bytes
+        run: node script/measure-build-assets.mjs
+      - name: Install existing guest engine test dependencies
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: examples/party-engine/package-lock.json
+      - run: npm ci
+        working-directory: examples/party-engine
+      - name: Install Chromium for local browser measurement
+        working-directory: examples/party-engine
+        timeout-minutes: 7
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
+          npx playwright install --with-deps chromium
+      - name: Record local page loading and real Grand Prix frame cadence
+        working-directory: examples/party-engine
+        run: npx playwright test --config=performance-playwright.config.js --project=chromium --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: measured-ui-bundle-and-rendering
+          path: |
+            performance-results/bundle-sizes.json
+            examples/party-engine/performance-results/
+            examples/party-engine/test-results/
+          if-no-files-found: warn
+          retention-days: 14
