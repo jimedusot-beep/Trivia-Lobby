@@ -34,6 +34,32 @@ const $ = (id) => document.getElementById(id);
 const status = (text) => {
   $("status").textContent = text;
 };
+
+// This only changes the host's local display. It does not alter rooms, scores,
+// player identities or server traffic. Browser fullscreen requires a real click.
+function syncTvFullscreen() {
+  const active = document.fullscreenElement === $("game");
+  $("tv-fullscreen").textContent = active ? "Exit TV full screen" : "Enter TV full screen";
+  $("tv-fullscreen").setAttribute("aria-pressed", String(active));
+}
+$("tv-fullscreen").addEventListener("click", async () => {
+  if (state?.role !== "host" || $("game").hidden) return;
+  const info = $("tv-fullscreen-status");
+  info.textContent = "";
+  try {
+    if (document.fullscreenElement === $("game")) {
+      await document.exitFullscreen();
+    } else if (typeof $("game").requestFullscreen === "function") {
+      await $("game").requestFullscreen();
+    } else {
+      info.textContent = "Full screen is unavailable here. On Windows, try F11 for browser full screen.";
+    }
+  } catch {
+    info.textContent = "The browser couldn't enter full screen. On Windows, try F11.";
+  }
+  syncTvFullscreen();
+});
+document.addEventListener("fullscreenchange", syncTvFullscreen);
 try {
   credential = JSON.parse(sessionStorage.getItem(credentialKey));
 } catch {}
@@ -276,6 +302,7 @@ function render() {
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
+  $("tv-host-tools").hidden = !host;
   const invitation = $("party-invitation");
   invitation.hidden = false;
   if (invitationCode !== state.code) {
