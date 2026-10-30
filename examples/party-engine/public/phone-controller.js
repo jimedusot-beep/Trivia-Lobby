@@ -58,7 +58,8 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   timer.setAttribute("aria-live", "off");
   const prompt = titleFor(state);
   if (prompt) {
-    const title = control(prompt, () => open("info"), shell);
+    const title = control(prompt, (event) => open("info", event.currentTarget), shell);
+    title.id = "phone-prompt";
     title.className = "phone-prompt";
     title.setAttribute("aria-label", `Read full prompt: ${prompt}`);
     title.title = "Read the complete prompt and game information";
@@ -86,7 +87,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     ["scores", "Scores"],
     ["options", "Options"],
   ]) {
-    menuButtons[name] = control(label, () => open(name), footer);
+    menuButtons[name] = control(label, (event) => open(name, event.currentTarget), footer);
     // app.js restores focus by ID after an authoritative state broadcast.
     menuButtons[name].id = `phone-menu-${name}`;
   }
@@ -158,7 +159,8 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     if (state.pack?.kind === "draw" && state.pack.word)
       make("p", `The word was: ${state.pack.word}`, result);
     make("p", "Watch the shared screen. Your host will continue.", result);
-    control("See round details", () => open("info"), result);
+    const details = control("See round details", (event) => open("info", event.currentTarget), result);
+    details.id = "phone-round-details";
     add(result);
   } else if (state.pack?.kind === "draw") {
     const board = originals.querySelector(".doodle-pad");
@@ -177,15 +179,17 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     const tools = make("div", undefined, workspace, "phone-drawing-actions");
     for (const button of take(".drawing-tools button"))
       if (/^(Undo|Redo)/.test(button.textContent)) tools.append(button);
-    if (state.pack.canDraw)
-      control(
+    if (state.pack.canDraw) {
+      const penTools = control(
         "Pen tools",
-        () => {
-          open("info");
+        (event) => {
+          open("info", event.currentTarget);
           originals.querySelector(".drawing-tools select")?.focus();
         },
         tools,
       );
+      penTools.id = "phone-pen-tools";
+    }
     const form = originals.querySelector(".pack-entry");
     if (form) workspace.append(form);
     if (state.pack.stage !== "choose") add(workspace);
@@ -333,6 +337,14 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       for (const node of take(selector)) add(node);
     if (state.charades?.canMark) add(originals.querySelector("#current-clue"));
     const buttons = direct.filter((n) => n.matches("button"));
+    // Social renderers emit one button per candidate, in projection order.
+    // Player identity keeps focus stable across broadcasts without depending
+    // on nickname text. Preserve IDs supplied by the native renderer.
+    const candidates = state.social?.candidates;
+    if (candidates?.length === buttons.length)
+      buttons.forEach((button, index) => {
+        if (!button.id) button.id = `phone-candidate-${candidates[index].id}`;
+      });
     choices(buttons);
   }
   // A waiting player gets useful feedback, not a blank panel. Full state remains
@@ -392,6 +404,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   );
   leave.id = "phone-leave";
   let pages = [],
+    pageAnchor,
     destroyed = false,
     requested;
   const choiceGroups = [
@@ -402,8 +415,11 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     parts: [root],
     count: 0,
   }));
-  function open(name) {
+  function open(name, opener) {
     releaseControls?.();
+    // Keep a stable identity across authoritative remounts. Pointer activation
+    // does not focus buttons in every browser, so use the actual event target.
+    if (opener) saved.returnFocusId = opener.id;
     saved.dialog = name;
     for (const [key, panel] of Object.entries(panels))
       panel.hidden = key !== name;
@@ -421,7 +437,12 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       Object.entries(panels).map(([key, panel]) => [key, panel.scrollTop]),
     );
     saved.dialog = "";
-    menuButtons[name]?.focus({ preventScroll: true });
+    const opener = byId(saved.returnFocusId);
+    const target = opener && shell.contains(opener) &&
+      opener.getClientRects().length && !opener.disabled
+      ? opener : menuButtons[name];
+    saved.returnFocusId = "";
+    target?.focus({ preventScroll: true });
   };
   dialog.addEventListener("close", closed);
   // Native dialog focus is trapped; gameplay keyboard listeners must also stay
@@ -451,6 +472,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
             !n.disabled &&
             !n.hidden,
         );
+      pageAnchor = first ?? pages[saved.page]?.[0];
       first?.focus({ preventScroll: true });
     }
   }
@@ -487,10 +509,9 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     const focused = surface.contains(document.activeElement)
       ? document.activeElement
       : null;
-    const anchor = focused ??
+    const anchor = focused ?? pageAnchor ??
       pages[saved.page]?.[0]?.querySelector("button,input,textarea,select") ??
       pages[saved.page]?.[0];
-    let regrouped = false;
     // Reserve navigation before sizing board groups, including the width lost
     // to landscape safe areas. Point buttons keep their existing action nodes.
     blocks.forEach((node) => { node.hidden = false; });
@@ -514,7 +535,6 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
         count = Math.min(group.children.length, columns * rows);
       }
       if (group.count === count) continue;
-      regrouped = true;
       group.count = count;
       for (const part of group.parts.slice(1)) {
         blocks.splice(blocks.indexOf(part), 1);
@@ -564,15 +584,21 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       pages[pages.length - 1].push(block);
       used += height;
     }
-    if (regrouped && anchor) {
+    // Page capacity can change without repartitioning choices (for example,
+    // four-column landscape to two-column portrait). Follow the same task node
+    // on every layout, rather than keeping a page number that now hides it.
+    if (anchor) {
       const index = pages.findIndex((nodes) =>
         nodes.some((node) => node === anchor || node.contains(anchor)),
       );
-      if (index >= 0) saved.page = index;
+      if (index >= 0) {
+        saved.page = index;
+        pageAnchor = anchor;
+      }
     }
     show(saved.page);
     if (
-      focused && regrouped &&
+      focused && focused.getClientRects().length &&
       document.activeElement !== focused && !focused.disabled
     )
       focused.focus({ preventScroll: true });
