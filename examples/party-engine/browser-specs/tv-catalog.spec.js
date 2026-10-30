@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
 
 test('TV library preserves all games, filters, searches, and keyboard launch', async ({ page }) => {
   await page.setViewportSize({width:1920,height:1080});
@@ -34,18 +33,6 @@ for (const width of [320,1280,1920]) test(`catalog fits ${width}px and handles e
   await expect(page.locator('.pick-game-spotlight')).toBeHidden();
   await page.getByRole('searchbox').fill('');
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(31);
-});
-
-test('capture baseline at identical TV viewport',async({page})=>{
-  for(const file of ['game-catalog.js','game-catalog.css','lobby-theme.css']) {
-    const body=execFileSync('git',['show',`55414cd:examples/party-engine/public/${file}`],{encoding:'utf8'});
-    await page.route(`**/${file}`,route=>route.fulfill({body,contentType:file.endsWith('js')?'text/javascript':'text/css'}));
-  }
-  await page.setViewportSize({width:1920,height:1080}); await page.goto('/');
-  await expect(page.locator('.pick-game-card')).toHaveCount(31);
-  await page.locator('#pick-games').scrollIntoViewIfNeeded();
-  await page.evaluate(()=>window.scrollTo(0,document.querySelector('#pick-games').offsetTop-20));
-  await page.screenshot({path:'test-results/gx2-catalog-before.png'});
 });
 
 test('every host and lobby catalog entry retains its existing launch ID',async({page})=>{
@@ -123,7 +110,10 @@ test('TV lobby width and invitation styling exclude controllers and active play'
   await page.getByRole('button', { name: 'Create host screen', exact: true }).click();
   await expect(page.locator('#mode')).toBeVisible();
   await expect(page.locator('main')).toHaveCSS('max-width', '1560px');
-  await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '33.6px');
+  // Engines quantize fractional font sizes differently (Firefox reports 33.625px).
+  // Keep a tight 0.05px bound so the 20px controller style cannot pass here.
+  await expect.poll(async () => Math.abs(await page.locator('.lobby-invite-card strong')
+    .evaluate(node => parseFloat(getComputedStyle(node).fontSize)) - 33.6)).toBeLessThan(0.05);
   await page.screenshot({ path: 'test-results/tv-lobby-wide.png' });
   for (const controller of ['phone-controller-active', 'race-controller-active']) {
     await page.evaluate(c => document.body.classList.add(c), controller);
