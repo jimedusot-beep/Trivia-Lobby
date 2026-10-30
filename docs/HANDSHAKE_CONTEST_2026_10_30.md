@@ -29,8 +29,8 @@ Prepared October 30, 2026, for **Trivia Lobby**, the existing project. This docu
 ## Judge's 90-second path
 
 1. On a computer, open https://trivia-lobby.onrender.com/party/ and choose **Create host screen**. Render Free may have been asleep; wake it before judging.
-2. On another phone or private browser, open the same URL and join with the six-character party code and a nickname, or scan the host's QR invite.
-3. With the minimum players required by the **chosen mode**, start one short mode (for example, Trivia Quiz). Observe answers/points update on the host screen.
+2. Join as **at least two guest players**, using separate phones or isolated browser sessions, with the six-character party code and nicknames. The host screen is **not** automatically a player. QR invitation is an alternative to manually entering the code.
+3. Choose a mode that permits your actual guest count. Some modes need more than two guests (the first-game guide describes **3–8 guests** for its sample Quiz flow). Start one short game and observe answers/points update on the host screen.
 4. Finish the match and return to the same party to start another mode. Try a different device size; do not assume the live site contains all recently merged GitHub features.
 
 ## Verification gates and evidence
@@ -47,7 +47,7 @@ Prepared October 30, 2026, for **Trivia Lobby**, the existing project. This docu
 ### Live, physical and submission checks (human-required)
 
 - [ ] Open public URL in a clean desktop/private browser; no account or installation is required to **host/join the guest party**.
-- [ ] Host and join on **two independent devices**, play a complete multiplayer round, verify synchronization, finish and replay.
+- [ ] Use a host display plus **at least two guest player sessions** (ideally two physical phones), meet that mode's minimum, play a complete multiplayer round, verify synchronization, finish and replay.
 - [ ] Test actual QR scanning and basic phone readability; do not claim 20-device testing without actual devices.
 - [ ] Verify the deployed source SHA at `/party/open-source/credits.json` matches the reviewed GitHub commit; if not, deploy the reviewed version using the **existing Render service** with auto-deploy disabled. Do not create new services or Neon databases.
 - [ ] Take one true-to-life screenshot of the working public guest interface for the cover image.
