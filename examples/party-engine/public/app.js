@@ -601,11 +601,17 @@ function render() {
 mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
-  if(state.pack?.kind==="homeward")tickHomewardClocks(Date.now()+offset);
-  $("timer").textContent = state.deadline
-    ? `${Math.max(0, Math.ceil((state.deadline - Date.now() - offset) / 1000))} seconds remaining`
+  const now = Date.now() + offset;
+  if (state.pack?.kind === "homeward") tickHomewardClocks(now);
+  const timer = $("timer");
+  const remaining = state.deadline
+    ? `${Math.max(0, Math.ceil((state.deadline - now) / 1000))} seconds remaining`
     : "";
-  $("timer").dataset.urgent = String(!!state.deadline && state.deadline - Date.now() - offset <= 5000);
+  // Keep 200 ms clock checks for the urgent threshold and Homeward clocks,
+  // but avoid waking layout/observers and recreating text on identical ticks.
+  if (timer.textContent !== remaining) timer.textContent = remaining;
+  const urgent = String(!!state.deadline && state.deadline - now <= 5000);
+  if (timer.dataset.urgent !== urgent) timer.dataset.urgent = urgent;
 }, 200);
 connect();
 if (gameById(launchGame)) $("create").click();

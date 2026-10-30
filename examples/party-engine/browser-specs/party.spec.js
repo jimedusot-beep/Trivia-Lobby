@@ -33,6 +33,31 @@ async function lobby(browser) {
     close: () => Promise.all(contexts.map((c) => c.close())),
   };
 }
+test("idle host clock avoids redundant DOM mutations while active countdown still advances", async ({ browser }) => {
+  const f = await lobby(browser);
+  try {
+    const timer = f.host.locator("#timer");
+    await expect(timer).toBeEmpty();
+    await expect(timer).toHaveAttribute("data-urgent", "false");
+    const idleMutations = await f.host.evaluate(async () => {
+      const node = document.getElementById("timer");
+      let changes = 0;
+      const observer = new MutationObserver(records => { changes += records.length; });
+      observer.observe(node, { attributes: true, childList: true, characterData: true, subtree: true });
+      await new Promise(resolve => setTimeout(resolve, 800));
+      observer.disconnect();
+      return changes;
+    });
+    expect(idleMutations).toBe(0);
+    await f.host.getByRole("button", { name: "Start match", exact: true }).click();
+    await expect(timer).toContainText("seconds remaining");
+    const first = await timer.textContent();
+    await expect.poll(() => timer.textContent(), { timeout: 2500 }).not.toBe(first);
+  } finally {
+    await f.close();
+  }
+});
+
 test("mobile-sized players finish Quiz and return to the same party", async ({
   browser,
 }) => {
