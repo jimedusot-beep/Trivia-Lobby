@@ -41,6 +41,12 @@ There is no game engine, WebSocket, database, account, license, dependency, or t
 
 ## Integration with Milestone 2 (2026-10-30)
 
-This PR is now integrated onto current main `1cce130c67474c537e67c95f0417bf4fd943bac8`, which includes the merged [countdown settings recovery PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81), browser corrections #110, and bounded queue protection #82. The TV hosting changes are restricted to the existing guest UI, the new browser test, and this guide. They do not touch the recovered checkpoint state or overlap the independently developed [phone focus PR #108](https://github.com/jimedusot-beep/Trivia-Lobby/pull/108), which was still awaiting final integration when this change was prepared.
+This PR is now integrated onto current main `1cce130c67474c537e67c95f0417bf4fd943bac8`, which includes the merged [countdown settings recovery PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81), browser corrections #110, and bounded queue protection #82. The TV hosting changes are restricted to the existing guest UI, the new browser test, and this guide. They do not touch the recovered checkpoint state or overlap the now-merged [phone focus PR #108](https://github.com/jimedusot-beep/Trivia-Lobby/pull/108).
 
 The updated PR branch must pass the six hosted GitHub Actions workflows on its exact new commit before being promoted from draft or merged. Earlier successes at other commit SHAs do not certify this combined release. Physical Windows full-screen, TV/HDMI display, and real-device accessibility checks remain unverified; Render is not deployed automatically.
+
+## Current main integration after PR #108
+
+The refreshed host candidate is based on `main` `f5b40146001f4071cfe7f3fd0af5b103d1fae630`, which includes the merged phone-focus improvements (#108), game settings recovery (#81), browser stability (#110), and existing bounded queues (#82). This branch applies only the existing five TV-mode files on that tree; **the phone-controller runtime and its six tests remain exactly as merged into main**. No duplicate frontend or new game engine is introduced.
+
+Run all required CI workflows on the newly integrated head; the previous passing checks belong to an older tree. Browser fullscreen is simulated in the feature's automated test and still requires a physical laptop/HDMI/TV smoke test before production deployment. The live Render instance remains unchanged pending explicit user approval.
