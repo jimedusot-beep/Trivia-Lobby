@@ -38,3 +38,9 @@ Local guest rooms exist only in memory and are lost when that standalone server 
 Automated Playwright checks cover host-only control visibility, a QR invitation remaining available, the button's active/inactive state and a browser-generated fullscreenchange notification; a second test covers an unsupported Fullscreen API. Fullscreen itself is **mocked** in this functional test to avoid false positives about physical hardware; physical Windows F11/HDMI, iPhone/Android, TV overscan, 10–20-player Wi-Fi performance and Chrome/Edge actual fullscreen activation require manual acceptance.
 
 There is no game engine, WebSocket, database, account, license, dependency, or third-party asset change. If the normal browser layout or full screen is inconvenient, exiting full screen restores the original host interface; there is no persistent kiosk lock.
+
+## Integration with Milestone 2 (2026-10-30)
+
+This PR is now integrated onto current main `1cce130c67474c537e67c95f0417bf4fd943bac8`, which includes the merged [countdown settings recovery PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81), browser corrections #110, and bounded queue protection #82. The TV hosting changes are restricted to the existing guest UI, the new browser test, and this guide. They do not touch the recovered checkpoint state or overlap the independently developed [phone focus PR #108](https://github.com/jimedusot-beep/Trivia-Lobby/pull/108), which was still awaiting final integration when this change was prepared.
+
+The updated PR branch must pass the six hosted GitHub Actions workflows on its exact new commit before being promoted from draft or merged. Earlier successes at other commit SHAs do not certify this combined release. Physical Windows full-screen, TV/HDMI display, and real-device accessibility checks remain unverified; Render is not deployed automatically.
