@@ -35,6 +35,22 @@ jobs:
       - run: node --check script/contest-readiness.mjs
       - run: node --test script/contest-readiness.test.mjs
 
+  live-pr-preview:
+    name: read-only current public guest demo (PR)
+    needs: verifier-tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check guest site and report current source without asserting PR is deployed
+        run: node script/contest-readiness.mjs
+
   deployed-site:
     name: live public contest demo and source match
     needs: verifier-tests
