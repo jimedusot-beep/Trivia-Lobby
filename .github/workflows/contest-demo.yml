@@ -1,0 +1,53 @@
+name: Contest demo release gate
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - script/contest-readiness.mjs
+      - script/contest-readiness.test.mjs
+      - .github/workflows/contest-demo.yml
+      - docs/HANDSHAKE_CONTEST_2026_10_30.md
+  push:
+    branches: [main]
+    paths:
+      - script/contest-readiness.mjs
+      - script/contest-readiness.test.mjs
+      - .github/workflows/contest-demo.yml
+      - docs/HANDSHAKE_CONTEST_2026_10_30.md
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact 40-character source SHA expected on the public site; defaults to the workflow commit"
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  verifier-tests:
+    name: contest verifier unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check script/contest-readiness.mjs
+      - run: node --test script/contest-readiness.test.mjs
+
+  deployed-site:
+    name: live public contest demo and source match
+    needs: verifier-tests
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      SMOKE_URL: https://trivia-lobby.onrender.com
+      EXPECTED_DEPLOYED_SHA: ${{ inputs.expected_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify public guest entry, assets, service readiness, and exact source
+        run: node script/contest-readiness.mjs
