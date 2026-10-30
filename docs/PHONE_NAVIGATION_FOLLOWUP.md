@@ -2,7 +2,7 @@
 
 Integration date: 2026-10-30.
 Reference: [original PR #108](https://github.com/jimedusot-beep/Trivia-Lobby/pull/108).
-Integrated against current `main` `b255470fa93357fc4c0e13d713377ef4bde6ba1c`, which contains completed [Milestone 1 PR #110](https://github.com/jimedusot-beep/Trivia-Lobby/pull/110). This branch contains only the phone-controller changes originally developed and locally validated in #108, their browser regressions, and this refreshed handoff.
+Integrated against current `main` `1cce130c67474c537e67c95f0417bf4fd943bac8`, which contains completed [Milestone 1 PR #110](https://github.com/jimedusot-beep/Trivia-Lobby/pull/110). This branch contains only the phone-controller changes originally developed and locally validated in #108, their browser regressions, and this refreshed handoff.
 
 ## The bugs
 
@@ -26,7 +26,7 @@ The prior PR head `29f2adf68f035b2ce0a8a5b41bd69cfb389379cb` passed local TypeSc
 
 Current `main` supplies the base tree. Only `examples/party-engine/public/phone-controller.js` and `examples/party-engine/browser-specs/phone-controllers.spec.js` from #108 were applied. All other files are left exactly as in current main. In particular, TV/tilt/browser test corrections, racing fixture fixes and CI history changes from #110 remain unchanged; bounded WebSocket queues from #82 remain in place. No CSS, renderer, host UI, server, schema, auth, game rules, scoring, migrations, dependencies, copied third-party source or assets are changed.
 
-[Milestone 2 PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81) is separately open and must not be accidentally merged here. Its checkpoint-only changes do not overlap these phone UI files. Check both PRs against their latest merge bases when integrating later.
+[Milestone 2 PR #81](https://github.com/jimedusot-beep/Trivia-Lobby/pull/81) is now **merged into main** at `1cce130`. This phone PR integrates that checkpoint-only fix and its 68 recovery-test lines via the latest main tree; it does **not** reimplement or remove them. The three-file PR diff remains scoped to the phone controller, its browser regression suite and this note.
 
 ## Required follow-up
 
@@ -36,3 +36,7 @@ Current `main` supplies the base tree. Only `examples/party-engine/public/phone-
 4. Keep this PR draft and unmerged until review; do not deploy Render or touch production data without separate explicit approval.
 
 Rollback: revert this focused phone controller PR. No database migration required.
+
+## 2026-10-30: PR #81 integrated
+
+Current main `1cce130` includes PR #81's validated countdown checkpoint settings plus Milestone 1 fixes. This update is a two-parent merge onto that main tree, preserving PR #108's original tested phone adapter and six browser regressions. Do not treat earlier passing checks as evidence for the updated head; rerun all six workflows. The existing live Render release is deliberately unchanged. No phone/hardware or production-scale result is claimed.
