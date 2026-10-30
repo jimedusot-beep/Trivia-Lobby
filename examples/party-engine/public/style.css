@@ -174,3 +174,11 @@ body[data-party-phase="finished"] #heading::after { content:" ✿"; color:#ba639
 .championship-standings span { font-variant-numeric: tabular-nums; }
 .championship-recent { padding-left: 1.4rem; }
 @media (max-width: 425px) { .championship { padding: .65rem; } .championship-standings li { display: grid; } }
+
+/* Host-only full-screen presentation. Keep Sakura styling and normal game controls. */
+.tv-host-tools { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-left:auto; }
+.tv-host-tools #tv-fullscreen { width:auto; min-height:44px; margin:2px 0; padding:8px 16px; font-size:.95rem; background:var(--sakura-indigo); }
+.tv-host-tools #tv-fullscreen-status { margin:0; max-width:320px; color:var(--lobby-ink); font-size:.82rem; font-weight:750; }
+#game:fullscreen.sakura-game-stage { width:100%; height:100%; max-width:none; box-sizing:border-box; margin:0; padding:clamp(14px,2vw,38px); overflow:auto; border-radius:0; box-shadow:none; }
+#game:fullscreen .game-topline { position:sticky; top:0; z-index:2; background:var(--sakura-panel); padding:6px; border-radius:12px; }
+@media(max-width:600px) { .tv-host-tools { width:100%; margin-left:0; } }
