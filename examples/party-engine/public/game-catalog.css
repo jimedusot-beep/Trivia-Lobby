@@ -474,3 +474,8 @@ body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .open-s
   body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-shelf-hint {font-size:.68rem;max-width:125px;letter-spacing:.05em;}
   body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-card {flex-basis:73%;width:73%;}
 }
+
+/* Browsing shortcuts target hidden sections once a game is running. */
+body.party-playing .page-nav-links a[href="#pick-games"],
+body.party-playing .page-nav-links a[href="#join-entry"],
+body.party-playing .party-nav-count {display:none;}
