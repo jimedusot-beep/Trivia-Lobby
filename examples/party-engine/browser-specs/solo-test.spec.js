@@ -14,7 +14,10 @@ test("solo test lab starts an authoritative quiz with virtual rivals in one tab"
   await expect(page.locator("#solo-controls button")).toHaveCount(4, { timeout: 15000 });
   await expect(page.locator("#solo-phase")).toContainText("question");
   await page.locator("#solo-controls button").first().click();
-  await expect(page.getByText("Your answer is locked.")).toBeVisible({ timeout: 10000 });
+  // The two demo rivals usually answer first, so the real reducer can reveal
+  // immediately after the user submits; do not expect a persistent lock UI.
+  await expect(page.locator("#solo-phase")).toContainText("reveal", { timeout: 10000 });
+  await expect(page.getByRole("button", { name: "Next round" })).toBeVisible();
   expect(errors).toEqual([]);
   await page.getByRole("button", { name: "Stop test" }).click();
   await expect(page.locator("#solo-stage")).toBeHidden();
