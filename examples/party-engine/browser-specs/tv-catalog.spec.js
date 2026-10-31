@@ -154,6 +154,11 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
   await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
   await expect(page.locator('.pick-shelf-position')).toHaveText('22 / 31');
   await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.locator('.pick-game-grid').evaluate(rail => {
+    const cover = rail.querySelector('.pick-game-card[data-preview="true"]');
+    const selectedBox = cover.getBoundingClientRect(), railBox = rail.getBoundingClientRect();
+    return Math.abs((selectedBox.left + selectedBox.width / 2) - (railBox.left + railBox.width / 2));
+  })).toBeLessThan(24);
 
   await shelf.focus();
   await page.keyboard.press('ArrowRight');
