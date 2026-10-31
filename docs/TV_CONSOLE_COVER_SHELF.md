@@ -2,6 +2,19 @@
 
 **Scope:** Guest home game library and in-room host game selector. Original, Nintendo Switch-inspired *navigation pattern* with film-poster-style artwork; no Nintendo assets, branding, icons, game art, audio, or proprietary layout source copied.
 
+## Approved preview match — poster-first homepage (October 31)
+
+This PR now matches the user's approved local UI preview more closely, while remaining an actual party-game launcher rather than a stand-alone mockup:
+
+- `/party/` displays the **dark game-library shell as the first screen**. The old welcome hero is hidden on the ordinary library route, and the existing host/join forms remain intact below the shelf. A top-level **Join party** shortcut links directly to the form.
+- The original `Pick a Game` heading is now the visible `h1` while browsing, preserving the one-heading-per-public-page accessibility test. Direct QR invite and active-room phases retain their own single `h1` and layouts.
+- The featured hero defaults to **Party Grand Prix** (21 of 31), uses a mint **Host this game** action, and explains that the room code/QR appear after hosting. No game session is created until a real button click.
+- The selected Grand Prix cover is centered horizontally on first paint; arrow controls move the shelf **without jumping the whole document vertically**. Touch scroll and existing keyboard focus navigation remain.
+- The scope excludes the separate Open Party Lab page (`body.opl-page`), quiz editor, study pages, invited-phone route, active race/quiz screens and in-room private controls.
+- TV/mobile snapshots to inspect: `switch-tv-1920-home.png` and `switch-mobile-390-home.png`, plus the pre-existing responsive catalog captures. The workflow retains them as artifacts; actual screenshots must be inspected rather than inferred from this document.
+
+**Approval still required after passing exact-head browser tests and screenshot inspection.** Nothing in this PR modifies existing game logic, QR admission, account-free player controllers or server state. No merge/deploy is implied.
+
 ## What changed
 
 - Convert the long auto-fitting tile grid into a single horizontal row of cover-art posters with touch/mouse horizontal scroll, scroll snapping, visible previous/next controls and a selection counter.
