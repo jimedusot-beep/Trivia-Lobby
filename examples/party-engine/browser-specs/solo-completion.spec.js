@@ -42,7 +42,10 @@ test("completion: Four in a Row plays to a winner, scores once, then returns to 
   await expect(host.locator(".board-table")).toContainText("You wins!");
   await expect(host.locator("#roster")).toContainText("You: 100 points");
   await expect(host.locator("#roster")).toContainText("Test Seat 2: 0 points");
-  await expect(seats[0].getByRole("button", { name: "Drop 1", exact: true })).toBeDisabled();
+  // Finished board controls disappear in the revealed, read-only projection.
+  // Assert no legal action is offered rather than expecting a disabled button
+  // that does not exist in the completed game UI.
+  await expect(seats[0].getByRole("button", { name: "Drop 1", exact: true })).toHaveCount(0);
 
   await host.getByRole("button", { name: "Next", exact: true }).click();
   await expect(host.locator("#heading")).toContainText("finished", { timeout: 12000 });
