@@ -12,7 +12,7 @@ const games = {
 const endpoint = new URL("socket", new URL("./", location.href));
 endpoint.protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
-let host = null, human = null, bots = [], clients = [], active = false;
+let host = null, human = null, bots = [], clients = [], active = false, runId = 0;
 let stageKey = "", playerKey = "", mode = "", loop = null, lastTap = 0;
 let steer = 0, drifting = false;
 const text = value => String(value == null ? "" : value);
@@ -32,6 +32,7 @@ function makeButton(parent, label, onClick, disabled = false) {
   return node;
 }
 function stop() {
+  runId++;
   active = false;
   if (loop) clearInterval(loop);
   loop = null;
@@ -51,6 +52,7 @@ function stop() {
   info("Test mode is idle. No real players are needed.");
 }
 function connect(hello) {
+  const run = runId;
   return new Promise((resolve, reject) => {
     let finished = false;
     const client = { ws: null, actor: null, state: null, seq: 0, autoKey: "" };
@@ -61,7 +63,7 @@ function connect(hello) {
       if (!finished) { finished = true; reject(new Error("Connection timed out.")); ws.close(); }
     }, 12000);
     ws.addEventListener("open", () => {
-      if (!active) { ws.close(1000, "Solo test cancelled"); return; }
+      if (!active || run !== runId) { ws.close(1000, "Solo test cancelled"); return; }
       ws.send(JSON.stringify(hello));
     });
     ws.addEventListener("message", event => {
@@ -83,12 +85,12 @@ function connect(hello) {
         if (counter) counter.textContent = text(frame.own?.taps ?? 0);
       } else if (frame.type === "error") {
         if (!finished) { finished = true; clearTimeout(timer); reject(new Error(frame.message)); }
-        else if (active && client === human) info("Test action: " + frame.message);
+        else if (active && run === runId) info("Test server: " + frame.message);
       }
     });
     ws.addEventListener("close", () => {
       if (!finished) { finished = true; clearTimeout(timer); reject(new Error("Server connection closed.")); }
-      else if (active && (client === human || client === host)) info("Test connection ended. Choose Stop and restart.");
+      else if (active && run === runId) info("A test connection ended. Choose Stop and restart.");
     });
     ws.addEventListener("error", () => {
       if (!finished) { finished = true; clearTimeout(timer); reject(new Error("Unable to connect to the party server.")); }
@@ -213,6 +215,7 @@ async function start() {
   const chosen = $("solo-mode").value;
   if (!Object.hasOwn(games, chosen)) return;
   mode = chosen; active = true;
+  const run = ++runId;
   steer = 0; drifting = false; lastTap = 0;
   $("solo-start").disabled = true;
   $("solo-stop").disabled = false;
@@ -221,25 +224,25 @@ async function start() {
   info("Creating a temporary test room…");
   try {
     host = await connect({ type: "create" });
-    if (!active) throw new Error("Test stopped.");
+    if (!active || run !== runId) throw new Error("Test stopped.");
     const code = host.state.code;
     info("Joining virtual players…");
     human = await connect({ type: "join", code, name: "You" });
-    if (!active) throw new Error("Test stopped.");
+    if (!active || run !== runId) throw new Error("Test stopped.");
     for (let i = 1; i < games[mode].players; i++) {
       const bot = await connect({ type: "join", code, name: "Demo Rival " + i });
-      if (!active) throw new Error("Test stopped.");
+      if (!active || run !== runId) throw new Error("Test stopped.");
       bots.push(bot);
     }
     // The room is genuinely server-authoritative: use the normal minimum,
     // rather than adding special test privileges or fake player counts.
     const deadline = Date.now() + 8000;
     while ((host.state?.players.filter(p => p.connected).length || 0) < games[mode].players) {
-      if (!active) throw new Error("Test stopped.");
+      if (!active || run !== runId) throw new Error("Test stopped.");
       if (Date.now() > deadline) throw new Error("Player seats were not confirmed.");
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    if (!active) throw new Error("Test stopped.");
+    if (!active || run !== runId) throw new Error("Test stopped.");
     info("Test room ready. Starting " + games[mode].title + "…");
     if (!action(host, "start", mode)) throw new Error("Unable to start the real game.");
     renderHost();
@@ -253,9 +256,10 @@ async function start() {
       if (mode === "tap") for (const bot of bots) sendTap(bot);
     }, mode === "tap" ? 330 : 240);
   } catch (error) {
-    const cancelled = !active;
+    // Never let a cancelled test close sockets opened by a newer attempt.
+    if (run !== runId) return;
     stop();
-    if (!cancelled) info("Could not start solo test: " + (error instanceof Error ? error.message : "Unknown error."));
+    info("Could not start solo test: " + (error instanceof Error ? error.message : "Unknown error."));
   }
 }
 $("solo-mode").addEventListener("change", () => {
