@@ -60,7 +60,10 @@ function connect(hello) {
     const timer = setTimeout(() => {
       if (!finished) { finished = true; reject(new Error("Connection timed out.")); ws.close(); }
     }, 12000);
-    ws.addEventListener("open", () => ws.send(JSON.stringify(hello)));
+    ws.addEventListener("open", () => {
+      if (!active) { ws.close(1000, "Solo test cancelled"); return; }
+      ws.send(JSON.stringify(hello));
+    });
     ws.addEventListener("message", event => {
       let frame;
       try { frame = JSON.parse(event.data); } catch { return; }
@@ -218,20 +221,25 @@ async function start() {
   info("Creating a temporary test room…");
   try {
     host = await connect({ type: "create" });
+    if (!active) throw new Error("Test stopped.");
     const code = host.state.code;
     info("Joining virtual players…");
     human = await connect({ type: "join", code, name: "You" });
+    if (!active) throw new Error("Test stopped.");
     for (let i = 1; i < games[mode].players; i++) {
       const bot = await connect({ type: "join", code, name: "Demo Rival " + i });
+      if (!active) throw new Error("Test stopped.");
       bots.push(bot);
     }
     // The room is genuinely server-authoritative: use the normal minimum,
     // rather than adding special test privileges or fake player counts.
     const deadline = Date.now() + 8000;
     while ((host.state?.players.filter(p => p.connected).length || 0) < games[mode].players) {
+      if (!active) throw new Error("Test stopped.");
       if (Date.now() > deadline) throw new Error("Player seats were not confirmed.");
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+    if (!active) throw new Error("Test stopped.");
     info("Test room ready. Starting " + games[mode].title + "…");
     if (!action(host, "start", mode)) throw new Error("Unable to start the real game.");
     renderHost();
@@ -245,8 +253,9 @@ async function start() {
       if (mode === "tap") for (const bot of bots) sendTap(bot);
     }, mode === "tap" ? 330 : 240);
   } catch (error) {
+    const cancelled = !active;
     stop();
-    info("Could not start solo test: " + (error instanceof Error ? error.message : "Unknown error."));
+    if (!cancelled) info("Could not start solo test: " + (error instanceof Error ? error.message : "Unknown error."));
   }
 }
 $("solo-mode").addEventListener("change", () => {
