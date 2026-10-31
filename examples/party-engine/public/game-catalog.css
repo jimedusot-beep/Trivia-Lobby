@@ -281,62 +281,62 @@
 /* GX3 approved preview match: the library is the first screen, not a long
    landing-page form. Scope the dark shell to browsing only: invited guests
    and active game/controller screens keep their existing presentation. */
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) {
   background: radial-gradient(circle at 14% 0%,#372a67 0%,transparent 42%),#100e28;
   background-image: radial-gradient(circle at 14% 0%,#372a67 0%,transparent 42%);
   color:#f9f6ff;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) main {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) main {
   max-width:1740px; padding:20px clamp(12px,2.3vw,36px) 38px; position:relative;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #party-intro { display:none; }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #party-intro { display:none; }
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav {
   background:transparent; border:0; border-radius:0; backdrop-filter:none;
   box-shadow:none; border-bottom:1px solid #ffffff27; padding:0 0 16px;
   margin:0 0 14px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .lobby-brand,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .lobby-wordmark,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .lobby-brand,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .lobby-wordmark,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a {
   color:#f5f0ff;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .lobby-wordmark > span { color:#e9add6; }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links { gap:8px; }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .party-nav-count {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .lobby-wordmark > span { color:#e9add6; }
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links { gap:8px; }
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .party-nav-count {
   width:auto; margin:0; padding:7px 12px; min-height:36px; display:inline-flex;
   align-items:center; justify-content:center; border:1px solid #e9d5ff57;
   border-radius:100px; background:#ffffff0b; font-size:.72rem;
   text-transform:uppercase; letter-spacing:.025em; font-weight:850;
   text-decoration:none; white-space:nowrap; color:#e9def5;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a:hover { background:#ffffff24; }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a:focus-visible {outline:3px solid #ffe29a;outline-offset:3px;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a:hover { background:#ffffff24; }
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a:focus-visible {outline:3px solid #ffe29a;outline-offset:3px;}
 /* Keep the network status available to assistive tech without an extra
    full-width announcement bar between the title and featured artwork. */
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #status {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #status {
   position:absolute; width:1px; height:1px; overflow:hidden;
   clip-path:inset(50%); white-space:nowrap; padding:0; margin:0; border:0;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #pick-games.pick-games {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #pick-games.pick-games {
   margin:0; padding:0; overflow:clip; border:0; border-radius:0;
   background:transparent; box-shadow:none; color:#f8f4ff;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #pick-games::before {content:none;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-heading {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #pick-games::before {content:none;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-heading {
   text-align:left; max-width:none; margin:4px 0 17px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-heading .eyebrow {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-heading .eyebrow {
   color:#f7d7a8; font-size:.75rem; font-weight:950; letter-spacing:.18em;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #pick-games-title {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #pick-games-title {
   color:#fff; margin:7px 0 6px; font-size:clamp(2.25rem,3.5vw,3.6rem);
   line-height:1.03; letter-spacing:-.05em; text-shadow:none;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-heading p {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-heading p {
   margin:0; color:#e6def5; font-size:.94rem; line-height:1.4;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-spotlight {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-spotlight {
   margin:0 0 22px; padding:clamp(18px,2.25vw,36px);
   grid-template-columns:clamp(106px,12vw,174px) minmax(0,1fr) minmax(154px,180px);
   gap:clamp(18px,2.35vw,37px); min-height:265px;
@@ -345,134 +345,134 @@ body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-g
     linear-gradient(125deg,#1b243d,#3d3b6d 56%,#251c46);
   border:1px solid #bba9df88; box-shadow:0 15px 45px #05031790;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-spotlight[data-tone="teal"] {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-spotlight[data-tone="teal"] {
   background:radial-gradient(circle at 15% 30%,#72d9c571,transparent 38%),
     radial-gradient(circle at 85% 110%,#ff94c72f,transparent 51%),
     linear-gradient(125deg,#1b243d,#203459 56%,#251c46);
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-icon {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-icon {
   width:100%; height:clamp(145px,14vw,212px); border-radius:15px;
   font-size:clamp(3.7rem,6.4vw,6.4rem);
   background:radial-gradient(circle at 30% 24%,#d7e8ffb8,transparent 44%),
     linear-gradient(140deg,#9fd2db,#5657ae);
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-copy .sakura-eyebrow {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-copy .sakura-eyebrow {
   font-size:.76rem; color:#ffe2a0; letter-spacing:.18em;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {
   margin:9px 0 6px; font-size:clamp(2.25rem,3.8vw,4.25rem);
   line-height:1.04; letter-spacing:-.045em;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-meta {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-meta {
   color:#ffe3ae; font-size:1rem; margin:0 0 9px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-rules {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-rules {
   max-width:840px; font-size:clamp(.9rem,1vw,1.05rem); line-height:1.55;
 }
 .pick-spotlight-actions {display:flex; flex-direction:column; align-items:center; gap:7px;}
 .pick-spotlight-actions .pick-spotlight-button::after {content:" →";}
 .pick-spotlight-action-note {font-size:.75rem;color:#f7e2b5;text-align:center;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-button {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-button {
   width:100%; min-height:61px; padding:12px 10px;
   background:#b4edcb;color:#183333;border:2px solid #182b32;
   box-shadow:0 5px 0 #0c0e2d;font-size:1rem;border-radius:15px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-button:hover {background:#d0f8db;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-toolbar {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-button:hover {background:#d0f8db;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-toolbar {
   display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; margin:20px 0 14px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-search-label {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-search-label {
   flex:1 0 270px; max-width:310px; color:#ebdfff; margin:0; font-size:0;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-search {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-search {
   width:100%; min-height:45px; margin:0; padding:9px 15px;
   background:#ffffff0a; border:1px solid #cbb9df5a; border-radius:13px;
   color:#f8f2ff; font-size:.9rem; font-weight:650;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-search::placeholder {color:#e2d2ec;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-filters {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-search::placeholder {color:#e2d2ec;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-filters {
   flex:1 1 auto; margin:0; gap:8px; justify-content:flex-end;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-filters button {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-filters button {
   width:auto;min-height:39px; margin:0; padding:7px 12px;
   font-size:.81rem; background:#ffffff0e; border:1px solid #e2d6fa65;
   color:#f5eeff; border-radius:99px;box-shadow:none;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-filters button[aria-pressed="true"] {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-filters button[aria-pressed="true"] {
   background:#f1bad5;color:#2d224e;border-color:#f8d2e4;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-status {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-status {
   color:#ded5f0; font-size:.78rem; margin:0 0 8px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-shelf-nav { margin:0 0 10px; }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-grid {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-shelf-nav { margin:0 0 10px; }
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-grid {
   position:relative; gap:clamp(13px,1.35vw,21px); padding:9px 7px 25px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-card {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-card {
   flex-basis:clamp(205px,16vw,247px);width:clamp(205px,16vw,247px);
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-art .pick-poster-title {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-art .pick-poster-title {
   font-size:clamp(1.45rem,1.9vw,1.95rem);
 }
 /* The original host/join flows remain available immediately below the shelf. */
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #entry {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #entry {
   margin:48px 0 0; padding:0;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid > article {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid > article {
   background:linear-gradient(140deg,#30224e,#1d1c3f);
   border:1px solid #7b6ca1; box-shadow:0 6px 20px #05031775;
   color:#fff; border-radius:18px;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid h2,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid p,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid label {color:#f4eaff;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid .eyebrow {color:#ffe2a0;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #create {background:#b4edcb;color:#17382f;border-color:#172c2b;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .entry-grid a {color:#ffdf9c;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .house-notes {
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid h2,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid p,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid label {color:#f4eaff;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid .eyebrow {color:#ffe2a0;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #create {background:#b4edcb;color:#17382f;border-color:#172c2b;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .entry-grid a {color:#ffdf9c;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .house-notes {
   background:#1d193a; border:1px solid #77698e; color:#f6edff;
 }
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .house-notes p {color:#e8dff5;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .opl-library-entry,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .open-source-footer {color:#e4d7f2;}
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .opl-library-entry a,
-body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .open-source-footer a {color:#ffdb9e;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .house-notes p {color:#e8dff5;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .opl-library-entry,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .open-source-footer {color:#e4d7f2;}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .opl-library-entry a,
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .open-source-footer a {color:#ffdb9e;}
 @media(max-width:860px) {
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-spotlight {
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-spotlight {
     grid-template-columns:95px minmax(0,1fr);gap:16px;min-height:0;padding:18px;
   }
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-icon {height:125px;font-size:3.3rem;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {font-size:clamp(1.8rem,4.5vw,2.3rem);}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-actions {grid-column:1/-1;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-search-label {max-width:none;flex-basis:100%;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-filters {justify-content:flex-start;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .party-nav-count {display:none;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-icon {height:125px;font-size:3.3rem;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {font-size:clamp(1.8rem,4.5vw,2.3rem);}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-actions {grid-column:1/-1;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-search-label {max-width:none;flex-basis:100%;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-filters {justify-content:flex-start;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .party-nav-count {display:none;}
 }
 @media(max-width:480px) {
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) main {padding:11px 12px 28px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav {padding-bottom:11px;margin-bottom:9px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links {gap:5px;max-width:100%;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a {padding:5px 8px;font-size:.64rem;min-height:32px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a[href="#pick-games"],
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a[href="./create.html"],
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .page-nav-links a[href="./learn.html"] {display:none;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) #pick-games-title {font-size:1.95rem;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-heading {margin-bottom:12px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-heading p {font-size:.81rem;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-spotlight {
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) main {padding:11px 12px 28px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav {padding-bottom:11px;margin-bottom:9px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links {gap:5px;max-width:100%;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a {padding:5px 8px;font-size:.64rem;min-height:32px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a[href="#pick-games"],
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a[href="./create.html"],
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .page-nav-links a[href="./learn.html"] {display:none;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) #pick-games-title {font-size:1.95rem;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-heading {margin-bottom:12px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-heading p {font-size:.81rem;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-spotlight {
     grid-template-columns:64px minmax(0,1fr);padding:12px;gap:10px;
     margin-bottom:16px; border-radius:22px;
   }
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-icon {width:100%;height:86px;font-size:2.2rem;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-copy .sakura-eyebrow {font-size:.62rem;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {font-size:1.58rem;margin:4px 0;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-meta {font-size:.78rem;line-height:1.3;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-rules {font-size:.79rem;line-height:1.35;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-button {min-height:48px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-toolbar {gap:8px;margin:14px 0 12px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-filters button {font-size:.7rem;padding:7px 9px;min-height:37px;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-shelf-hint {font-size:.68rem;max-width:125px;letter-spacing:.05em;}
-  body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-game-card {flex-basis:73%;width:73%;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-icon {width:100%;height:86px;font-size:2.2rem;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-copy .sakura-eyebrow {font-size:.62rem;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-copy h3 {font-size:1.58rem;margin:4px 0;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-meta {font-size:.78rem;line-height:1.3;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-rules {font-size:.79rem;line-height:1.35;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-spotlight-button {min-height:48px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-toolbar {gap:8px;margin:14px 0 12px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-filters button {font-size:.7rem;padding:7px 9px;min-height:37px;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-shelf-hint {font-size:.68rem;max-width:125px;letter-spacing:.05em;}
+  body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .pick-game-card {flex-basis:73%;width:73%;}
 }
 
 /* Browsing shortcuts target hidden sections once a game is running. */
