@@ -21,7 +21,7 @@
     </nav>
     <span class="eyebrow">PRIVATE-FEELING PRACTICE · REAL SERVER GAMEPLAY</span>
     <h1>Solo Test Mode</h1>
-    <p class="solo-intro">One screen. No extra tabs. Play as yourself while demo rivals join automatically. Nothing changes the rules for normal multiplayer parties.</p>
+    <p class="solo-intro">One screen. No extra tabs. Try any of the 31 games using real player controls. Trivia Quiz, Grand Prix and Tap Dash have automatic rivals; switch between test seats yourself for the other games. Normal multiplayer rules stay intact.</p>
   </header>
   <section id="solo-setup" class="solo-setup" aria-label="Solo test setup">
     <label for="solo-mode">Choose a game to test</label>
@@ -30,11 +30,11 @@
       <option value="race" selected>🏎️ Party Grand Prix</option>
       <option value="tap">👆 Tap Dash</option>
     </select>
-    <label for="solo-seats">Test room size (you + virtual rivals)</label>
+    <label for="solo-seats">Test room size (you + test players)</label>
     <select id="solo-seats" aria-describedby="solo-seats-help"></select>
     <p id="solo-seats-help">Start with the normal game minimum; you can test up to five player seats in one tab.</p>
     <p id="solo-description"></p>
-    <p class="solo-disclaimer">Test rooms run on the regular party server and use temporary virtual-player connections. Rivals are simulated; their performance does not represent real phone or Wi-Fi testing. No saved quiz, private deck or account is used.</p>
+    <p id="solo-disclaimer" class="solo-disclaimer">Test rooms run on the regular party server and use temporary virtual-player connections. Rivals are simulated; their performance does not represent real phone or Wi-Fi testing. No saved quiz, private deck or account is used.</p>
   </section>
   <div class="solo-actions">
     <button id="solo-start" type="button">Start solo test</button>
