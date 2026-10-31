@@ -479,3 +479,16 @@ body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .open
 body.party-playing .page-nav-links a[href="#pick-games"],
 body.party-playing .page-nav-links a[href="#join-entry"],
 body.party-playing .party-nav-count {display:none;}
+
+/* Optional one-tab Solo Test Mode entry, styled to match the approved library. */
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .solo-test-entry {
+  margin:22px 0 12px; padding:15px 18px; border:1px solid #a6d7bc;
+  border-radius:15px; background:#174333; color:#e7fff0;
+  font-size:.92rem; line-height:1.45;
+}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .solo-test-entry a {
+  color:#fff5b4; font-weight:950; text-decoration:underline;
+}
+body.public-party:has(#pick-games):not(.party-playing):not(.party-invited) .solo-test-entry a:focus-visible {
+  outline:3px solid #ffe6a0; outline-offset:4px;
+}
