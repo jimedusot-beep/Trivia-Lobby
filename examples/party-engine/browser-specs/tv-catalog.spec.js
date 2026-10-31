@@ -144,21 +144,24 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
   await expect(cover.locator('.pick-game-art .pick-poster-tag')).toHaveCount(0);
   await expect(cover.getByRole('button', { name: 'Preview Trivia Quiz', exact: true })).toBeVisible();
   expect(await shelf.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
-  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 31');
-  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Host this game: Party Grand Prix' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview Party Grand Prix' })).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'Next game' }).click();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
-  await expect(page.locator('.pick-shelf-position')).toHaveText('2 / 31');
-  await expect(page.getByRole('button', { name: 'Preview Prompt Duel' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('22 / 31');
+  await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toHaveAttribute('aria-pressed', 'true');
 
   await shelf.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Charades');
-  await expect(page.getByRole('button', { name: 'Preview Charades' })).toBeFocused();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Doodle Dash');
+  await expect(page.getByRole('button', { name: 'Preview Doodle Dash' })).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
-  await expect(page.getByRole('button', { name: 'Preview Prompt Duel' })).toBeFocused();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
+  await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toBeFocused();
 
   await page.getByRole('button', { name: 'Racing & arcade', exact: true }).click();
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
@@ -182,7 +185,7 @@ test('mobile console shelf keeps poster artwork in view without page-width scrol
   await expect(covers.first().locator('.pick-poster-title')).toHaveText('Trivia Quiz');
   await expect(page.getByRole('button', { name: 'Next game' })).toBeVisible();
   await page.getByRole('button', { name: 'Next game' }).click();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator('.pick-game-shelf').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/switch-cover-shelf-mobile.png', animations: 'disabled' });
@@ -207,4 +210,53 @@ test('game cover shelf initializes without JavaScript errors for guest and host 
   });
   expect(hostErrors).toEqual({ count: 31, highlighted: 'Party Grand Prix' });
   expect(errors).toEqual([]);
+});
+
+
+test('TV home opens on featured Grand Prix and its centered covers above the join forms', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
+  await expect(page.locator('#party-intro')).toBeHidden();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.locator('#game-picker .pick-game-card')).toHaveCount(31);
+  await expect(page.getByRole('link', { name: 'Join party' })).toHaveAttribute('href', '#join-entry');
+  const positions = await page.evaluate(() => {
+    const $ = query => document.querySelector(query).getBoundingClientRect();
+    const rail = document.querySelector('.pick-game-grid');
+    const selected = document.querySelector('.pick-game-card[data-preview="true"]');
+    return {
+      heroY: $('.pick-game-spotlight').top,
+      shelfY: $('.pick-game-grid').top,
+      hostEntryY: $('#entry').top,
+      railCenter: rail.getBoundingClientRect().left + rail.clientWidth / 2,
+      selectedCenter: selected.getBoundingClientRect().left + selected.clientWidth / 2,
+      viewport: innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(positions.heroY).toBeGreaterThanOrEqual(0);
+  expect(positions.heroY).toBeLessThan(300);
+  expect(positions.shelfY).toBeLessThan(1080);
+  expect(positions.shelfY).toBeLessThan(positions.hostEntryY);
+  expect(Math.abs(positions.selectedCenter - positions.railCenter)).toBeLessThan(24);
+  expect(positions.scrollWidth).toBeLessThanOrEqual(positions.viewport);
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: 'test-results/switch-tv-1920-home.png', animations: 'disabled' });
+});
+
+test('invitation links and active game keep their own layout and working QR flow', async ({ page }) => {
+  await page.goto('/?code=ABCDEF');
+  await expect(page.locator('#pick-games')).toBeHidden();
+  await expect(page.getByRole('heading', { name: "You're invited!" })).toBeVisible();
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Host this game: Party Grand Prix' }).click();
+  await expect(page.locator('#heading')).toContainText('lobby');
+  await expect(page.locator('.lobby-invite-qr')).toBeVisible();
+  await expect(page.locator('#pick-games')).toBeHidden();
+  await expect(page.locator('#game')).toBeVisible();
 });
