@@ -7,6 +7,15 @@ on:
       - "script/measure-build-assets.mjs"
       - "examples/party-engine/performance-playwright.config.js"
       - "examples/party-engine/performance-specs/**"
+      # Re-measure when relevant production rendering or bundling changes,
+      # rather than only when the benchmark implementation is edited.
+      - "examples/party-engine/render/**"
+      - "examples/party-engine/public/race-ui.js"
+      - "examples/party-engine/public/race-track.js"
+      - "script/build-race-renderer.mjs"
+      - "script/build-game-sources.mjs"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 permissions:
   contents: read
