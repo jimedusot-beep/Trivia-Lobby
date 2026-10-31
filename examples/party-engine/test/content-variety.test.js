@@ -168,6 +168,26 @@ test("original show banks and other content pools are bounded and coherent",()=>
   assert.equal(p.p.bonusBracket.stage.length,16,"bracket still uses 16 contestants");
 });
 
+test("legacy snapshots keep their custom quizzes and show packs when selection flags are absent",()=>{
+  const custom={title:"Special family quiz",questions:[{
+    prompt:"Our question?",choices:["No","Yes"],correct:1,explanation:"Family answer."
+  }]};
+  const a=room("quiz",{customQuiz:custom});
+  const oldQuiz=snapshotParty(a.p);
+  delete oldQuiz.usesDemoQuiz;
+  const recoveredQuiz=restoreParty("ABC234",oldQuiz,{clock:()=>a.now},a.now);
+  assert.equal(recoveredQuiz.usesDemoQuiz,false);
+  assert.deepEqual(recoveredQuiz.quiz,custom.questions);
+
+  const customShow={...defaultShow,title:"Custom family night"};
+  const b=room("feud",{customShow});
+  const oldShow=snapshotParty(b.p);
+  delete oldShow.usesDefaultShow;
+  const recoveredShow=restoreParty("ABC234",oldShow,{clock:()=>b.now},b.now);
+  assert.equal(recoveredShow.usesDefaultShow,false);
+  assert.equal(recoveredShow.show.title,"Custom family night");
+});
+
 test("selection helper is bounded, deterministic, and doesn't repeat within a five-round match",()=>{
   const bank=Array.from({length:27},(_,i)=>"Prompt "+i);
   const a=matchContent(bank,0,5);

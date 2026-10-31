@@ -1,4 +1,6 @@
 import { Party } from "./engine.js";
+import { quiz as defaultQuizBank } from "./content.js";
+import { defaultShow } from "./public/show-format.js";
 import { Chess } from "chess.js";
 import { validatePokerCheckpoint } from "./open-pack/poker.js";
 import { validateHomewardCheckpoint } from "./open-pack/homeward.js";
@@ -47,6 +49,14 @@ export function restoreParty(code, state, options, savedAt) {
   if (!state || !fields.every(key => key !== "players" || Object.hasOwn(state, key))) throw new Error("Unsupported room recovery state.");
   const party = new Party(code, options);
   for (const key of fields) if (Object.hasOwn(state, key)) party[key] = decode(state[key]);
+  // Older snapshots predate content-selection flags. Infer conservative defaults
+  // from the exact saved authoring data; never replace a custom game pack.
+  if (!Object.hasOwn(state, "usesDemoQuiz"))
+    party.usesDemoQuiz = party.quizTitle === "Sample Quiz" &&
+      Array.isArray(party.quiz) && party.quiz.length === 5 &&
+      party.quiz.every((q,i) => q.prompt === defaultQuizBank[i]?.prompt);
+  if (!Object.hasOwn(state, "usesDefaultShow"))
+    party.usesDefaultShow = JSON.stringify(party.show) === JSON.stringify(defaultShow);
   if (!(party.players instanceof Map) || party.players.size > 20 || !(party.requests instanceof Map)
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
