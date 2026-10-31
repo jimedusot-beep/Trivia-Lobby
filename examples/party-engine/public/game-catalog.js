@@ -67,7 +67,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     previewName.textContent = game.name;
     previewMeta.textContent = game.players + " players · " + game.rounds + " · " + game.tag;
     previewRules.textContent = game.rules;
-    previewAction.textContent = (asHost ? "Choose this game" : "Host this game") + " →";
+    previewAction.textContent = asHost ? "Choose this game" : "Host this game";
     previewAction.setAttribute("aria-label", (asHost ? "Choose this game: " : "Host this game: ") + game.name);
     previewAction.onclick = () => play(game.id);
     spotlight.dataset.tone = game.color;
