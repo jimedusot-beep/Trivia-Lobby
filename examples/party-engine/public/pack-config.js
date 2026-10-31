@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export const packGames = Object.freeze([
   {
-    id:"homeward",name:"Homeward Hustle",icon:"🏡",color:"teal",
+    id:"homeward",name:"Sorry Ish",icon:"🏡",color:"teal",
     players:"2–20 · boards of 2–4",min:2,max:20,
     rounds:"Four pawns Home · 15-minute board limit",
     rules:"Draw a card, choose a legal pawn move, and race four pawns Home. Bump rivals, ride slides, split sevens and swap track positions. One pawn starts out for a faster opening. The server checks every move. Larger rooms share balanced boards; no sign-in needed.",

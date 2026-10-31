@@ -1,6 +1,6 @@
-# Homeward Hustle: original card-and-pawn race
+# Sorry Ish: original card-and-pawn race
 
-An original Sorry-inspired addition to the existing nickname-only party room.
+An original card-and-pawn race, previously displayed as Homeward Hustle, for the existing nickname-only party room. This is an independent game, not the official Sorry! board game.
 No commercial board, card art, wording, question bank, binary, API or code is
 copied. The implementation, geometry, UI and house rules are original.
 
@@ -15,7 +15,7 @@ Sources inform functionality only. No external source code or asset is reused.
 
 ## Complete match flow
 
-1. The host chooses Homeward Hustle. Guests use nicknames and the existing QR/PIN.
+1. The host chooses Sorry Ish. Guests use nicknames and the existing QR/PIN.
    A room supports 2–20 players. The server balances them into boards of 2–4
    players, with no one-player board. A two-player board uses opposite colors.
 2. Each player has four individually labeled pawns. One starts on the track and
@@ -138,5 +138,5 @@ does not update the live website by itself.
   hidden deck, active card and board version before accepting a legal move.
   These measurements do not establish public-network latency or server capacity.
 - The change adds no dependency, database migration or hosting resource. It is
-  submitted separately for review; Homeward Hustle is not deployed by this branch.
+  submitted separately for review; This document originally described the pre-release implementation; the game is now part of Trivia Lobby.
   Firefox/WebKit CI and physical-device checks must be reported separately.

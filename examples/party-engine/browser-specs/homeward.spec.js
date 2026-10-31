@@ -46,6 +46,9 @@ async function lobby(browser, count = 2) {
     }
     const host = await page(1280);
     await host.goto(base);
+    // The visible name changes; the stable homeward ID and existing game rules do not.
+    await expect(host.locator('[data-game="homeward"]')).toContainText("Sorry Ish");
+    await expect(host.locator('[data-game="homeward"]')).not.toContainText("Homeward Hustle");
     await host.locator('[data-game="homeward"] .pick-game-button').click();
     await expect(host.locator("#heading")).toContainText("lobby");
     const png = PNG.sync.read(
@@ -80,6 +83,8 @@ async function lobby(browser, count = 2) {
     await expect(host.locator("#heading")).toContainText("countdown");
     time.advance(1);
     await expect(host.locator("#heading")).toContainText("playing");
+    await expect(host.locator("#content h2")).toContainText("Sorry Ish");
+    await expect(host.locator(".homeward-board svg").first()).toHaveAccessibleName(/Sorry Ish/);
     const ids = [...party.players.keys()],
       byId = (id) => pages[ids.indexOf(id)];
     async function seed(index, card, change = () => {}) {
