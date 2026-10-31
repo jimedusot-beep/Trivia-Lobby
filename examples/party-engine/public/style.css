@@ -182,3 +182,17 @@ body[data-party-phase="finished"] #heading::after { content:" ✿"; color:#ba639
 #game:fullscreen.sakura-game-stage { width:100%; height:100%; max-width:none; box-sizing:border-box; margin:0; padding:clamp(14px,2vw,38px); overflow:auto; border-radius:0; box-shadow:none; }
 #game:fullscreen .game-topline { position:sticky; top:0; z-index:2; background:var(--sakura-panel); padding:6px; border-radius:12px; }
 @media(max-width:600px) { .tv-host-tools { width:100%; margin-left:0; } }
+
+
+/* Only explicit one-tab test frames receive this compact full-game layout.
+   Normal public room host/player pages remain unchanged. */
+body.public-party.solo-embedded {background:#fff;color:#23203a;}
+body.public-party.solo-embedded > main {max-width:none!important;margin:0;padding:8px!important;}
+body.public-party.solo-embedded > main > header,
+body.public-party.solo-embedded #status,
+body.public-party.solo-embedded .house-notes,
+body.public-party.solo-embedded .open-source-footer,
+body.public-party.solo-embedded #party-intro {display:none!important;}
+body.public-party.solo-embedded #game {margin:0!important;max-width:none!important;}
+body.public-party.solo-embedded #leave {display:none!important;}
+body.public-party.solo-embedded #game .game-topline {gap:8px;}
