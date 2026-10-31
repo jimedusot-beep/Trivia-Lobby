@@ -45,7 +45,8 @@ test("host a custom local quiz for three guest players and show the true result"
   await addQuestion(page, "Which answer is right?", 1);
   await page.getByRole("button", { name: "Save & host this quiz" }).click();
   await expect(page).toHaveURL(/\?deck=[\w-]+/);
-  await expect(page.getByRole("heading", { name: "One code. Everyone plays." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pick a Game", level: 1 })).toBeVisible();
+  await expect(page.locator(".pick-game-card")).toHaveCount(31);
   await expect(page.getByRole("status")).toHaveText("Connected.");
   await page.getByRole("button", { name: "Create host screen" }).click();
   await expect(page.getByText("Quiz (Play Our Quiz): 1 questions")).toBeVisible();
