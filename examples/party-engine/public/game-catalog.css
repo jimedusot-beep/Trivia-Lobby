@@ -370,6 +370,7 @@ body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-s
   max-width:840px; font-size:clamp(.9rem,1vw,1.05rem); line-height:1.55;
 }
 .pick-spotlight-actions {display:flex; flex-direction:column; align-items:center; gap:7px;}
+.pick-spotlight-actions .pick-spotlight-button::after {content:" →";}
 .pick-spotlight-action-note {font-size:.75rem;color:#f7e2b5;text-align:center;}
 body.public-party:not(.opl-page):not(.party-playing):not(.party-invited) .pick-spotlight-button {
   width:100%; min-height:61px; padding:12px 10px;
