@@ -42,7 +42,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const previewIcon = make("span", "pick-spotlight-icon"); previewIcon.setAttribute("aria-hidden", "true");
   const previewCopy = make("div", "pick-spotlight-copy");
   const previewLabel = make("span", "sakura-eyebrow", "YOUR NEXT GAME");
-  const previewName = make("h3"); previewName.tabIndex = -1; const previewMeta = make("p", "pick-spotlight-meta");
+  const previewName = make("h2"); previewName.tabIndex = -1; const previewMeta = make("p", "pick-spotlight-meta");
   const previewRules = make("p", "pick-spotlight-rules");
   previewCopy.append(previewLabel, previewName, previewMeta, previewRules);
   const previewAction = make("button", "pick-spotlight-button");
