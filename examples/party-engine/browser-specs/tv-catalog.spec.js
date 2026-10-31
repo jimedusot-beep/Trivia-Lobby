@@ -249,6 +249,21 @@ test('TV home opens on featured Grand Prix and its centered covers above the joi
   await page.screenshot({ path: 'test-results/switch-tv-1920-home.png', animations: 'disabled' });
 });
 
+test('TV remote arrow keys work immediately without interfering with typing', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  // On a new page the document body has focus: an arrow should move the shelf.
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Tap Dash');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('20 / 31');
+  const search = page.getByRole('searchbox', { name: 'Find your next game' });
+  await search.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Tap Dash');
+  await search.fill('Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+});
+
 test('approved mobile cover-first home keeps the selected kart poster and QR joining accessible', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
