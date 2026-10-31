@@ -96,7 +96,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     event.preventDefault();
     moveSelection(event.key === "ArrowLeft" ? -1 : 1, true);
   };
-  grid.addEventListener("keydown", handleArrows);
+  shelf.addEventListener("keydown", handleArrows);
   spotlight.addEventListener("keydown", handleArrows);
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
