@@ -50,6 +50,13 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   spotlight.append(previewIcon, previewCopy, previewAction);
   const cards = new Map();
   let previewId = selected;
+  const visibleIds = () => [...cards.keys()].filter(id => !cards.get(id).hidden);
+  const syncShelf = () => {
+    const ids = visibleIds(), position = ids.indexOf(previewId);
+    shelfPosition.textContent = ids.length ? `${position + 1} / ${ids.length}` : "0 / 0";
+    previous.disabled = position <= 0;
+    next.disabled = position < 0 || position >= ids.length - 1;
+  };
   const showPreview = id => {
     const game = gameById(id);
     if (!game) return;
@@ -62,12 +69,35 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     previewAction.setAttribute("aria-label", (asHost ? "Choose " : "Host ") + game.name);
     previewAction.onclick = () => play(game.id);
     spotlight.dataset.tone = game.color;
+    spotlight.dataset.genre = groupFor(game.id);
+    grid.dataset.activeGame = game.id;
     for (const [cardId, card] of cards) {
       const preview = card.querySelector(".pick-game-preview-button");
       card.dataset.preview = String(cardId === id);
       if (preview) preview.setAttribute("aria-pressed", String(cardId === id));
     }
+    syncShelf();
   };
+  const moveSelection = (delta, focusPoster = false) => {
+    const ids = visibleIds(), index = ids.indexOf(previewId);
+    if (!ids.length) return;
+    const id = ids[Math.max(0, Math.min(ids.length - 1, index + delta))];
+    showPreview(id);
+    const poster = cards.get(id)?.querySelector(".pick-game-preview-button");
+    poster?.scrollIntoView({ block: "nearest", inline: "center",
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    if (focusPoster) poster?.focus({ preventScroll: true });
+  };
+  previous.addEventListener("click", () => moveSelection(-1));
+  next.addEventListener("click", () => moveSelection(1));
+  const handleArrows = event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    moveSelection(event.key === "ArrowLeft" ? -1 : 1, true);
+  };
+  grid.addEventListener("keydown", handleArrows);
+  spotlight.addEventListener("keydown", handleArrows);
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
   const search = make("input", "pick-game-search");
@@ -78,7 +108,24 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   filters.setAttribute("aria-label", "Game categories");
   const status = make("p", "pick-game-status");
   status.setAttribute("aria-live", "polite");
+  // The selected game reads as a featured title above a horizontal console shelf.
+  // Keep all original launch buttons, IDs, category filters and search results.
   const grid = make("div", "pick-game-grid");
+  grid.setAttribute("role", "region");
+  grid.setAttribute("aria-label", "Horizontal game cover shelf");
+  grid.tabIndex = 0;
+  const shelf = make("section", "pick-game-shelf");
+  shelf.setAttribute("aria-label", "Choose a game from the cover shelf");
+  const shelfNav = make("div", "pick-shelf-nav");
+  const shelfHint = make("p", "pick-shelf-hint", "CHOOSE YOUR NEXT GAME  ·  ← → BROWSE");
+  const shelfPosition = make("span", "pick-shelf-position");
+  shelfPosition.setAttribute("aria-live", "polite");
+  const previous = make("button", "pick-shelf-arrow pick-shelf-prev", "←");
+  previous.type = "button"; previous.setAttribute("aria-label", "Previous game");
+  const next = make("button", "pick-shelf-arrow pick-shelf-next", "→");
+  next.type = "button"; next.setAttribute("aria-label", "Next game");
+  shelfNav.append(shelfHint, shelfPosition, previous, next);
+  shelf.append(shelfNav, grid);
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
     ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
@@ -109,7 +156,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     status.textContent = visible + " of " + guestGames.length + " games · Preview the rules, then " + (asHost ? "choose your game." : "host a party.");
     empty.hidden = visible !== 0;
     spotlight.hidden = visible === 0;
+    grid.scrollLeft = 0;
     if (firstVisible && cards.get(previewId)?.hidden) showPreview(firstVisible);
+    syncShelf();
   };
   for (const [category,label] of choices) {
     const filter = make("button", null, label);
@@ -121,27 +170,34 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const card = make("article", "pick-game-card");
     card.dataset.tone = game.color; card.dataset.game = game.id;
     if (selected === game.id && asHost) card.dataset.selected = "true";
-    const art = make("div", "pick-game-art");
+    const art = make("button", "pick-game-art pick-game-preview-button");
+    art.type = "button";
     art.dataset.genre = groupFor(game.id);
-    art.setAttribute("aria-hidden", "true");
-    art.append(make("span", "pick-game-art-orbit"), make("span", "pick-game-art-icon", game.icon));
+    art.setAttribute("aria-label", "Preview " + game.name);
+    const posterOrbit = make("span", "pick-game-art-orbit");
+    const posterIcon = make("span", "pick-game-art-icon", game.icon);
+    const posterKicker = make("span", "pick-poster-kicker", "TRIVIA LOBBY ORIGINAL");
+    const posterTitle = make("span", "pick-poster-title", game.name);
+    const posterTag = make("span", "pick-poster-tag", game.tag);
+    for (const element of [posterOrbit, posterIcon, posterKicker, posterTitle, posterTag])
+      element.setAttribute("aria-hidden", "true");
+    art.append(posterOrbit, posterIcon, posterKicker, posterTitle, posterTag);
+    art.addEventListener("click", () => {
+      showPreview(game.id);
+      previewName.focus({ preventScroll: true });
+      spotlight.scrollIntoView({ block: "start",
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    });
     const title = make("h3", null, game.name);
     const marker = make("span", "pick-game-tag", game.tag);
     const people = make("p", "pick-game-players", game.players + " players · " + game.rounds);
     const rules = make("p", "pick-game-rules", game.rules);
     const actions = make("div", "pick-game-actions");
-    const preview = make("button", "pick-game-preview-button", "Preview");
-    preview.type = "button";preview.setAttribute("aria-label", "Preview " + game.name);
-    preview.addEventListener("click", () => {
-      showPreview(game.id);
-      previewName.focus({ preventScroll: true });
-      spotlight.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    });
     const host = make("button", "pick-game-button", (asHost ? "Choose " : "Host ") + game.name);
     host.type = "button";
     host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
     host.addEventListener("click", () => play(game.id));
-    actions.append(preview, host);
+    actions.append(host);
     card.append(art, marker, title, people, rules, actions);
     grid.append(card);cards.set(game.id,card);
   }
@@ -153,7 +209,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     chooseCategory(activeCategory);
   });
   toolbar.append(searchLabel, filters);
-  container.append(spotlight, toolbar, status, empty, grid);
+  container.append(spotlight, toolbar, status, empty, shelf);
   showPreview(cards.has(selected) ? selected : guestGames[0].id);
   chooseCategory("all");
 }
