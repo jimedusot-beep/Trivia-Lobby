@@ -50,6 +50,8 @@ test("solo Tap Dash offers a one-screen tap controller and simulated competition
   await page.getByRole("button", { name: "Start solo test" }).click();
   await expect(page.locator("#solo-players li")).toHaveCount(2, { timeout: 15000 });
   await expect(page.getByRole("button", { name: "TAP!" })).toBeVisible({ timeout: 15000 });
+  // The touch controller takes priority over the TV panel on a small phone.
+  await expect(page.getByRole("button", { name: "TAP!" })).toBeInViewport();
   await page.getByRole("button", { name: "TAP!" }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: "test-results/solo-tap-mobile.png", animations: "disabled" });
