@@ -251,7 +251,14 @@ test('TV home opens on featured Grand Prix and its centered covers above the joi
   expect(positions.heroY).toBeLessThan(300);
   expect(positions.shelfY).toBeLessThan(1080);
   expect(positions.shelfY).toBeLessThan(positions.hostEntryY);
-  expect(Math.abs(positions.selectedCenter - positions.railCenter)).toBeLessThan(24);
+  // WebKit may apply the first paint's snap offset on the next animation
+  // frame. Wait for the final centered position, rather than sampling before
+  // it has processed the initial scroll.
+  await expect.poll(() => page.locator('.pick-game-grid').evaluate(rail => {
+    const selected = rail.querySelector('.pick-game-card[data-preview="true"]');
+    const a = selected.getBoundingClientRect(), b = rail.getBoundingClientRect();
+    return Math.abs(a.left + a.width / 2 - (b.left + b.width / 2));
+  })).toBeLessThan(24);
   expect(positions.scrollWidth).toBeLessThanOrEqual(positions.viewport);
   expect(errors).toEqual([]);
   await page.screenshot({ path: 'test-results/switch-tv-1920-home.png', animations: 'disabled' });
