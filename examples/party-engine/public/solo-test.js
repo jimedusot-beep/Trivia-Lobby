@@ -215,6 +215,11 @@ async function start() {
   if (active || clients.length) return;
   const chosen = $("solo-mode").value;
   if (!Object.hasOwn(games, chosen)) return;
+  const seats = Number($("solo-seats").value);
+  if (!Number.isInteger(seats) || seats < games[chosen].players || seats > 5) {
+    info("Choose between " + games[chosen].players + " and 5 test player seats.");
+    return;
+  }
   mode = chosen; active = true;
   document.body.classList.add("solo-session-active");
   const run = ++runId;
@@ -231,7 +236,7 @@ async function start() {
     info("Joining virtual players…");
     human = await connect({ type: "join", code, name: "You" });
     if (!active || run !== runId) throw new Error("Test stopped.");
-    for (let i = 1; i < games[mode].players; i++) {
+    for (let i = 1; i < seats; i++) {
       const bot = await connect({ type: "join", code, name: "Demo Rival " + i });
       if (!active || run !== runId) throw new Error("Test stopped.");
       bots.push(bot);
@@ -239,7 +244,7 @@ async function start() {
     // The room is genuinely server-authoritative: use the normal minimum,
     // rather than adding special test privileges or fake player counts.
     const deadline = Date.now() + 8000;
-    while ((host.state?.players.filter(p => p.connected).length || 0) < games[mode].players) {
+    while ((host.state?.players.filter(p => p.connected).length || 0) < seats) {
       if (!active || run !== runId) throw new Error("Test stopped.");
       if (Date.now() > deadline) throw new Error("Player seats were not confirmed.");
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -266,8 +271,17 @@ async function start() {
 }
 $("solo-mode").addEventListener("change", () => {
   const selected = games[$("solo-mode").value];
-  $("solo-description").textContent = selected.description + " A host and " + selected.players +
-    " player connections are opened in this one tab.";
+  const seats = $("solo-seats");
+  seats.replaceChildren();
+  for (let count = selected.players; count <= 5; count++) {
+    const option = document.createElement("option");
+    option.value = String(count);
+    option.textContent = count + " seats (you + " + (count - 1) + " demo rivals)";
+    seats.append(option);
+  }
+  seats.value = String(selected.players);
+  $("solo-description").textContent = selected.description +
+    " The server validates all seats and game actions normally.";
 });
 $("solo-mode").dispatchEvent(new Event("change"));
 $("solo-start").addEventListener("click", start);
