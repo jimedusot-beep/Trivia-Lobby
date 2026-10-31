@@ -166,7 +166,7 @@
 .pick-game-card {
   flex:0 0 clamp(198px,18vw,255px); width:clamp(198px,18vw,255px);
   min-width:0; min-height:0; align-self:stretch; padding:0 0 14px;
-  gap:0; flex-direction:column; scroll-snap-align:start; overflow:visible;
+  gap:0; flex-direction:column; scroll-snap-align:center; overflow:visible;
   border:1px solid #b7a6d8; background:#fffaf5; color:#2b234a;
   border-radius:14px; box-shadow:0 10px 20px #0c0a2980;
 }
