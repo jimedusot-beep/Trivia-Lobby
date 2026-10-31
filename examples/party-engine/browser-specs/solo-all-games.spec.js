@@ -42,7 +42,7 @@ test("manual test seats run a real Four in a Row host and two guest controllers 
   const seat2 = page.frameLocator("#solo-all-seat-frame-1");
   await expect(host.locator("#game")).toBeVisible();
   await expect(seat1.locator("#game")).toBeVisible();
-  await expect(seat1.locator(".open-game")).toBeVisible({timeout:18000});
+  await expect(seat1.locator(".phone-surface")).toBeVisible({timeout:18000});
   // A real server-validated board move from Seat 1 appears on the TV.
   await expect(seat1.getByRole("button", { name: "Drop 1", exact: true })).toBeEnabled();
   await seat1.getByRole("button", { name: "Drop 1", exact: true }).click();
@@ -52,7 +52,7 @@ test("manual test seats run a real Four in a Row host and two guest controllers 
   await page.locator("#solo-all-seat-switch").selectOption("1");
   await expect(page.locator("#solo-all-seat-frame-0")).toBeHidden();
   await expect(page.locator("#solo-all-seat-frame-1")).toBeVisible();
-  await expect(seat2.locator(".open-game")).toBeVisible();
+  await expect(seat2.locator(".phone-surface")).toBeVisible();
   await expect(seat2.getByRole("button", { name: "Drop 2", exact: true })).toBeEnabled();
   await seat2.getByRole("button", { name: "Drop 2", exact: true }).click();
   await expect(host.locator(".four-cell[aria-label='Second player disc']")).toHaveCount(1, {timeout:12000});
@@ -65,12 +65,12 @@ test("manual test seats run a real Four in a Row host and two guest controllers 
 });
 
 for (const [mode, count, expected] of [
-  ["duel", 3, "textarea"],
-  ["majority", 3, ".social-prompt"],
-  ["feud", 2, ".open-game"],
-  ["draw", 2, ".open-game"],
-  ["colors", 2, ".open-game"],
-  ["table", 2, ".open-game"],
+  ["duel", 3, ".phone-surface textarea:visible"],
+  ["majority", 3, "#phone-prompt"],
+  ["feud", 2, ".phone-surface"],
+  ["draw", 2, ".phone-surface"],
+  ["colors", 2, ".phone-surface"],
+  ["table", 2, ".phone-surface"],
 ]) test("all-game Solo Test loads a real " + mode + " player turn", async ({ page }) => {
   test.setTimeout(90000);
   await page.goto("/solo-test.html");
