@@ -1,38 +1,36 @@
-# Solo Test Mode — one tab, real game state
+# Solo Test Mode — one tab, real multiplayer rules
 
-Use `/party/solo-test.html` from the game library to rehearse gameplay when no second phone or human is available.
+This document describes the **31-game feature branch in PR #119**, not a promise that all 31 modes are already deployed. The existing production Solo Test supports the original three automatic-rival modes. Do not merge or deploy this draft until the current branch's cross-browser checks and release review pass.
 
-## What it does
+## Start
 
-The browser creates one ordinary server-authoritative party room, connects a separate host session plus 2–5 **player WebSocket sessions** (you plus virtual rivals), and shows the actual host/TV area and a controllable player area on the **same page**. This is not a rule bypass: the normal 2–3 connected-player minimum and all existing action validation still apply.
+Open /party/solo-test.html and choose one of the 31 game titles. The selector reads their names, IDs and minimum player counts directly from guestGames, rather than maintaining another application catalog. Start a test room with 2–5 ordinary guest seats (respecting each selected game's minimum), using the same game engine and WebSocket rules as a normal room.
 
-The first version deliberately covers:
-- **Trivia Quiz:** 3–5 seats (you plus 2–4 demo rivals). Select an answer from the player panel; rivals select choices automatically; use Next round on the host panel to continue.
-- **Party Grand Prix:** 2–5 seats (you plus 1–4 demo rivals). See the existing Grand Prix host renderer; steer left/straight/right, toggle drift and use an item. The rival provides bounded steering inputs with steering assistance.
-- **Tap Dash:** 2–5 seats (you plus 1–4 demo rivals). Tap your own button while the simulated rival sends bounded taps. Heats and results are still scored by the real server.
+## Two different testing experiences
 
-## Safety and restrictions
+- **Automatic rivals — Trivia Quiz, Party Grand Prix and Tap Dash:** the existing simulator creates real WebSocket-connected, server-scored rivals. It supplies quiz answers, bounded race inputs or taps; you control your own seat. The room and scoreboard are authoritative.
+- **Manual test seats — the other 28 games:** one temporary host screen and 2–5 ordinary, separately authenticated guest controllers are embedded on one same-origin page. Use **Control a test player** to switch between seats and take each player's turn manually. The actual phone/host frontends run unmodified. These seats are **not AI opponents** and will not automatically cast votes, submit clues, draw, play cards or make chess moves.
 
-- No backend change, privileged protocol, player-count override, direct room state injection, imported private deck, account or external dependency.
-- **Explicit opt-in**: ordinary guest play does not start virtual clients. The lab uses only the chosen three modes, not the full 31-game catalog.
-- Stops or closes the sockets when leaving. A normal temporary room still exists until expiry; this is a test environment on the same public server, **not** an offline sandbox or a persistent bot service.
-- Virtual rivals do not validate physical Bluetooth/tilt behavior, real phone readability, Wi-Fi performance, 10–20 human concurrency, or human gameplay quality.
-- Sensitive data (join credentials, actor tokens) stay in JS memory only. No credentials are placed in the page or in links.
-- Test scores belong only to the temporary test room and do not use the private quiz study system.
+For the manual-seat path, first select a title, then choose test seats, select Start solo test, wait for the real match to start, and switch between controllers as needed. Host-only actions such as judging, advancing and returning to the lobby remain on the host frame.
 
-## Release checks
+Sorry Ish is displayed under that title after synchronizing PR #119 with production main commit 9811221. Its internal mode ID remains homeward and its game rules are unchanged.
 
-Browser tests cover one-tab room creation, real 3-player quiz with user answer, five-seat quiz setup, host render and steering controls for racing, responsive Tap Dash, and clean Stop. See [the open-source research shortlist](./SOLO_OPEN_SOURCE_RESEARCH.md) for future adapter and test-scenario work. The normal party catalog, hosting, joining and server validation remain unchanged. Do not deploy without passing browser acceptance and smoke tests.
+## Privacy and limits
 
+- No privileged test bot or player-count bypass. The server validates every ordinary guest action, score, phase and role; guest secrets stay private to their view.
+- Each embedded frame receives a fresh, nonpersisted solo-seat identity. The only embeddable pages have an explicit same-origin frame policy. Other normal party pages cannot be framed; third-party framing is prohibited.
+- Selecting Stop tears down the test frames and their WebSocket connections. The temporary server room expires normally; it is not an offline sandbox or a persistent lobby.
+- This uses the real party server. Do not use it during a live workplace event to measure user capacity.
+- Automatic rivals and embedded sessions **do not** validate physical phone ergonomics, camera QR scanning, Wi-Fi handoff, motion sensors, latency or a 10–20-person event.
 
-## All 31 games — full-controller seat switching
+## Completion acceptance (separate from the game-selection smoke test)
 
-The Solo Test menu now reads game IDs, titles and minimum seats directly from \`guestGames\`, so **every existing game mode in the 31-title catalog is selectable**.
+A game is only **complete** for this audit when automated evidence demonstrates: (1) setup and start with legal player count; (2) real actor-authorized input; (3) score or board-state progression; (4) terminal winner/draw or full final leaderboard without repeated awards; (5) host Next/finish and return to the **same party**, preserving usable guest reconnection; and (6) no unrecoverable UI error. A mode may intentionally be *manual* (such as Whist or Backgammon) and should be labeled accordingly instead of called fully automated.
 
-- **Quiz, Party Grand Prix, Tap Dash:** Keep the existing quick simulator where demo rivals automatically answer, drive or tap.
-- **All other game modes:** The lab creates a real host and 2–5 real authenticated guest sessions, then embeds the **existing, unchanged host and phone-controller UIs** side by side. A **Control a test player** selector switches among guest seats without opening another browser tab. This supports manual turn-by-turn rehearsal across voting, writing, drawing, boards, cards and game shows.
-- **Not an AI-opponent promise:** In the 28 added games, guest seats are deliberately **manual test roles**. You must switch to the correct seat and perform required guest actions; the game server retains turn order and minimum player requirements. No undocumented player impersonation or direct server mutation has been added.
-- **Privacy:** Each temporary frame uses a unique \`solo-seat\` ID. The normal frontend ignores stored party credentials and never persists embedded identities. Only these exact same-origin test-page responses use CSP \`frame-ancestors 'self'\`; ordinary party pages keep \`frame-ancestors 'none'\` and third-party framing remains blocked. Temporary frames close on Stop.
-- **Actual frontend:** This is also a realistic way to assess the existing controller for each game—not a parallel, simplified replica. Host and guest UIs render the same components as a normal room.
+The new browser completion test exercises all these lifecycle steps for **Four in a Row**. Existing unit, WebSocket and browser tests cover many other individual rules and flows, but **31 game titles in the selector does not mean 31 independently verified complete browser matches**. Use GAMEPLAY_COMPLETION_MATRIX.md as the per-mode queue and record exact CI evidence before marking additional modes complete.
 
-Browser acceptance covers the complete game selection list, CSP restrictions, real two-seat Four in a Row with seat switching, representative 2–3-player games, and the original automated quiz/racing/tap scenarios. Passing all these checks does **not** imply every move in every mode has been playtested to completion or that multi-device Wi-Fi performance was measured.
+Existing browser tests additionally cover: all 31 selector entries; ordinary-page CSP versus embedded test seats; a Four in a Row legal-move/role-switching journey; six representative manual games (Duel, Majority, Family Showdown, Doodle Dash, Color Clash and Card & Dice Table); and the three automatic-rival scenarios.
+
+## Release gate
+
+Run root check/test/build, the standalone guest engine unit/socket suite, Chromium/Firefox/WebKit browser tests (including solo-all-games and solo-completion), all six required repository workflows, and a read-only verification of the exact live release. Review browser artifacts and actual phone/TV testing separately. Keep PR #119 draft and Render unchanged until a distinct approval to merge and deploy.
