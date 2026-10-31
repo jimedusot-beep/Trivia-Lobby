@@ -100,7 +100,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
   const search = make("input", "pick-game-search");
-  search.type = "search"; search.placeholder = "Search games or play styles";
+  search.type = "search"; search.placeholder = "Find your next game";
   searchLabel.append(search);
   const filters = make("div", "pick-game-filters");
   filters.setAttribute("role", "group");
@@ -138,6 +138,13 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   };
   shelf.addEventListener("keydown", handleArrows);
   spotlight.addEventListener("keydown", handleArrows);
+  // A TV remote or keyboard can browse immediately from the default body
+  // focus. Never steal arrows from search, forms, links or active games.
+  if (!asHost) document.addEventListener("keydown", event => {
+    if (document.activeElement !== document.body || document.body.classList.contains("party-playing") ||
+        document.body.classList.contains("party-invited") || spotlight.hidden) return;
+    handleArrows(event);
+  });
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
     ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
