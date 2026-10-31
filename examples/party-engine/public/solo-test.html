@@ -60,6 +60,25 @@
       </section>
     </div>
   </section>
+  <section id="solo-all-stage" hidden aria-label="Full game one-tab test">
+    <div class="solo-all-topline">
+      <strong id="solo-all-room"></strong>
+      <label for="solo-all-seat-switch">Control a test player</label>
+      <select id="solo-all-seat-switch" aria-describedby="solo-all-seat-note"></select>
+    </div>
+    <p id="solo-all-seat-note"></p>
+    <div class="solo-all-layout">
+      <section class="solo-all-host" aria-label="Actual television host view">
+        <h2>TV / Host</h2>
+        <iframe id="solo-all-host-frame" title="Actual Trivia Lobby host screen" loading="eager"></iframe>
+      </section>
+      <section class="solo-all-controllers" aria-label="Actual switchable player controllers">
+        <h2>Player controller</h2>
+        <div id="solo-all-seat-frames"></div>
+      </section>
+    </div>
+    <p class="solo-all-explanation">These are real game controllers, not screenshots. You can switch between guest seats in the same tab to test multiplayer turns. Only the original three solo games currently have automatic rival actions; other games use manually operated test seats.</p>
+  </section>
   <footer><a href="./">Return to the full game library</a> · <a href="./sources.html">Game credits</a></footer>
 </main>
 </body>
