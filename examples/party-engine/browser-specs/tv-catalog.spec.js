@@ -134,6 +134,15 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
   const shelf = page.getByRole('region', { name: 'Horizontal game cover shelf' });
   await expect(shelf).toHaveCSS('display', 'flex');
   await expect(page.locator('.pick-game-art')).toHaveCount(31);
+  // A poster is labelled "Preview <game>" while its extra decorative
+  // category/library copy lives outside the button. This avoids an axe
+  // label-content-name-mismatch on the public mobile game library.
+  const cover = page.locator('.pick-game-cover').first();
+  await expect(cover.locator('.pick-poster-kicker')).toBeVisible();
+  await expect(cover.locator('.pick-poster-tag')).toBeVisible();
+  await expect(cover.locator('.pick-game-art .pick-poster-kicker')).toHaveCount(0);
+  await expect(cover.locator('.pick-game-art .pick-poster-tag')).toHaveCount(0);
+  await expect(cover.getByRole('button', { name: 'Preview Trivia Quiz', exact: true })).toBeVisible();
   expect(await shelf.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
   await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 31');
   await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
