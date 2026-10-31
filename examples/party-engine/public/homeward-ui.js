@@ -50,7 +50,7 @@ function drawBoard(table, parent, e) {
     "title",
     { id: `homeward-title-${table.index}` },
     svg,
-    `Homeward Hustle · board ${table.index + 1}`,
+    `Sorry Ish · board ${table.index + 1}`,
   );
   node(
     "desc",
@@ -404,7 +404,7 @@ export function renderHomeward(state, { root, e, b, play, refresh, canAct }) {
     "homeward-game",
     host ? "homeward-host" : "homeward-phone",
   );
-  e("h2", "Homeward Hustle");
+  e("h2", "Sorry Ish");
   e(
     "p",
     `Card & pawn race · ${pack.tableCount} board${pack.tableCount === 1 ? "" : "s"} · four pawns each`,
@@ -585,7 +585,7 @@ export function renderHomeward(state, { root, e, b, play, refresh, canAct }) {
     }
   }
   const rules = e("details");
-  e("summary", "How to play Homeward Hustle", rules);
+  e("summary", "How to play Sorry Ish", rules);
   remembered(rules, "homeward-help");
   e(
     "p",
