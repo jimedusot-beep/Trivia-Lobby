@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#15122d" />
+  <title>Solo Test Mode · Trivia Lobby</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./race.css" />
+  <link rel="stylesheet" href="./tap.css" />
+  <link rel="stylesheet" href="./solo-test.css" />
+  <link rel="icon" type="image/svg+xml" href="./lobby-spark.svg" />
+  <script src="./solo-test.js" type="module"></script>
+</head>
+<body class="solo-test-page">
+<main>
+  <header>
+    <nav class="page-nav" aria-label="Solo test navigation">
+      <a class="lobby-brand" href="./"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a>
+      <div class="page-nav-links"><a href="./">← Game library</a></div>
+    </nav>
+    <span class="eyebrow">PRIVATE-FEELING PRACTICE · REAL SERVER GAMEPLAY</span>
+    <h1>Solo Test Mode</h1>
+    <p class="solo-intro">One screen. No extra tabs. Play as yourself while demo rivals join automatically. Nothing changes the rules for normal multiplayer parties.</p>
+  </header>
+  <section id="solo-setup" class="solo-setup" aria-label="Solo test setup">
+    <label for="solo-mode">Choose a game to test</label>
+    <select id="solo-mode">
+      <option value="quiz">❓ Trivia Quiz</option>
+      <option value="race" selected>🏎️ Party Grand Prix</option>
+      <option value="tap">👆 Tap Dash</option>
+    </select>
+    <p id="solo-description"></p>
+    <p class="solo-disclaimer">Test rooms run on the regular party server and use temporary virtual-player connections. Rivals are simulated; their performance does not represent real phone or Wi-Fi testing. No saved quiz, private deck or account is used.</p>
+  </section>
+  <div class="solo-actions">
+    <button id="solo-start" type="button">Start solo test</button>
+    <button id="solo-stop" type="button" disabled>Stop test</button>
+  </div>
+  <p id="solo-status" role="status" aria-live="polite">Test mode is idle. No real players are needed.</p>
+  <section id="solo-stage" hidden aria-label="One-tab test game">
+    <div class="solo-stage-heading">
+      <span id="solo-room"></span>
+      <strong id="solo-phase"></strong>
+    </div>
+    <div class="solo-layout">
+      <section class="solo-tv" aria-labelledby="solo-tv-title">
+        <h2 id="solo-tv-title">TV / Host display</h2>
+        <div id="content"></div>
+        <button id="solo-next" type="button" hidden>Next round</button>
+        <h3>Live scores</h3>
+        <ol id="solo-players"></ol>
+      </section>
+      <section class="solo-controller" aria-labelledby="solo-controller-title">
+        <h2 id="solo-controller-title">Your controller</h2>
+        <div id="solo-controls"></div>
+      </section>
+    </div>
+  </section>
+  <footer><a href="./">Return to the full game library</a> · <a href="./sources.html">Game credits</a></footer>
+</main>
+</body>
+</html>
