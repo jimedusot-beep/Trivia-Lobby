@@ -19,6 +19,7 @@ test("solo test lab starts an authoritative quiz with virtual rivals in one tab"
   await expect(page.locator("#solo-phase")).toContainText("reveal", { timeout: 10000 });
   await expect(page.getByRole("button", { name: "Next round" })).toBeVisible();
   expect(errors).toEqual([]);
+  await page.screenshot({ path: "test-results/solo-quiz.png", animations: "disabled" });
   await page.getByRole("button", { name: "Stop test" }).click();
   await expect(page.locator("#solo-stage")).toBeHidden();
   await expect(page.getByRole("button", { name: "Start solo test" })).toBeEnabled();
@@ -37,6 +38,7 @@ test("solo Grand Prix shows real host track and a steerable controller without a
   await expect(page.getByRole("button", { name: "← Left" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("#solo-room")).toContainText("Temporary test room:");
   expect(errors).toEqual([]);
+  await page.screenshot({ path: "test-results/solo-race.png", animations: "disabled" });
   await page.getByRole("button", { name: "Stop test" }).click();
   await expect(page.locator("#solo-stage")).toBeHidden();
 });
@@ -50,6 +52,7 @@ test("solo Tap Dash offers a one-screen tap controller and simulated competition
   await expect(page.getByRole("button", { name: "TAP!" })).toBeVisible({ timeout: 15000 });
   await page.getByRole("button", { name: "TAP!" }).click();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: "test-results/solo-tap-mobile.png", animations: "disabled" });
   await page.getByRole("button", { name: "Stop test" }).click();
   await expect(page.locator("#solo-stage")).toBeHidden();
 });
