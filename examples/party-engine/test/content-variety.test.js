@@ -34,6 +34,9 @@ test("original quiz bank contains diverse verified answer options, without a rou
     const arithmetic=q.prompt.match(/^What is (\d+) multiplied by (\d+)\?$/);
     if (arithmetic) assert.equal(Number(q.choices[q.correct]),Number(arithmetic[1])*Number(arithmetic[2]));
   }
+  for(let i=5; i+5<=quiz.length; i+=5)
+    assert.ok(quiz.slice(i,i+5).some(q=>!/^What is \\d+ multiplied by \\d+\\?$/.test(q.prompt)),
+      "five-question rematches should include factual questions, not only arithmetic");
   assert.ok(prompts.length>=55);
   assert.equal(new Set(prompts).size,prompts.length);
   const r=room("quiz");
@@ -186,6 +189,18 @@ test("legacy snapshots keep their custom quizzes and show packs when selection f
   const recoveredShow=restoreParty("ABC234",oldShow,{clock:()=>b.now},b.now);
   assert.equal(recoveredShow.usesDefaultShow,false);
   assert.equal(recoveredShow.show.title,"Custom family night");
+});
+
+test("content rotation continues beyond the 40-game recent history cap",()=>{
+  const x=room("quiz");
+  x.p.championship.games=Array.from({length:40},(_,i)=>({matchId:"old-"+i}));
+  x.p.championship.playedTotal=41;
+  x.p.enter("finished");
+  x.send("host","lobby");
+  const completed=x.p.championship.playedTotal;
+  assert.equal(completed,42);
+  x.start("quiz");
+  assert.deepEqual(x.p.quiz.map(q=>q.prompt),matchContent(quiz,completed,5).map(q=>q.prompt));
 });
 
 test("selection helper is bounded, deterministic, and doesn't repeat within a five-round match",()=>{

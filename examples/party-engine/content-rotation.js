@@ -10,7 +10,7 @@ export function contentAt(pool, completedMatches, roundIndex, matchSize) {
   return pool[(completedMatches * matchSize + roundIndex) % pool.length];
 }
 export function roundContent(party, pool, matchSize) {
-  return contentAt(pool, party.championship.games.length, party.index, matchSize);
+  return contentAt(pool, party.championship.playedTotal ?? party.championship.games.length, party.index, matchSize);
 }
 export function matchContent(pool, completedMatches, matchSize) {
   return Array.from({length:matchSize},(_,index) => contentAt(pool,completedMatches,index,matchSize));

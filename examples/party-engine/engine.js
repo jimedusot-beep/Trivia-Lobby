@@ -228,9 +228,9 @@ export class Party {
         if (!p.connected) this.players.delete(id);
       this.mode = msg.value;
       if (this.mode === "quiz" && this.usesDemoQuiz)
-        this.quiz = matchContent(demoQuiz, this.championship.games.length, 5);
+        this.quiz = matchContent(demoQuiz, this.championship.playedTotal ?? this.championship.games.length, 5);
       if (this.mode === "feud" && this.usesDefaultShow)
-        this.show = originalFeudShows[this.championship.games.length % originalFeudShows.length];
+        this.show = originalFeudShows[this.championship.playedTotal ?? this.championship.games.length % originalFeudShows.length];
       this.packSettings = settings;
       this.pack = null;
       this.race = null;
@@ -247,7 +247,7 @@ export class Party {
         p.correct = 0;
       });
       this.pairs = this.roster.map((id, i) => ({
-        prompt: prompts[(i + this.championship.games.length * 5) % prompts.length],
+        prompt: prompts[(i + this.championship.playedTotal ?? this.championship.games.length * 5) % prompts.length],
         authors: [id, this.roster[(i + 1) % this.roster.length]],
       }));
       this.enter("countdown", this.countdownMs);

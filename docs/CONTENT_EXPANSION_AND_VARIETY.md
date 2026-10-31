@@ -27,7 +27,7 @@ The baseline (first game in a fresh room) remains backward compatible. **Each na
 
 All banks load once with the Node module graph. Selecting an item is constant time; getting a five-question quiz allocates only five references. The game engine keeps its existing max 20 room participants, phase deadlines, score authority, and no-login QR experience. No database migrations or network dependencies are added.
 
-**Known limitation:** a completely new room intentionally starts with the first curated group, so repeat avoidance applies to sequential matches inside one party, not across unrelated rooms, devices or seasons. The completion ledger is bounded to 40 games; rotation wraps after the available content pool is exhausted. A future opt-in "shuffle first pack" preference can be added with deterministic seeds and regression updates.
+**Known limitation:** a completely new room intentionally starts with the first curated group, so repeat avoidance applies to sequential matches inside one party, not across unrelated rooms, devices or seasons. The visible championship history keeps the latest 40 games, but a separate checkpointed completed-match counter continues content rotation past that cap; selection wraps after the authored pool is exhausted. A future opt-in "shuffle first pack" preference can be added with deterministic seeds and regression updates.
 
 ## References for approach, not content
 

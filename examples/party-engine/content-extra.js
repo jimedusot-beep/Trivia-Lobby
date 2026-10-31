@@ -68,11 +68,14 @@ for (let a = 4; a <= 15; a++) for (let b = 3; b <= 9; b++) {
     explanation: a + " × " + b + " = " + answer + ".",
   });
 }
-// Interleave topics so a five-question match isn't entirely arithmetic.
-export const extraQuiz = Object.freeze(Array.from(
-  {length: Math.max(facts.length, math.length)},
-  (_, i) => [facts[i], math[i]]
-).flat().filter(Boolean));
+// Spread the curated topics through the full bank. Otherwise the tail of
+// a 100+ question pool would be arithmetic-only after a few rematches.
+const spacedFacts = [];
+let factIndex = 0, mathIndex = 0;
+for (let i = 0; i < facts.length + math.length; i++)
+  spacedFacts.push(i % 3 === 0 && factIndex < facts.length
+    ? facts[factIndex++] : math[mathIndex++]);
+export const extraQuiz = Object.freeze(spacedFacts);
 
 export const extraPrompts = Object.freeze([
  "Invent a new holiday celebrating a very ordinary chore.",

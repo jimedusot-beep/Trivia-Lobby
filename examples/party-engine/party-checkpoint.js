@@ -57,6 +57,10 @@ export function restoreParty(code, state, options, savedAt) {
       party.quiz.every((q,i) => q.prompt === defaultQuizBank[i]?.prompt);
   if (!Object.hasOwn(state, "usesDefaultShow"))
     party.usesDefaultShow = JSON.stringify(party.show) === JSON.stringify(defaultShow);
+  // Pre-expansion checkpoint formats store a capped history, but no monotonic
+  // content counter. Start the counter from the valid legacy history length.
+  if (party.championship && !Object.hasOwn(party.championship, "playedTotal"))
+    party.championship.playedTotal = party.championship.games?.length ?? 0;
   if (!(party.players instanceof Map) || party.players.size > 20 || !(party.requests instanceof Map)
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
@@ -73,6 +77,7 @@ export function restoreParty(code, state, options, savedAt) {
   // A newly initialized championship is valid for older version-1 checkpoints.
   if (!(party.championship?.entries instanceof Map) || party.championship.entries.size > 20 ||
       !Array.isArray(party.championship.games) || party.championship.games.length > 40 ||
+      !Number.isSafeInteger(party.championship.playedTotal) || party.championship.playedTotal < party.championship.games.length ||
       !(party.championship.completed instanceof Set) || party.championship.completed.size > 80)
     throw new Error("Unsupported championship recovery state.");
   if (party.mode === "tap" && party.pack?.kind === "tap" &&
