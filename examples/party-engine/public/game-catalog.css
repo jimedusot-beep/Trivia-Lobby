@@ -452,6 +452,9 @@ body.public-party:not(.party-playing):not(.party-invited) .open-source-footer a 
   body.public-party:not(.party-playing):not(.party-invited) .page-nav {padding-bottom:11px;margin-bottom:9px;}
   body.public-party:not(.party-playing):not(.party-invited) .page-nav-links {gap:5px;max-width:100%;}
   body.public-party:not(.party-playing):not(.party-invited) .page-nav-links a {padding:5px 8px;font-size:.64rem;min-height:32px;}
+  body.public-party:not(.party-playing):not(.party-invited) .page-nav-links a[href="#pick-games"],
+  body.public-party:not(.party-playing):not(.party-invited) .page-nav-links a[href="./create.html"],
+  body.public-party:not(.party-playing):not(.party-invited) .page-nav-links a[href="./learn.html"] {display:none;}
   body.public-party:not(.party-playing):not(.party-invited) #pick-games-title {font-size:1.95rem;}
   body.public-party:not(.party-playing):not(.party-invited) .pick-game-heading {margin-bottom:12px;}
   body.public-party:not(.party-playing):not(.party-invited) .pick-game-heading p {font-size:.81rem;}
