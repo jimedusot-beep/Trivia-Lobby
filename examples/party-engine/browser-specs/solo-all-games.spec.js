@@ -43,12 +43,20 @@ test("manual test seats run a real Four in a Row host and two guest controllers 
   await expect(host.locator("#game")).toBeVisible();
   await expect(seat1.locator("#game")).toBeVisible();
   await expect(seat1.locator(".open-game")).toBeVisible({timeout:18000});
+  // A real server-validated board move from Seat 1 appears on the TV.
+  await expect(seat1.getByRole("button", { name: "Drop 1", exact: true })).toBeEnabled();
+  await seat1.getByRole("button", { name: "Drop 1", exact: true }).click();
+  await expect(host.locator(".four-cell[aria-label='First player disc']")).toHaveCount(1, {timeout:12000});
   // No popup or second top-level page is used for the guest seats.
   expect(context.pages()).toHaveLength(1);
   await page.locator("#solo-all-seat-switch").selectOption("1");
   await expect(page.locator("#solo-all-seat-frame-0")).toBeHidden();
   await expect(page.locator("#solo-all-seat-frame-1")).toBeVisible();
   await expect(seat2.locator(".open-game")).toBeVisible();
+  await expect(seat2.getByRole("button", { name: "Drop 2", exact: true })).toBeEnabled();
+  await seat2.getByRole("button", { name: "Drop 2", exact: true }).click();
+  await expect(host.locator(".four-cell[aria-label='Second player disc']")).toHaveCount(1, {timeout:12000});
+  await page.screenshot({ path: "test-results/solo-all-four-desktop.png", animations: "disabled" });
   expect(errors).toEqual([]);
   await page.locator("#solo-stop").click();
   await expect(page.locator("#solo-all-stage")).toBeHidden();
