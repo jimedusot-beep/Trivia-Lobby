@@ -52,6 +52,8 @@ jobs:
             examples/party-engine/test-results/gx2-tv-lobby.png
             examples/party-engine/test-results/tv-preview-visible.png
             examples/party-engine/test-results/switch-cover-shelf-mobile.png
+            examples/party-engine/test-results/switch-tv-1920-home.png
+            examples/party-engine/test-results/switch-mobile-390-home.png
           if-no-files-found: warn
           retention-days: 14
       - uses: actions/upload-artifact@v4
