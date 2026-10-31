@@ -31,7 +31,9 @@ test("guest completes a lesson without login and retains local XP on refresh", a
 
 test("public guest party loads, while private deck APIs stay protected", async ({ page, request }) => {
   await page.goto("/party/");
-  await expect(page.getByRole("heading", { name: "One code. Everyone plays." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pick a Game", level: 1 })).toBeVisible();
+  await expect(page.locator(".pick-spotlight-copy h2")).toHaveText("Party Grand Prix");
+  await expect(page.locator(".pick-game-card")).toHaveCount(31);
   await expect(page.getByRole("button", { name: "Create host screen" })).toBeVisible();
   await expect(page.getByLabel("Email")).toHaveCount(0);
   const privateDecks = await request.get("/api/decks");

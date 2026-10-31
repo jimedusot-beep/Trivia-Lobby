@@ -23,7 +23,8 @@ test("public welcome offers Make a Quiz and local authoring never opens private 
   expect(decks.status()).toBe(401);
   await page.getByRole("button", { name: "Save & host this quiz" }).click();
   await expect(page).toHaveURL(/\/party\/\?deck=/);
-  await expect(page.getByRole("heading", { name: "One code. Everyone plays." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pick a Game", level: 1 })).toBeVisible();
+  await expect(page.locator(".pick-game-card")).toHaveCount(31);
 });
 
 test("invalid guest import cannot disclose or overwrite protected study data", async ({ page, request }) => {

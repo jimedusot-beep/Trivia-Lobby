@@ -11,7 +11,7 @@ test('TV library preserves all games, filters, searches, and keyboard launch', a
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(1);
   const preview = page.getByRole('button',{name:'Preview Party Grand Prix',exact:true});
   await preview.focus(); await page.keyboard.press('Enter');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   const launch = page.locator('.pick-game-card:visible .pick-game-button');
   await launch.focus(); await page.keyboard.press('Enter');
   await expect(page.locator('#heading')).toContainText('lobby');
@@ -95,7 +95,7 @@ test('lower-card Preview brings its rules into view and moves keyboard focus', a
   const preview = page.locator('.pick-game-preview-button').last();
   const name = (await preview.getAttribute('aria-label')).replace('Preview ', '');
   await preview.click();
-  const heading = page.locator('.pick-spotlight-copy h3');
+  const heading = page.locator('.pick-spotlight-copy h2');
   await expect(heading).toHaveText(name);
   await expect(heading).toBeFocused();
   await expect(page.locator('.pick-game-spotlight')).toBeInViewport();
@@ -124,4 +124,177 @@ test('TV lobby width and invitation styling exclude controllers and active play'
   await page.evaluate(() => { document.body.dataset.partyPhase = 'question'; });
   await expect(page.locator('main')).toHaveCSS('max-width', '1050px');
   await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '20px');
+});
+
+
+test('console cover shelf scrolls horizontally and supports left-right keyboard selection', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const shelf = page.getByRole('region', { name: 'Horizontal game cover shelf' });
+  await expect(shelf).toHaveCSS('display', 'flex');
+  await expect(page.locator('.pick-game-art')).toHaveCount(31);
+  // A poster is labelled "Preview <game>" while its extra decorative
+  // category/library copy lives outside the button. This avoids an axe
+  // label-content-name-mismatch on the public mobile game library.
+  const cover = page.locator('.pick-game-cover').first();
+  await expect(cover.locator('.pick-poster-kicker')).toBeVisible();
+  await expect(cover.locator('.pick-poster-tag')).toBeVisible();
+  await expect(cover.locator('.pick-game-art .pick-poster-kicker')).toHaveCount(0);
+  await expect(cover.locator('.pick-game-art .pick-poster-tag')).toHaveCount(0);
+  await expect(cover.getByRole('button', { name: 'Preview Trivia Quiz', exact: true })).toBeVisible();
+  expect(await shelf.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Host this game: Party Grand Prix' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Preview Party Grand Prix' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('button', { name: 'Next game' }).click();
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('22 / 31');
+  await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.locator('.pick-game-grid').evaluate(rail => {
+    const cover = rail.querySelector('.pick-game-card[data-preview="true"]');
+    const selectedBox = cover.getBoundingClientRect(), railBox = rail.getBoundingClientRect();
+    return Math.abs((selectedBox.left + selectedBox.width / 2) - (railBox.left + railBox.width / 2));
+  })).toBeLessThan(24);
+
+  await shelf.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Doodle Dash');
+  await expect(page.getByRole('button', { name: 'Preview Doodle Dash' })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
+  await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toBeFocused();
+
+  await page.getByRole('button', { name: 'Racing & arcade', exact: true }).click();
+  await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
+  // We browsed to Family Showdown before filtering. It is not a racing
+  // game, so category switching selects the first visible arcade cover.
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 5');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Turbo Circuit');
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
+  await page.getByRole('searchbox', { name: 'Find your next game' }).fill('Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 1');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
+  // The original host callback still launches the exact selected game.
+  await page.locator('.pick-spotlight-button').first().click();
+  await expect(page.locator('#heading')).toContainText('lobby');
+});
+
+test('mobile console shelf keeps poster artwork in view without page-width scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/');
+  const covers = page.locator('.pick-game-art');
+  await expect(covers).toHaveCount(31);
+  await expect(covers.first().locator('.pick-poster-title')).toHaveText('Trivia Quiz');
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeVisible();
+  await page.getByRole('button', { name: 'Next game' }).click();
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('.pick-game-shelf').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/switch-cover-shelf-mobile.png', animations: 'disabled' });
+});
+
+
+// Keep the guest entry point executable: a cover-shelf initialization exception
+// can strand the page at "Connecting…" even if game data and WebSocket code work.
+test('game cover shelf initializes without JavaScript errors for guest and host pickers', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.locator('#status')).toHaveText('Connected.');
+  await expect(page.locator('.pick-game-card')).toHaveCount(31);
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeEnabled();
+  const hostErrors = await page.evaluate(async () => {
+    const { mountGamePicker } = await import('/game-catalog.js');
+    const container = document.createElement('div');
+    mountGamePicker(container, { asHost: true, selected: 'race', onChoose: () => {} });
+    return { count: container.querySelectorAll('.pick-game-card').length,
+      highlighted: container.querySelector('.pick-game-spotlight h2')?.textContent };
+  });
+  expect(hostErrors).toEqual({ count: 31, highlighted: 'Party Grand Prix' });
+  expect(errors).toEqual([]);
+});
+
+
+test('TV home opens on featured Grand Prix and its centered covers above the join forms', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
+  await expect(page.locator('#party-intro')).toBeHidden();
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.locator('#game-picker .pick-game-card')).toHaveCount(31);
+  await expect(page.getByRole('link', { name: 'Join party' })).toHaveAttribute('href', '#join-entry');
+  const positions = await page.evaluate(() => {
+    const $ = query => document.querySelector(query).getBoundingClientRect();
+    const rail = document.querySelector('.pick-game-grid');
+    const selected = document.querySelector('.pick-game-card[data-preview="true"]');
+    return {
+      heroY: $('.pick-game-spotlight').top,
+      shelfY: $('.pick-game-grid').top,
+      hostEntryY: $('#entry').top,
+      railCenter: rail.getBoundingClientRect().left + rail.clientWidth / 2,
+      selectedCenter: selected.getBoundingClientRect().left + selected.clientWidth / 2,
+      viewport: innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(positions.heroY).toBeGreaterThanOrEqual(0);
+  expect(positions.heroY).toBeLessThan(300);
+  expect(positions.shelfY).toBeLessThan(1080);
+  expect(positions.shelfY).toBeLessThan(positions.hostEntryY);
+  expect(Math.abs(positions.selectedCenter - positions.railCenter)).toBeLessThan(24);
+  expect(positions.scrollWidth).toBeLessThanOrEqual(positions.viewport);
+  expect(errors).toEqual([]);
+  await page.screenshot({ path: 'test-results/switch-tv-1920-home.png', animations: 'disabled' });
+});
+
+test('TV remote arrow keys work immediately without interfering with typing', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+  // On a new page the document body has focus: an arrow should move the shelf.
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Tap Dash');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('20 / 31');
+  const search = page.getByRole('searchbox', { name: 'Find your next game' });
+  await search.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Tap Dash');
+  await search.fill('Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+});
+
+test('approved mobile cover-first home keeps the selected kart poster and QR joining accessible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.getByRole('link', { name: 'Join party' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: 'test-results/switch-mobile-390-home.png', animations: 'disabled' });
+  await page.getByRole('link', { name: 'Join party' }).click();
+  await expect(page.getByLabel('Party code')).toBeVisible();
+});
+
+test('invitation links and active game keep their own layout and working QR flow', async ({ page }) => {
+  await page.goto('/?code=ABCDEF');
+  await expect(page.locator('#pick-games')).toBeHidden();
+  await expect(page.getByRole('heading', { name: "You're invited!" })).toBeVisible();
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Host this game: Party Grand Prix' }).click();
+  await expect(page.locator('#heading')).toContainText('lobby');
+  await expect(page.locator('.lobby-invite-qr')).toBeVisible();
+  await expect(page.locator('#pick-games')).toBeHidden();
+  await expect(page.locator('#game')).toBeVisible();
 });
