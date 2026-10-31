@@ -85,7 +85,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const centerCover = (id, animate = true) => {
     const card = cards.get(id);
     if (!card || !grid.clientWidth) return;
-    const target = card.offsetLeft - grid.offsetLeft - (grid.clientWidth - card.clientWidth) / 2;
+    const target = card.offsetLeft - (grid.clientWidth - card.clientWidth) / 2;
     grid.scrollTo({ left: Math.max(0, target),
       behavior: animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? "smooth" : "instant" });
   };
