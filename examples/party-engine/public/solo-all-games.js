@@ -73,7 +73,7 @@ export function makeFullGameLab({ game, seats, isActive, report }) {
     guard();
     const hostDoc = frameDocument(hostFrame);
     hostDoc.getElementById("create").click();
-    const modeField = await waitFor(() => frameDocument(hostFrame)?.querySelector("#mode"), "Host room");
+    await waitFor(() => frameDocument(hostFrame)?.querySelector("#mode"), "Host room");
     const heading = frameDocument(hostFrame)?.querySelector("#heading")?.textContent ?? "";
     code = heading.split("·")[0].trim();
     if (!roomPattern.test(code)) throw new Error("The host did not provide a valid test room code.");
@@ -111,8 +111,11 @@ export function makeFullGameLab({ game, seats, isActive, report }) {
     selectSeat(0);
     guard();
     status("All " + seats + " guests joined. Starting " + game.name + "…");
-    modeField.value = game.id;
-    modeField.dispatchEvent(new Event("change", { bubbles: true }));
+    // The host rerenders its lobby after every player joins. A select held
+    // from the first render is detached, so always use the current live one.
+    const currentMode = await waitFor(() => frameDocument(hostFrame)?.querySelector("#mode"), "Live host game selector");
+    currentMode.value = game.id;
+    currentMode.dispatchEvent(new Event("change", { bubbles: true }));
     const startButton = await waitFor(() => [...(frameDocument(hostFrame)?.querySelectorAll("#content button") ?? [])]
       .find(button => button.textContent.trim() === "Start match" && !button.disabled), "Host Start match");
     startButton.click();
