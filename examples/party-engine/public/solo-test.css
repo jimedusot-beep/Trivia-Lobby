@@ -1,0 +1,66 @@
+/* The one-tab lab is a separate, explicitly simulated host-and-player workspace. */
+body.solo-test-page {
+  background: radial-gradient(circle at 15% 0%, #3b2a66 0, transparent 40%), #15122d;
+  color: #f7f1ff;
+}
+.solo-test-page main { max-width: 1660px; padding: 18px clamp(12px, 3vw, 38px) 40px; }
+.solo-test-page .page-nav {
+  background: #292140; color: #f7f1ff; border-color: #a897c4;
+  margin-bottom: 24px; box-shadow: 0 4px 0 #090518;
+}
+.solo-test-page .page-nav a, .solo-test-page footer a { color: #ffe1a0; }
+.solo-test-page h1 { font-size: clamp(2.5rem, 5vw, 4.3rem); margin: 11px 0; color: #fff; }
+.solo-test-page .eyebrow { color: #ffe1a0; }
+.solo-test-page .solo-intro { max-width: 800px; color: #e1d5ef; line-height: 1.5; }
+.solo-setup {
+  border: 1px solid #79698c; border-radius: 20px; background: #292244;
+  padding: 18px 22px; margin: 24px 0 10px;
+}
+.solo-setup label { color: #ffe6b0; margin: 0 0 7px; }
+#solo-mode, #solo-seats { display:block; width:100%; max-width: 520px; border-color: #d9c8ed; border-radius: 12px; font-size: 1rem; }
+#solo-seats { margin-top: 7px; }
+#solo-seats-help { font-size:.82rem; margin: 4px 0 10px; color: #dfd1ed; }
+.solo-setup label[for="solo-seats"] { display:block; margin-top: 12px; }
+#solo-description { margin: 5px 0; color: #f0e3ff; }
+.solo-disclaimer { color: #dccfe9; font-size: .85rem; margin-bottom: 3px; }
+.solo-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.solo-actions button { width: auto; min-width: 170px; min-height: 49px; }
+#solo-start { background: #b8eed3; color: #153f34; border-color: #102c23; }
+#solo-stop { background: #f2c0ca; color: #392434; }
+#solo-status { background: #ece9fa; color: #242345; margin: 16px 0 18px; }
+.solo-stage-heading {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+  color: #ffe3b0; font-size: .9rem;
+}
+.solo-layout { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(295px, .7fr); align-items: start; gap: 18px; }
+.solo-layout > section {
+  min-width: 0; background: #f8f6ff; color: #211c3d; border: 2px solid #8f79b2;
+  border-radius: 22px; padding: clamp(14px, 2vw, 22px);
+}
+.solo-layout h2 { font-size: clamp(1.4rem, 2.5vw, 2rem); margin: 0 0 12px; }
+.solo-layout h3 { font-size: 1.1rem; }
+#content { min-width: 0; }
+#content > :first-child { margin-top: 12px; }
+#solo-players { margin: 0; padding-left: 24px; display: grid; gap: 3px; font-size: .88rem; }
+#solo-players li { padding: 4px; }
+#solo-controls { min-width: 0; }
+#solo-controls button { min-height: 50px; margin: 5px 0; }
+#solo-next { background: #baa5ef; color: #1d1843; }
+.solo-tap-action { min-height: 145px !important; font-size: 2.4rem; background: #b8eed3; color: #143f34; }
+.solo-tap-count { display: block; text-align: center; font-size: 3rem; }
+.solo-steering { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+.solo-steering button { padding: 7px 4px; min-width: 0; font-size: .9rem; }
+.solo-steering button[aria-pressed="true"] { background: #174737; outline: 3px solid #8bddb4; }
+.solo-test-page footer { margin-top: 30px; color: #ddd5e9; }
+.solo-test-page button:focus-visible, .solo-test-page a:focus-visible { outline: 4px solid #ddab46; outline-offset: 3px; }
+@media (max-width: 940px) {
+  .solo-layout { grid-template-columns: 1fr; }
+  .solo-controller { order: -1; }
+  .solo-session-active .solo-intro { display: none; }
+  .solo-session-active h1 { font-size: 2.2rem; margin: 5px 0 10px; }
+  .solo-layout > section { padding: 14px; }
+  .solo-test-page main { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .solo-test-page * { scroll-behavior: auto !important; transition: none !important; }
+}
