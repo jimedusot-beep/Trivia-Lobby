@@ -225,7 +225,7 @@
   font-size:clamp(5.2rem,7.4vw,7.4rem);line-height:1.15;
   transform:rotate(-8deg);filter:drop-shadow(0 13px 3px #120f3b7b);
 }
-.pick-game-art .pick-poster-kicker {
+.pick-game-cover > .pick-poster-kicker {
   position:absolute;z-index:2;top:15px;left:14px;right:14px;
   font-size:.66rem;font-weight:950;letter-spacing:.15em;color:#fffbd5;
   text-shadow:0 2px 6px #0007;
@@ -235,11 +235,13 @@
   color:#fff;font:950 clamp(1.48rem,2vw,2.08rem)/.98 var(--font-display,system-ui);
   text-shadow:0 3px 0 #170f37,0 7px 12px #120a2ccc;overflow-wrap:anywhere;
 }
-.pick-game-art .pick-poster-tag {
+.pick-game-cover > .pick-poster-tag {
   position:absolute;z-index:2;left:14px;right:10px;bottom:15px;
   color:#ffe4a3;font-size:.75rem;font-weight:950;letter-spacing:.04em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
+.pick-game-cover { position:relative; flex:none; width:100%; }
+.pick-game-cover > .pick-poster-kicker,.pick-game-cover > .pick-poster-tag { pointer-events:none; }
 .pick-game-card .pick-game-art[aria-pressed="true"] {
   box-shadow:inset 0 0 0 3px #ffde8c;
 }
