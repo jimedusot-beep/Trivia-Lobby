@@ -8,6 +8,7 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
+import { originalFeudShows } from "./open-pack/feud-content.js";
 import { currentHomewardBoardVersion } from "./open-pack/homeward.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
@@ -48,6 +49,7 @@ export class Party {
     this.usesDemoQuiz = !customQuiz;
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.show = customShow ?? defaultShow;
+    this.usesDefaultShow = !customShow;
     this.players = new Map();
     this.championship = newChampionship();
     this.hostConnected = true;
@@ -227,6 +229,8 @@ export class Party {
       this.mode = msg.value;
       if (this.mode === "quiz" && this.usesDemoQuiz)
         this.quiz = matchContent(demoQuiz, this.championship.games.length, 5);
+      if (this.mode === "feud" && this.usesDefaultShow)
+        this.show = originalFeudShows[this.championship.games.length % originalFeudShows.length];
       this.packSettings = settings;
       this.pack = null;
       this.race = null;
@@ -243,7 +247,7 @@ export class Party {
         p.correct = 0;
       });
       this.pairs = this.roster.map((id, i) => ({
-        prompt: prompts[i % prompts.length],
+        prompt: prompts[(i + this.championship.games.length * 5) % prompts.length],
         authors: [id, this.roster[(i + 1) % this.roster.length]],
       }));
       this.enter("countdown", this.countdownMs);

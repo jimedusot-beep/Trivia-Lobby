@@ -5,7 +5,7 @@ import { validateHomewardCheckpoint } from "./open-pack/homeward.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
-  "players", "championship", "usesDemoQuiz", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
+  "players", "championship", "usesDemoQuiz", "usesDefaultShow", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
   "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "packSettings", "pack", "race", "category", "pairs", "turn", "answers", "responses",
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
