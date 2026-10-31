@@ -1,3 +1,4 @@
+import { extraCharades } from "./content-extra.js";
 import { randomInt, randomUUID } from "node:crypto";
 // Original plain-language packs. A fresh shuffle per performer; no repeats within a turn.
 export const CHARADES_PACKS = Object.freeze({
@@ -18,6 +19,7 @@ export const CHARADES_PACKS = Object.freeze({
     "Skipping rope",
     "Riding a bicycle",
     "Blowing up a balloon",
+    ...extraCharades.actions,
   ],
   animals: [
     "Penguin",
@@ -36,6 +38,7 @@ export const CHARADES_PACKS = Object.freeze({
     "Snake",
     "Frog",
     "Peacock",
+    ...extraCharades.animals,
   ],
 });
 export function makeTurn(performerId, category) {

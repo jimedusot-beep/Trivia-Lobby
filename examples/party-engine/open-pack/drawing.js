@@ -1,3 +1,4 @@
+import { extraDrawingWords } from "../content-extra.js";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Original canvas, content and implementation. No Scribble.rs artwork or word packs.
 import {
@@ -53,6 +54,7 @@ const words = [
   "windmill", "igloo", "submarine", "fire engine", "snowflake", "mailbox",
   "trophy", "hammock", "paintbrush", "binoculars", "washing machine", "swing",
 ];
+words.push(...extraDrawingWords);
 export const DRAW_LIMITS = Object.freeze({ points: 2400, strokes: 200, segment: 64 });
 export const inkColors = [
   "#20264b",

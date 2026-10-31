@@ -1,3 +1,4 @@
+import { matchContent } from "./content-rotation.js";
 import { randomInt, randomUUID } from "node:crypto";
 import { quiz as demoQuiz, prompts } from "./content.js";
 import { validateAction } from "./protocol.js";
@@ -43,7 +44,8 @@ export class Party {
       raceLaps,
     });
     // The host can supply a bounded original guest quiz at room creation.
-    this.quiz = customQuiz?.questions ?? demoQuiz;
+    this.quiz = customQuiz?.questions ?? demoQuiz.slice(0, 5);
+    this.usesDemoQuiz = !customQuiz;
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.show = customShow ?? defaultShow;
     this.players = new Map();
@@ -223,6 +225,8 @@ export class Party {
       for (const [id, p] of this.players)
         if (!p.connected) this.players.delete(id);
       this.mode = msg.value;
+      if (this.mode === "quiz" && this.usesDemoQuiz)
+        this.quiz = matchContent(demoQuiz, this.championship.games.length, 5);
       this.packSettings = settings;
       this.pack = null;
       this.race = null;
