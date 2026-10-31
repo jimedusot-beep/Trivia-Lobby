@@ -9,7 +9,9 @@ test('3D host renders real WebGL karts; phones never download the 3D bundle', as
       await expect(f.host.locator('#race-track')).toHaveAttribute('data-renderer','3d',{timeout:15000});
       await expect(f.host.locator('#race-track')).toHaveAttribute('data-karts','2');
       const calls=Number(await f.host.locator('#race-track').getAttribute('data-draw-calls'));
-      expect(calls).toBeGreaterThan(0); expect(calls).toBeLessThan(700);
+      // Original two-player scene used 202 draw calls in the measured CI baseline.
+      // Require a meaningful reduction without changing the race or phone client.
+      expect(calls).toBeGreaterThan(0); expect(calls).toBeLessThan(160);
     } else {
       await expect(f.host.locator('.race-view-status')).not.toContainText('Loading');
       expect(['2d','3d']).toContain(await f.host.locator('#race-track').getAttribute('data-renderer'));
