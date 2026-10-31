@@ -4,7 +4,8 @@ test("Sakura game shelf previews modes without starting them",async({page})=>{
  await expect(page.locator("#status")).toHaveText("Connected.");
  const picker=page.locator("#game-picker");
  const spotlight=page.getByRole("region",{name:"Selected game preview"});
- await expect(spotlight.getByRole("heading",{name:"Trivia Quiz"})).toBeVisible();
+ await expect(spotlight.getByRole("heading",{name:"Party Grand Prix"})).toBeVisible();
+ await expect(page.locator(".pick-shelf-position")).toHaveText("21 / 31");
  await picker.getByRole("button",{name:"Preview Family Bingo"}).click();
  await expect(spotlight.getByRole("heading",{name:"Family Bingo"})).toBeVisible();
  await expect(spotlight).toContainText("20 calls");
