@@ -48,7 +48,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const previewAction = make("button", "pick-spotlight-button");
   previewAction.type = "button";
   const previewActions = make("div", "pick-spotlight-actions");
-  previewActions.append(previewAction, make("small", "pick-spotlight-action-note", "Room code and QR appear next"));
+  previewActions.append(previewAction, make("small", "pick-spotlight-action-note", asHost ? "Uses the current room and players" : "Room code and QR appear next"));
   spotlight.append(previewIcon, previewCopy, previewActions);
   const cards = new Map();
   let previewId = selected;
