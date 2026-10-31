@@ -47,7 +47,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   previewCopy.append(previewLabel, previewName, previewMeta, previewRules);
   const previewAction = make("button", "pick-spotlight-button");
   previewAction.type = "button";
-  spotlight.append(previewIcon, previewCopy, previewAction);
+  const previewActions = make("div", "pick-spotlight-actions");
+  previewActions.append(previewAction, make("small", "pick-spotlight-action-note", "Room code and QR appear next"));
+  spotlight.append(previewIcon, previewCopy, previewActions);
   const cards = new Map();
   let previewId = selected;
   const visibleIds = () => [...cards.keys()].filter(id => !cards.get(id).hidden);
@@ -65,8 +67,8 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     previewName.textContent = game.name;
     previewMeta.textContent = game.players + " players · " + game.rounds + " · " + game.tag;
     previewRules.textContent = game.rules;
-    previewAction.textContent = (asHost ? "Choose " : "Host ") + game.name + "  →";
-    previewAction.setAttribute("aria-label", (asHost ? "Choose " : "Host ") + game.name);
+    previewAction.textContent = (asHost ? "Choose this game" : "Host this game") + " →";
+    previewAction.setAttribute("aria-label", (asHost ? "Choose this game: " : "Host this game: ") + game.name);
     previewAction.onclick = () => play(game.id);
     spotlight.dataset.tone = game.color;
     spotlight.dataset.genre = groupFor(game.id);
@@ -78,15 +80,22 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     }
     syncShelf();
   };
+  // Keep browsing horizontal: the preview stays on screen while the cover row
+  // advances. scrollIntoView() would also move the document vertically.
+  const centerCover = (id, animate = true) => {
+    const card = cards.get(id);
+    if (!card || !grid.clientWidth) return;
+    const target = card.offsetLeft - grid.offsetLeft - (grid.clientWidth - card.clientWidth) / 2;
+    grid.scrollTo({ left: Math.max(0, target),
+      behavior: animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? "smooth" : "instant" });
+  };
   const moveSelection = (delta, focusPoster = false) => {
     const ids = visibleIds(), index = ids.indexOf(previewId);
     if (!ids.length) return;
     const id = ids[Math.max(0, Math.min(ids.length - 1, index + delta))];
     showPreview(id);
-    const poster = cards.get(id)?.querySelector(".pick-game-preview-button");
-    poster?.scrollIntoView({ block: "nearest", inline: "center",
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    if (focusPoster) poster?.focus({ preventScroll: true });
+    centerCover(id);
+    if (focusPoster) cards.get(id)?.querySelector(".pick-game-preview-button")?.focus({ preventScroll: true });
   };
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
@@ -219,4 +228,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   container.append(spotlight, toolbar, status, empty, shelf);
   showPreview(cards.has(selected) ? selected : guestGames[0].id);
   chooseCategory("all");
+  // Present the selected poster at the center of the first paint, like a
+  // console game library. Only scroll the shelf, never the document.
+  requestAnimationFrame(() => {
+    if (container.isConnected && !spotlight.hidden) centerCover(previewId, false);
+  });
 }
