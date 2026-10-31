@@ -178,3 +178,24 @@ test('mobile console shelf keeps poster artwork in view without page-width scrol
   await page.locator('.pick-game-shelf').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/switch-cover-shelf-mobile.png', animations: 'disabled' });
 });
+
+
+// Keep the guest entry point executable: a cover-shelf initialization exception
+// can strand the page at "Connecting…" even if game data and WebSocket code work.
+test('game cover shelf initializes without JavaScript errors for guest and host pickers', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.locator('#status')).toHaveText('Connected.');
+  await expect(page.locator('.pick-game-card')).toHaveCount(31);
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeEnabled();
+  const hostErrors = await page.evaluate(async () => {
+    const { mountGamePicker } = await import('/game-catalog.js');
+    const container = document.createElement('div');
+    mountGamePicker(container, { asHost: true, selected: 'race', onChoose: () => {} });
+    return { count: container.querySelectorAll('.pick-game-card').length,
+      highlighted: container.querySelector('.pick-game-spotlight h3')?.textContent };
+  });
+  expect(hostErrors).toEqual({ count: 31, highlighted: 'Party Grand Prix' });
+  expect(errors).toEqual([]);
+});
