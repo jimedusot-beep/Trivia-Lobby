@@ -165,11 +165,11 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
 
   await page.getByRole('button', { name: 'Racing & arcade', exact: true }).click();
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
-  // The initial Grand Prix selection is still a valid racing game. Keep it
-  // selected and centered rather than unexpectedly jumping to Turbo Circuit.
-  await expect(page.locator('.pick-shelf-position')).toHaveText('5 / 5');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
-  await expect(page.getByRole('button', { name: 'Next game' })).toBeDisabled();
+  // We browsed to Family Showdown before filtering. It is not a racing
+  // game, so category switching selects the first visible arcade cover.
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 5');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Turbo Circuit');
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
   await page.getByRole('searchbox', { name: 'Find your next game' }).fill('Grand Prix');
   await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 1');
   await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
