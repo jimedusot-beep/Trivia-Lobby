@@ -173,6 +173,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const card = make("article", "pick-game-card");
     card.dataset.tone = game.color; card.dataset.game = game.id;
     if (selected === game.id && asHost) card.dataset.selected = "true";
+    // Decorative poster labels sit outside the actionable button so its
+    // accessible "Preview <title>" name matches its visible title (WCAG 2.5.3).
+    const cover = make("div", "pick-game-cover");
     const art = make("button", "pick-game-art pick-game-preview-button");
     art.type = "button";
     art.dataset.genre = groupFor(game.id);
@@ -182,9 +185,10 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const posterKicker = make("span", "pick-poster-kicker", "TRIVIA LOBBY · GAME LIBRARY");
     const posterTitle = make("span", "pick-poster-title", game.name);
     const posterTag = make("span", "pick-poster-tag", game.tag);
-    for (const element of [posterOrbit, posterIcon, posterKicker, posterTitle, posterTag])
+    for (const element of [posterOrbit, posterIcon, posterKicker, posterTag])
       element.setAttribute("aria-hidden", "true");
-    art.append(posterOrbit, posterIcon, posterKicker, posterTitle, posterTag);
+    art.append(posterOrbit, posterIcon, posterTitle);
+    cover.append(art, posterKicker, posterTag);
     art.addEventListener("click", () => {
       showPreview(game.id);
       previewName.focus({ preventScroll: true });
@@ -201,7 +205,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
     host.addEventListener("click", () => play(game.id));
     actions.append(host);
-    card.append(art, marker, title, people, rules, actions);
+    card.append(cover, marker, title, people, rules, actions);
     grid.append(card);cards.set(game.id,card);
   }
   search.addEventListener("input", () => chooseCategory(activeCategory));
