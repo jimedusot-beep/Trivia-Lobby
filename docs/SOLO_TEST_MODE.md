@@ -23,3 +23,16 @@ The first version deliberately covers:
 ## Release checks
 
 Browser tests cover one-tab room creation, real 3-player quiz with user answer, five-seat quiz setup, host render and steering controls for racing, responsive Tap Dash, and clean Stop. See [the open-source research shortlist](./SOLO_OPEN_SOURCE_RESEARCH.md) for future adapter and test-scenario work. The normal party catalog, hosting, joining and server validation remain unchanged. Do not deploy without passing browser acceptance and smoke tests.
+
+
+## All 31 games — full-controller seat switching
+
+The Solo Test menu now reads game IDs, titles and minimum seats directly from \`guestGames\`, so **every existing game mode in the 31-title catalog is selectable**.
+
+- **Quiz, Party Grand Prix, Tap Dash:** Keep the existing quick simulator where demo rivals automatically answer, drive or tap.
+- **All other game modes:** The lab creates a real host and 2–5 real authenticated guest sessions, then embeds the **existing, unchanged host and phone-controller UIs** side by side. A **Control a test player** selector switches among guest seats without opening another browser tab. This supports manual turn-by-turn rehearsal across voting, writing, drawing, boards, cards and game shows.
+- **Not an AI-opponent promise:** In the 28 added games, guest seats are deliberately **manual test roles**. You must switch to the correct seat and perform required guest actions; the game server retains turn order and minimum player requirements. No undocumented player impersonation or direct server mutation has been added.
+- **Privacy:** Each temporary frame uses a unique \`solo-seat\` ID. The normal frontend ignores stored party credentials and never persists embedded identities. Only these exact same-origin test-page responses use CSP \`frame-ancestors 'self'\`; ordinary party pages keep \`frame-ancestors 'none'\` and third-party framing remains blocked. Temporary frames close on Stop.
+- **Actual frontend:** This is also a realistic way to assess the existing controller for each game—not a parallel, simplified replica. Host and guest UIs render the same components as a normal room.
+
+Browser acceptance covers the complete game selection list, CSP restrictions, real two-seat Four in a Row with seat switching, representative 2–3-player games, and the original automated quiz/racing/tap scenarios. Passing all these checks does **not** imply every move in every mode has been playtested to completion or that multi-device Wi-Fi performance was measured.
