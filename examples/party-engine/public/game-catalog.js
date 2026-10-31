@@ -86,8 +86,14 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const card = cards.get(id);
     if (!card || !grid.clientWidth) return;
     const target = card.offsetLeft - (grid.clientWidth - card.clientWidth) / 2;
-    grid.scrollTo({ left: Math.max(0, target),
-      behavior: animate && !matchMedia("(prefers-reduced-motion: reduce)").matches ? "smooth" : "instant" });
+    const left = Math.max(0, target);
+    if (animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      grid.scrollTo({ left, behavior: "smooth" });
+    } else {
+      // "instant" in the scrollTo options is not consistently supported in
+      // WebKit. A direct offset works across Chromium, Firefox and Safari.
+      grid.scrollLeft = left;
+    }
   };
   const moveSelection = (delta, focusPoster = false) => {
     const ids = visibleIds(), index = ids.indexOf(previewId);
@@ -240,6 +246,9 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   container.append(spotlight, toolbar, status, empty, shelf);
   showPreview(cards.has(selected) ? selected : guestGames[0].id);
   chooseCategory("all");
+  // Center immediately as soon as the shelf is attached. Repeat after the
+  // next paint to accommodate delayed WebKit layout/scroll snapping.
+  centerCover(previewId, false);
   // Present the selected poster at the center of the first paint, like a
   // console game library. Only scroll the shelf, never the document.
   requestAnimationFrame(() => {
