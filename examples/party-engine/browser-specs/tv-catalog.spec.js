@@ -125,3 +125,56 @@ test('TV lobby width and invitation styling exclude controllers and active play'
   await expect(page.locator('main')).toHaveCSS('max-width', '1050px');
   await expect(page.locator('.lobby-invite-card strong')).toHaveCSS('font-size', '20px');
 });
+
+
+test('console cover shelf scrolls horizontally and supports left-right keyboard selection', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const shelf = page.getByRole('region', { name: 'Horizontal game cover shelf' });
+  await expect(shelf).toHaveCSS('display', 'flex');
+  await expect(page.locator('.pick-game-art')).toHaveCount(31);
+  expect(await shelf.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 31');
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
+
+  await page.getByRole('button', { name: 'Next game' }).click();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('2 / 31');
+  await expect(page.getByRole('button', { name: 'Preview Prompt Duel' })).toHaveAttribute('aria-pressed', 'true');
+
+  await shelf.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Charades');
+  await expect(page.getByRole('button', { name: 'Preview Charades' })).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
+  await expect(page.getByRole('button', { name: 'Preview Prompt Duel' })).toBeFocused();
+
+  await page.getByRole('button', { name: 'Racing & arcade', exact: true }).click();
+  await expect(page.locator('.pick-game-card:visible')).toHaveCount(5);
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 5');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Turbo Circuit');
+  await page.getByRole('searchbox', { name: 'Find your next game' }).fill('Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 1');
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
+  // The original host callback still launches the exact selected game.
+  await page.locator('.pick-spotlight-button').first().click();
+  await expect(page.locator('#heading')).toContainText('lobby');
+});
+
+test('mobile console shelf keeps poster artwork in view without page-width scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('/');
+  const covers = page.locator('.pick-game-art');
+  await expect(covers).toHaveCount(31);
+  await expect(covers.first().locator('.pick-poster-title')).toHaveText('Trivia Quiz');
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeVisible();
+  await page.getByRole('button', { name: 'Next game' }).click();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Prompt Duel');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('.pick-game-shelf').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/switch-cover-shelf-mobile.png', animations: 'disabled' });
+});
