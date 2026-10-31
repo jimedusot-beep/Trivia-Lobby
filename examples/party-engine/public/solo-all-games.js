@@ -58,10 +58,12 @@ export function makeFullGameLab({ game, seats, isActive, report }) {
       index === 0 ? "You're controlling Seat 1. Switch seats to play opponents' turns." :
         "You're controlling Test Seat " + (index + 1) + ". This is a real, separate guest session.";
   }
-  roleSelect.addEventListener("change", () => {
+  const onSeatChange = () => {
+    if (cancelled) return;
     const index = Number(roleSelect.value);
     if (Number.isSafeInteger(index) && index >= 0 && index < views.length) selectSeat(index);
-  });
+  };
+  roleSelect.addEventListener("change", onSeatChange);
 
   async function start() {
     guard();
@@ -129,6 +131,7 @@ export function makeFullGameLab({ game, seats, isActive, report }) {
   function stop() {
     if (cancelled) return;
     cancelled = true;
+    roleSelect.removeEventListener("change", onSeatChange);
     roleSelect.replaceChildren();
     for (const frame of views) {
       frame.src = "about:blank"; // close the guest WebSocket on navigation
