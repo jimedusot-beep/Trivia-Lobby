@@ -52,6 +52,9 @@ body.solo-test-page {
 .solo-test-page button:focus-visible, .solo-test-page a:focus-visible { outline: 4px solid #ddab46; outline-offset: 3px; }
 @media (max-width: 940px) {
   .solo-layout { grid-template-columns: 1fr; }
+  .solo-controller { order: -1; }
+  .solo-session-active .solo-intro { display: none; }
+  .solo-session-active h1 { font-size: 2.2rem; margin: 5px 0 10px; }
   .solo-layout > section { padding: 14px; }
   .solo-test-page main { padding: 12px; }
 }
