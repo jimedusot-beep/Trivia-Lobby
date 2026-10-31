@@ -34,6 +34,7 @@ function makeButton(parent, label, onClick, disabled = false) {
 function stop() {
   runId++;
   active = false;
+  document.body.classList.remove("solo-session-active");
   if (loop) clearInterval(loop);
   loop = null;
   for (const client of clients) {
@@ -215,6 +216,7 @@ async function start() {
   const chosen = $("solo-mode").value;
   if (!Object.hasOwn(games, chosen)) return;
   mode = chosen; active = true;
+  document.body.classList.add("solo-session-active");
   const run = ++runId;
   steer = 0; drifting = false; lastTap = 0;
   $("solo-start").disabled = true;
