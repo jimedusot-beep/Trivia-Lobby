@@ -176,7 +176,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     art.setAttribute("aria-label", "Preview " + game.name);
     const posterOrbit = make("span", "pick-game-art-orbit");
     const posterIcon = make("span", "pick-game-art-icon", game.icon);
-    const posterKicker = make("span", "pick-poster-kicker", "TRIVIA LOBBY ORIGINAL");
+    const posterKicker = make("span", "pick-poster-kicker", "TRIVIA LOBBY · GAME LIBRARY");
     const posterTitle = make("span", "pick-poster-title", game.name);
     const posterTag = make("span", "pick-poster-tag", game.tag);
     for (const element of [posterOrbit, posterIcon, posterKicker, posterTitle, posterTag])
