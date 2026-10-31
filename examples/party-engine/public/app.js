@@ -598,7 +598,9 @@ function render() {
     }
   }
 }
-mountGamePicker($("game-picker"), { onHost: game => { preferredMode = game; $("create").click(); } });
+// The public TV shelf opens on its featured kart game, matching the cover-first
+// home preview. This is presentation only: a game is not started until Host.
+mountGamePicker($("game-picker"), { selected: "race", onHost: game => { preferredMode = game; $("create").click(); } });
 setInterval(() => {
   if (!state) return;
   const now = Date.now() + offset;
