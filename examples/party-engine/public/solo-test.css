@@ -17,7 +17,10 @@ body.solo-test-page {
   padding: 18px 22px; margin: 24px 0 10px;
 }
 .solo-setup label { color: #ffe6b0; margin: 0 0 7px; }
-#solo-mode { max-width: 520px; border-color: #d9c8ed; border-radius: 12px; font-size: 1rem; }
+#solo-mode, #solo-seats { display:block; width:100%; max-width: 520px; border-color: #d9c8ed; border-radius: 12px; font-size: 1rem; }
+#solo-seats { margin-top: 7px; }
+#solo-seats-help { font-size:.82rem; margin: 4px 0 10px; color: #dfd1ed; }
+.solo-setup label[for="solo-seats"] { display:block; margin-top: 12px; }
 #solo-description { margin: 5px 0; color: #f0e3ff; }
 .solo-disclaimer { color: #dccfe9; font-size: .85rem; margin-bottom: 3px; }
 .solo-actions { display: flex; flex-wrap: wrap; gap: 12px; }
