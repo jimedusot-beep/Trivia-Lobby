@@ -41,3 +41,20 @@ The workflow uploads all JSON files as a 14-day Actions artifact named "measured
 - [ ] After explicit release approval, perform controlled deployment, confirm deployed commit and smoke-test the site. If necessary roll back service code without resetting Neon or deleting player data.
 
 RELEASE GATE: tested GitHub main + measured performance with correct labels + actual two-device/TV acceptance + explicit deployment approval. Merging a PR alone does not satisfy these gates.
+
+
+## Follow-up: reproducible graphics diagnosis
+
+The measured CI baseline on [run 41140382580](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41140382580) (PR head `e3eb12c3edada919db165c321e40cb68da8dd2a1`) showed:
+
+| Sample | rAF median | rAF p95 | Draw calls |
+| --- | ---: | ---: | ---: |
+| First 3D | 149.9 ms | 166.7 ms | 202 |
+| 2D fallback | 16.7 ms | 16.7 ms | N/A |
+| Returning to 3D | 116.7 ms | 133.4 ms | 202 |
+
+The root compiled `index` chunk was 765,443 bytes / 211,780 gzip and the separately loaded 3D renderer 512,812 / 131,486 gzip. These are **CI measurements on the pre-follow-up PR head**, not benchmarks of the new measurement edits, the current `main`, Render or real hardware. This stark gap may be a software-WebGL renderer/virtualization effect. It is not an observed physical-TV FPS number.
+
+The follow-up instrumentation now captures the WebGL renderer/vendor string when available and the **actual canvas backing resolution, CSS dimensions and device pixel ratio**. It also triggers this benchmark when the existing racing renderer, race track/UI adapter or build scripts change. Record both source SHA and runtime context before claiming improvement or comparing future runs. These fields are diagnostic, not an assertion that the GPU is hardware accelerated. Do not gather renderer fingerprints from players or submit the measurements from production sessions.
+
+Use the existing verified 2D fallback on hardware where 3D is too slow, and require the physical-device tests above before treating Grand Prix as 20-player TV ready.
