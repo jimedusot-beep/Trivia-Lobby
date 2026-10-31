@@ -88,16 +88,6 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
       behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     if (focusPoster) poster?.focus({ preventScroll: true });
   };
-  previous.addEventListener("click", () => moveSelection(-1));
-  next.addEventListener("click", () => moveSelection(1));
-  const handleArrows = event => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    event.preventDefault();
-    moveSelection(event.key === "ArrowLeft" ? -1 : 1, true);
-  };
-  shelf.addEventListener("keydown", handleArrows);
-  spotlight.addEventListener("keydown", handleArrows);
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
   const search = make("input", "pick-game-search");
@@ -126,6 +116,19 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   next.type = "button"; next.setAttribute("aria-label", "Next game");
   shelfNav.append(shelfHint, shelfPosition, previous, next);
   shelf.append(shelfNav, grid);
+  // All event targets must exist before any listener is registered. In
+  // particular, the old order dereferenced 'previous' in its TDZ and
+  // prevented the guest app from starting.
+  previous.addEventListener("click", () => moveSelection(-1));
+  next.addEventListener("click", () => moveSelection(1));
+  const handleArrows = event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    moveSelection(event.key === "ArrowLeft" ? -1 : 1, true);
+  };
+  shelf.addEventListener("keydown", handleArrows);
+  spotlight.addEventListener("keydown", handleArrows);
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
     ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
