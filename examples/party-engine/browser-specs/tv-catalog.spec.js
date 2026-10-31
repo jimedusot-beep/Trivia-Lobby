@@ -11,7 +11,7 @@ test('TV library preserves all games, filters, searches, and keyboard launch', a
   await expect(page.locator('.pick-game-card:visible')).toHaveCount(1);
   const preview = page.getByRole('button',{name:'Preview Party Grand Prix',exact:true});
   await preview.focus(); await page.keyboard.press('Enter');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   const launch = page.locator('.pick-game-card:visible .pick-game-button');
   await launch.focus(); await page.keyboard.press('Enter');
   await expect(page.locator('#heading')).toContainText('lobby');
@@ -95,7 +95,7 @@ test('lower-card Preview brings its rules into view and moves keyboard focus', a
   const preview = page.locator('.pick-game-preview-button').last();
   const name = (await preview.getAttribute('aria-label')).replace('Preview ', '');
   await preview.click();
-  const heading = page.locator('.pick-spotlight-copy h3');
+  const heading = page.locator('.pick-spotlight-copy h2');
   await expect(heading).toHaveText(name);
   await expect(heading).toBeFocused();
   await expect(page.locator('.pick-game-spotlight')).toBeInViewport();
@@ -145,13 +145,13 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
   await expect(cover.getByRole('button', { name: 'Preview Trivia Quiz', exact: true })).toBeVisible();
   expect(await shelf.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true);
   await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   await expect(page.getByRole('button', { name: 'Previous game' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Host this game: Party Grand Prix' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Preview Party Grand Prix' })).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('button', { name: 'Next game' }).click();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
   await expect(page.locator('.pick-shelf-position')).toHaveText('22 / 31');
   await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.locator('.pick-game-grid').evaluate(rail => {
@@ -162,10 +162,10 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
 
   await shelf.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Doodle Dash');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Doodle Dash');
   await expect(page.getByRole('button', { name: 'Preview Doodle Dash' })).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
   await expect(page.getByRole('button', { name: 'Preview Family Showdown' })).toBeFocused();
 
   await page.getByRole('button', { name: 'Racing & arcade', exact: true }).click();
@@ -173,11 +173,11 @@ test('console cover shelf scrolls horizontally and supports left-right keyboard 
   // We browsed to Family Showdown before filtering. It is not a racing
   // game, so category switching selects the first visible arcade cover.
   await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 5');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Turbo Circuit');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Turbo Circuit');
   await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
   await page.getByRole('searchbox', { name: 'Find your next game' }).fill('Grand Prix');
   await expect(page.locator('.pick-shelf-position')).toHaveText('1 / 1');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   await expect(page.getByRole('button', { name: 'Next game' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
   // The original host callback still launches the exact selected game.
@@ -193,7 +193,7 @@ test('mobile console shelf keeps poster artwork in view without page-width scrol
   await expect(covers.first().locator('.pick-poster-title')).toHaveText('Trivia Quiz');
   await expect(page.getByRole('button', { name: 'Next game' })).toBeVisible();
   await page.getByRole('button', { name: 'Next game' }).click();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Family Showdown');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Family Showdown');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator('.pick-game-shelf').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/switch-cover-shelf-mobile.png', animations: 'disabled' });
@@ -214,7 +214,7 @@ test('game cover shelf initializes without JavaScript errors for guest and host 
     const container = document.createElement('div');
     mountGamePicker(container, { asHost: true, selected: 'race', onChoose: () => {} });
     return { count: container.querySelectorAll('.pick-game-card').length,
-      highlighted: container.querySelector('.pick-game-spotlight h3')?.textContent };
+      highlighted: container.querySelector('.pick-game-spotlight h2')?.textContent };
   });
   expect(hostErrors).toEqual({ count: 31, highlighted: 'Party Grand Prix' });
   expect(errors).toEqual([]);
@@ -229,7 +229,7 @@ test('TV home opens on featured Grand Prix and its centered covers above the joi
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
   await expect(page.locator('#party-intro')).toBeHidden();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
   await expect(page.locator('#game-picker .pick-game-card')).toHaveCount(31);
   await expect(page.getByRole('link', { name: 'Join party' })).toHaveAttribute('href', '#join-entry');
@@ -259,17 +259,17 @@ test('TV home opens on featured Grand Prix and its centered covers above the joi
 
 test('TV remote arrow keys work immediately without interfering with typing', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   // On a new page the document body has focus: an arrow should move the shelf.
   await page.keyboard.press('ArrowLeft');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Tap Dash');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Tap Dash');
   await expect(page.locator('.pick-shelf-position')).toHaveText('20 / 31');
   const search = page.getByRole('searchbox', { name: 'Find your next game' });
   await search.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Tap Dash');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Tap Dash');
   await search.fill('Grand Prix');
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
 });
 
 test('approved mobile cover-first home keeps the selected kart poster and QR joining accessible', async ({ page }) => {
@@ -277,7 +277,7 @@ test('approved mobile cover-first home keeps the selected kart poster and QR joi
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
-  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-spotlight-copy h2')).toHaveText('Party Grand Prix');
   await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
   await expect(page.getByRole('link', { name: 'Join party' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
