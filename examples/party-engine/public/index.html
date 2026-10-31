@@ -19,10 +19,11 @@
   <body class="public-party">
     <main>
       <header>
-        <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./create.html">Make a quiz</a><a href="./learn.html">My courses</a></div></nav>
+        <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="#pick-games">🎮 Game library</a><a href="#join-entry">Join party</a><a href="./create.html">Make a quiz</a><a href="./learn.html">My courses</a><span class="party-nav-count" aria-label="31 available games">31 games</span><span class="party-nav-count">No sign-in</span></div></nav>
         <div id="party-intro" class="party-intro"><span class="lobby-kicker">✿ Sakura Arcade · Your people. Your party.</span><h1>One code. <span>Everyone plays.</span></h1><p>2–20 players · nicknames welcome · no account needed</p><div class="mode-preview" role="group" aria-label="Available activities"><span><b aria-hidden="true">?</b> Quiz</span><span><b aria-hidden="true">“</b> Prompt Duel</span><span><b aria-hidden="true">✦</b> Charades</span><span>Majority Rules</span><span>Family Bingo</span><span>Bracket Battle</span></div></div>
       </header>
       <p id="status" role="status" aria-live="polite">Connecting…</p>
+      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">✿ SAKURA ARCADE · TV GAME LIBRARY</span><h1 id="pick-games-title">Pick a Game</h1><p>Browse the covers. Choose what to play. Invite everyone with a QR code.</p></div><div id="game-picker"></div><p class="opl-library-entry"><strong>More games:</strong> <a href="./open-party-lab.html">Browse all 21 Open Party Lab games</a> · separate, self-hosted companion collection; not part of this room.</p></section>
       <section id="entry" class="entry-grid" aria-label="Host or join a party">
         <article id="host-entry"><span class="eyebrow">TAKE THE LEAD</span><h2>Start a party</h2><p>Gather your crew. We’ll bring the questions.</p><img class="host-spark lobby-hello" src="./lobby-spark.svg" alt="" width="114" height="114" />
         <button id="create">Create host screen</button>
@@ -51,7 +52,6 @@
           The host is a separate display. Open player tabs or phones to join.
         </p></article>
       </section>
-      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">✿ SAKURA ARCADE · GAME LIBRARY</span><h2 id="pick-games-title">Pick a Game</h2><p>Read the rules and player counts. Choose <strong>Host</strong> for your favorite game. No email or password—invite everyone by room code or QR.</p></div><div id="game-picker"></div><p class="opl-library-entry"><strong>More games:</strong> <a href="./open-party-lab.html">Browse all 21 Open Party Lab games</a> · separate, self-hosted companion collection; not part of this room.</p></section>
       <details class="house-notes"><summary>Before the first round</summary><p>Demo games use original sample questions. A custom quiz is shared with this temporary party and its players, not stored in the private server library. Private decks and documents remain protected. Rooms and scores end when the server restarts.</p></details>
       <section id="game" class="sakura-game-stage" hidden>
         <div class="game-topline"><h1 id="heading" tabindex="-1"></h1><div id="tv-host-tools" class="tv-host-tools" hidden><button type="button" id="tv-fullscreen" aria-pressed="false">Enter TV full screen</button><p id="tv-fullscreen-status" role="status" aria-live="polite"></p></div><img class="game-mascot" src="./lobby-spark.svg" alt="" width="68" height="68" /></div>

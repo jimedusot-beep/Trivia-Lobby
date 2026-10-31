@@ -41,6 +41,21 @@ jobs:
       - run: npm run test:browser -- --project=${{ matrix.browser }}
         env:
           RACE_SCREENSHOT_DIR: test-results/grand-prix-preview
+      # Save the actual responsive game-cover screenshots even when the
+      # browser suite passes; visual review is a separate release gate.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tv-console-cover-shelf-${{ matrix.browser }}
+          path: |
+            examples/party-engine/test-results/gx2-catalog-*.png
+            examples/party-engine/test-results/gx2-tv-lobby.png
+            examples/party-engine/test-results/tv-preview-visible.png
+            examples/party-engine/test-results/switch-cover-shelf-mobile.png
+            examples/party-engine/test-results/switch-tv-1920-home.png
+            examples/party-engine/test-results/switch-mobile-390-home.png
+          if-no-files-found: warn
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:
