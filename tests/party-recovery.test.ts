@@ -304,3 +304,79 @@ for (const [mode, settings] of [["colors", { bots: 2, stacking: true, turnSecond
     } else assert.equal(opened.state.party.pack.preset, "whist");
   });
 }
+
+// Recovered from PR #84: guards the combined delayed-checkpoint/retry/restart path.
+for (const [mode, settings] of [
+  ["colors", { bots: 2, stacking: true, turnSeconds: 60 }],
+  ["table", { preset: "whist" }],
+  ["race", undefined],
+] as const) {
+  test(`${mode}: a delayed start commit, queued retry and server restart preserve the same match`, { timeout: 15000 }, async t => {
+    let now = Date.now();
+    const store = new MemoryRoomCheckpointStore();
+    let server = await launch(store, { clock: () => now, countdownMs: 3000 });
+    let release = () => {};
+    t.after(async () => { release(); await server.close(); });
+    const host = await server.open(); host.send({ type: "create" });
+    const credential = await host.take("credential");
+    for (let i = 0; i < 4; i++) {
+      const player = await server.open();
+      player.send({ type: "join", code: credential.code, name: `Combined ${i}` });
+      await player.take("credential");
+    }
+    const lobby = (await host.take("state", frame => frame.state.players.length === 4)).state;
+    let entered!: () => void;
+    const saving = new Promise<void>(resolve => { entered = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const save = store.save.bind(store);
+    let pauseNextSave = true;
+    store.save = async (...args) => {
+      if (pauseNextSave) { pauseNextSave = false; entered(); await gate; }
+      return save(...args);
+    };
+    const request = { v: 1, type: "start", requestId: randomUUID(), matchId: lobby.matchId,
+      revision: lobby.revision, value: mode, ...(settings ? { settings } : {}) };
+    host.send(request);
+    await saving;
+    host.send(request); // A retry queued behind the uncommitted start must not start twice.
+    host.send({ type: "ping" });
+    assert.equal(host.frames.some(frame => frame.type === "ack" && frame.requestId === request.requestId), false);
+    assert.equal((await store.load("party", credential.code))!.state.party.phase, "lobby");
+    release();
+    await host.take("ack", frame => frame.requestId === request.requestId);
+    await host.take("ack", frame => frame.requestId === request.requestId);
+    await host.take("pong");
+    const countdown = (await host.take("state", frame => frame.state.phase === "countdown")).state;
+    await server.close();
+    now += 3001;
+    server = await launch(store, { clock: () => now, countdownMs: 3000 });
+    const resumed = await server.open();
+    resumed.send({ type: "resume", code: credential.code, actor: "host", token: credential.token });
+    await resumed.take("ready");
+    const restored = (await resumed.take("state")).state;
+    assert.equal(restored.matchId, countdown.matchId);
+    assert.equal(restored.phase, "playing");
+    assert.equal(restored.mode, mode);
+    assert.equal(restored.players.length, 4);
+    assert(restored.players.every((player: any) => player.score === 0));
+    assert(!JSON.stringify(restored).includes(credential.token));
+    if (mode === "colors") {
+      assert.equal(restored.pack.stacking, true);
+      assert.equal(restored.pack.seats.length, 6);
+      assert.equal(restored.deadline, now + 60000);
+    } else if (mode === "table") {
+      assert.equal(restored.pack.preset, "whist");
+    } else {
+      assert.equal(restored.pack.karts.length, 4);
+      now += 100;
+      const frame = await resumed.take("race_frame", frame => frame.karts?.length === 4);
+      assert(frame.karts.every((kart: any) => Number.isFinite(kart.x) && Number.isFinite(kart.y)));
+    }
+    resumed.send(request);
+    await resumed.take("ack", frame => frame.requestId === request.requestId);
+    const replayed = (await resumed.take("state")).state;
+    assert.equal(replayed.matchId, countdown.matchId);
+    assert.equal(replayed.phase, "playing");
+    assert(replayed.players.every((player: any) => player.score === 0));
+  });
+}
