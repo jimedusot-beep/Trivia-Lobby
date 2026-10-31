@@ -249,6 +249,21 @@ test('TV home opens on featured Grand Prix and its centered covers above the joi
   await page.screenshot({ path: 'test-results/switch-tv-1920-home.png', animations: 'disabled' });
 });
 
+test('approved mobile cover-first home keeps the selected kart poster and QR joining accessible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Pick a Game', level: 1 })).toBeVisible();
+  await expect(page.locator('.pick-spotlight-copy h3')).toHaveText('Party Grand Prix');
+  await expect(page.locator('.pick-shelf-position')).toHaveText('21 / 31');
+  await expect(page.getByRole('link', { name: 'Join party' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: 'test-results/switch-mobile-390-home.png', animations: 'disabled' });
+  await page.getByRole('link', { name: 'Join party' }).click();
+  await expect(page.getByLabel('Party code')).toBeVisible();
+});
+
 test('invitation links and active game keep their own layout and working QR flow', async ({ page }) => {
   await page.goto('/?code=ABCDEF');
   await expect(page.locator('#pick-games')).toBeHidden();
