@@ -162,6 +162,13 @@ function renderHost() {
         state.phase === "finished" ? "Match complete!" : "Preparing real game room…");
     }
   }
+  // Only update the welcome/start message once the authoritative server
+  // reports live play. Preserve errors sent by the server instead of hiding
+  // them under a repeated progress banner.
+  if (["question", "playing"].includes(state.phase) &&
+      $("solo-status").textContent.startsWith("Test room ready. Starting")) {
+    info("Solo test running. Use your controller; demo rivals are connected.");
+  }
   $("solo-phase").textContent = "Phase: " + state.phase + (state.index != null ? " · Round " + (state.index + 1) : "");
   $("solo-room").textContent = "Temporary test room: " + state.code;
   $("solo-next").hidden = !["reveal", "finished"].includes(state.phase);
