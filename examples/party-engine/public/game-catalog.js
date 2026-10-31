@@ -178,6 +178,11 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     grid.scrollLeft = 0;
     if (firstVisible && cards.get(previewId)?.hidden) showPreview(firstVisible);
     syncShelf();
+    // A filter can collapse 31 covers to a few matching titles. Keep the
+    // selected poster in view instead of leaving the rail at its start.
+    if (firstVisible) requestAnimationFrame(() => {
+      if (grid.isConnected && !spotlight.hidden) centerCover(previewId, false);
+    });
   };
   for (const [category,label] of choices) {
     const filter = make("button", null, label);
