@@ -58,3 +58,21 @@ test("solo Tap Dash offers a one-screen tap controller and simulated competition
   await page.getByRole("button", { name: "Stop test" }).click();
   await expect(page.locator("#solo-stage")).toBeHidden();
 });
+
+
+test("one-tab scenario can fill five real lobby seats without bypassing normal minimums", async ({ page }) => {
+  await page.goto("/solo-test.html");
+  const mode = page.locator("#solo-mode");
+  const seats = page.locator("#solo-seats");
+  await expect(seats.locator("option")).toHaveCount(4); // race: 2 through 5
+  await mode.selectOption("quiz");
+  await expect(seats.locator("option")).toHaveCount(3); // quiz: 3 through 5
+  await seats.selectOption("5");
+  await page.getByRole("button", { name: "Start solo test" }).click();
+  await expect(page.locator("#solo-players li")).toHaveCount(5, { timeout: 20000 });
+  await expect(page.locator("#solo-phase")).toContainText("question", { timeout: 15000 });
+  await expect(page.getByRole("button", { name: "Start solo test" })).toBeDisabled();
+  await page.getByRole("button", { name: "Stop test" }).click();
+  await expect(page.locator("#solo-stage")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Start solo test" })).toBeEnabled();
+});
