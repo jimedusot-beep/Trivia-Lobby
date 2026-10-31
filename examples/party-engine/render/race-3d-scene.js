@@ -180,6 +180,36 @@ export function createRaceScene({ onContextLost }) {
   const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true, depthWrite: false }); materials.set('title', titleMaterial);
   mesh(geometry('title', () => new THREE.PlaneGeometry(56, 14)), titleMaterial, scene, 0, 0.08, 0).rotation.x = -Math.PI / 2;
 
+  // Batch repeated *static* track geometry. The original per-object meshes
+  // are decorative only; kart bodies, pickups and hazards are created below
+  // and deliberately stay independent for live animation and visibility.
+  // Group by the exact existing geometry/material objects, not visual color:
+  // this preserves each material's lighting and renderer behavior.
+  function batchStaticTrackMeshes() {
+    scene.updateMatrixWorld(true);
+    const groups = new Map();
+    scene.traverse(object => {
+      if (!object.isMesh || object.isInstancedMesh || !object.geometry ||
+          !object.material || Array.isArray(object.material) ||
+          object.material.transparent) return;
+      const key = `${object.geometry.uuid}:${object.material.uuid}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(object);
+    });
+    for (const objects of groups.values()) {
+      if (objects.length < 2) continue;
+      const instanced = new THREE.InstancedMesh(objects[0].geometry, objects[0].material, objects.length);
+      objects.forEach((object, index) => {
+        instanced.setMatrixAt(index, object.matrixWorld);
+        object.removeFromParent();
+      });
+      instanced.instanceMatrix.needsUpdate = true;
+      instanced.computeBoundingSphere();
+      scene.add(instanced);
+    }
+  }
+  batchStaticTrackMeshes();
+
   const boxes = ITEM_SPOTS.map(t => {
     const p = trackPose(t), g = new THREE.Group(); scene.add(g); g.position.set((p.x - 600) * SCALE, 1.5, (p.y - 360) * SCALE);
     const cube = box(1.7, 1.7, 1.7, '#b09afa', g, 0, 0, 0); cube.rotation.z = 0.3;
