@@ -5,7 +5,7 @@ import { quiz, prompts } from "../content.js";
 import { extraSocial, extraBonus } from "../content-extra.js";
 import { contentAt, matchContent } from "../content-rotation.js";
 import { originalFeudShows } from "../open-pack/feud-content.js";
-import { CHARADES_PACKS } from "../charades.js";
+import { CHARADES_PACKS, makeTurn } from "../charades.js";
 import { snapshotParty, restoreParty } from "../party-checkpoint.js";
 import { defaultShow } from "../public/show-format.js";
 
@@ -169,6 +169,30 @@ test("original show banks and other content pools are bounded and coherent",()=>
   assert.equal(new Set(extraBonus.contenders).size,extraBonus.contenders.length);
   const p=room("bracket");
   assert.equal(p.p.bonusBracket.stage.length,16,"bracket still uses 16 contestants");
+});
+
+test("expanded Charades packs still end after 16 marks and rotate on rematch",()=>{
+  for (const [category, pool] of Object.entries(CHARADES_PACKS)) {
+    assert.ok(pool.length >= 32);
+    for (const completed of [0, 1, 2]) {
+      const turn = makeTurn("performer", category, completed);
+      const selected = turn.queue.map(c => c.text);
+      assert.equal(selected.length, 16, "a larger bank must not extend the turn");
+      assert.equal(new Set(selected).size, 16, "no repeated clues inside a turn");
+      assert.deepEqual(new Set(selected), new Set(pool.slice((completed % 2) * 16, (completed % 2 + 1) * 16)));
+    }
+  }
+  assert.throws(() => makeTurn("performer", "animals", -1), /Invalid completed/);
+  const x = room("charades");
+  assert.equal(x.p.phase, "acting");
+  assert.equal(x.p.turn.queue.length, 16);
+  const actor = x.p.turn.performerId;
+  for (let i = 0; i < 16; i++) {
+    const clueId = x.p.turn.queue[x.p.turn.cursor].id;
+    x.send(actor, "mark", "correct", { clueId });
+  }
+  assert.equal(x.p.phase, "reveal", "the original turn must finish at 16 clues");
+  assert.equal(x.p.players.get(actor).score, 16);
 });
 
 test("legacy snapshots keep their custom quizzes and show packs when selection flags are absent",()=>{
