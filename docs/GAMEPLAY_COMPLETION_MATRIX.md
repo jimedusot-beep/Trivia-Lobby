@@ -1,6 +1,6 @@
 # Gameplay completion audit — 31-game baseline
 
-Audit baseline: PR #119 updated with main at 9811221 (Sorry Ish). This file is a **test-plan and evidence ledger**, not a certification that 31 complete matches have been watched. Every mode has an existing rule implementation and at least some catalog/engine coverage. The new standardized end-to-end completion test currently covers **Four in a Row**; every other entry below still requires an explicit full lifecycle proof before this particular gate is marked passed.
+Audit baseline: PR #119 updated with main at 9811221 (Sorry Ish). This file is a **test-plan and evidence ledger**, not a certification that 31 complete matches have been watched. Every mode has an existing rule implementation and at least some catalog/engine coverage. The standardized real-server host/controller full-match browser tests now cover **Four in a Row** and **five-round Trivia Quiz**, both included in merged PR #119 and successful on its head at [run 41313021016](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41313021016). The remaining **29 modes** still require an explicit full lifecycle proof in this specific suite; engine/unit coverage remains wider. These headless results are not evidence of physical-device acceptance.
 
 ## Uniform acceptance gate
 
@@ -10,7 +10,7 @@ For each game, capture: room created and minimum seats connected; private player
 
 | Group | Game (mode ID) | Completion status in this standardized suite | Highest-priority check |
 | --- | --- | --- | --- |
-| Social | Trivia Quiz (quiz) | Pending | Five questions, total score, return |
+| Social | Trivia Quiz (quiz) | Browser full-match test passed on merged PR #119 head | Five questions, scoring, natural finish, return to original room; repeat on post-merge main |
 | Social | Prompt Duel (duel) | Pending | Writing/vote sequence, authorship privacy, final |
 | Social | Charades (charades) | Pending | Each actor turn, correct/pass, final |
 | Social | Majority Rules (majority) | Pending | Five rounds, tie scoring |
@@ -34,7 +34,7 @@ For each game, capture: room created and minimum seats connected; private player
 | Creative | Forbidden Word Frenzy (no-say) | Pending | Referee, clue rotation, final |
 | Board | Sorry Ish (homeward) | Pending | Four pawns Home, card/slide/swap logic, full board settlement |
 | Board | Color Clash (colors) | Pending | Hand exhausted, bots/cards/timer, settlement |
-| Board | Four in a Row (four) | Browser lifecycle test added; CI verification required | Seven real alternate moves, winner score, Next, return |
+| Board | Four in a Row (four) | Browser full-match test passed on merged PR #119 head | Seven real alternate moves, winner score, Next, return; repeat on post-merge main |
 | Board | Chess Club (chess) | Pending | Checkmate or draw and return; no forced early stop |
 | Board | Checkers Chase (checkers) | Pending | Captures, promotion, winner |
 | Board | Reversi Rivals (reversi) | Pending | Final disc majority, auto pass |
