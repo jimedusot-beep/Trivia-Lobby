@@ -42,6 +42,8 @@ jobs:
       - run: npm run db:migrate
       - name: Recover encrypted database and exact original bytes with inherited Neon settings
         run: npm run backup:drill
+      - name: Prove skipped scheduled production backups are reported as failures
+        run: node --test tests/backup-schedule-monitor.test.mjs
   backup:
     needs: recovery-postgres18
     # Manual bootstrap proves recovery before the operator enables the schedule.
@@ -83,3 +85,24 @@ jobs:
       - name: Remove temporary encrypted artifact
         if: always()
         run: rm -f /tmp/trivia-backup.enc
+  scheduled-backup-audit:
+    # GitHub previously reported a green scheduled workflow even when the
+    # production offsite backup job was SKIPPED. A fixture restore is not a
+    # production backup. Do not downgrade this failure to a warning.
+    if: ${{ always() && github.event_name == 'schedule' }}
+    needs: [recovery-postgres18, backup]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fail scheduled runs unless a real offsite backup succeeded
+        env:
+          BACKUPS_ENABLED: ${{ vars.BACKUPS_ENABLED }}
+          RECOVERY_JOB_RESULT: ${{ needs.recovery-postgres18.result }}
+          BACKUP_JOB_RESULT: ${{ needs.backup.result }}
+        run: node script/verify-scheduled-backup.mjs
