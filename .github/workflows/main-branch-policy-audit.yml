@@ -1,0 +1,50 @@
+name: Main branch policy audit
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/main-branch-policy-audit.yml"
+      - "script/audit-main-protection.mjs"
+      - "tests/main-protection-audit.test.mjs"
+      - "docs/MAIN_BRANCH_PROTECTION_RUNBOOK.md"
+  workflow_dispatch:
+    inputs:
+      minimum_approvals:
+        description: "Required independent approvals; 0 is explicit solo-maintainer exception"
+        required: true
+        default: "1"
+        type: choice
+        options:
+          - "1"
+          - "0"
+permissions:
+  contents: read
+jobs:
+  policy-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify ruleset evaluator detects unsafe settings
+        run: node --test tests/main-protection-audit.test.mjs
+  live-audit:
+    # Explicit opt-in. A PR cannot silently fail just because owner settings
+    # have not yet been updated; the manual read-only audit reports any gaps.
+    if: github.event_name == 'workflow_dispatch'
+    needs: policy-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check live main protection settings without changing them
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          MIN_APPROVALS: ${{ inputs.minimum_approvals }}
+        run: node script/audit-main-protection.mjs
