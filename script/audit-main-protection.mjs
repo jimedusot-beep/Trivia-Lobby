@@ -7,7 +7,10 @@ export const REQUIRED_CHECKS = Object.freeze([
   "production-runtime",
   "postgres-and-browsers (chromium)",
   "postgres-and-browsers (firefox)",
-  "postgres-and-browsers (webkit)"
+  "postgres-and-browsers (webkit)",
+  "guest-browsers (chromium)",
+  "guest-browsers (firefox)",
+  "guest-browsers (webkit)"
 ]);
 
 const scopedToDefaultBranch = ruleSet => {
