@@ -41,12 +41,19 @@ export const CHARADES_PACKS = Object.freeze({
     ...extraCharades.animals,
   ],
 });
-export function makeTurn(performerId, category) {
+// Keep the historical 16-clue turn length even as the optional bank grows.
+// New parties use the original starter sixteen; completed rematches rotate to
+// another distinct block. Shuffle only the selected block for each performer.
+export function makeTurn(performerId, category, completedMatches = 0) {
   if (!Object.hasOwn(CHARADES_PACKS, category))
     throw new Error("Unknown Charades pack.");
-  const queue = CHARADES_PACKS[category].map((text) => ({
+  if (!Number.isSafeInteger(completedMatches) || completedMatches < 0)
+    throw new Error("Invalid completed Charades match count.");
+  const pool = CHARADES_PACKS[category];
+  const offset = ((completedMatches % pool.length) * 16) % pool.length;
+  const queue = Array.from({ length: Math.min(16, pool.length) }, (_, index) => ({
     id: randomUUID(),
-    text,
+    text: pool[(offset + index) % pool.length],
   }));
   for (let i = queue.length - 1; i > 0; i--) {
     const j = randomInt(i + 1);
