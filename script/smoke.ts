@@ -1,4 +1,5 @@
 import { WebSocket } from "ws";
+import { assertPartyPage, assertPartyAsset, assertPartyMissingAsset, assertPartyPing } from "./public-party-smoke-contract.mjs";
 
 const origin = new URL(process.env.SMOKE_URL ?? "http://127.0.0.1:5000");
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -91,4 +92,53 @@ const crossSite = await fetch(new URL("/api/decks", origin), {
   body: "{}", signal: AbortSignal.timeout(15_000),
 });
 if (crossSite.status !== 403) throw new Error("Cross-site API mutation was not blocked");
-console.log("Public UI, HTTP/DB readiness, private API safeguards and WebSocket smoke passed");
+// Also verify the ACTUAL public party-game surface. The main React page and
+// private /ws test above do not establish that TV/phone /party/ assets work.
+// These requests are read-only and never create a room, player or study account.
+for (const path of ["/party/", "/party/solo-test.html"]) {
+  const res = await fetch(new URL(path, origin), {
+    signal: AbortSignal.timeout(15_000), cache: "no-store",
+  });
+  const html = await res.text();
+  assertPartyPage(path, res, html);
+}
+for (const path of ["/party/app.js", "/party/solo-test.js"]) {
+  const res = await fetch(new URL(path, origin), {
+    signal: AbortSignal.timeout(15_000), cache: "no-store",
+  });
+  assertPartyAsset(path, res);
+  await res.body?.cancel();
+}
+const missingPartyAsset = await fetch(new URL("/party/__smoke_missing__.js", origin), {
+  signal: AbortSignal.timeout(15_000), cache: "no-store",
+});
+assertPartyMissingAsset(missingPartyAsset);
+await missingPartyAsset.body?.cancel();
+
+// A ping/pong exercises the separate /party/socket guest transport without
+// creating a room or using player credentials. This is not a full game test.
+const partySocketUrl = new URL("/party/socket", origin);
+partySocketUrl.protocol = origin.protocol === "https:" ? "wss:" : "ws:";
+await new Promise<void>((resolve, reject) => {
+  const ws = new WebSocket(partySocketUrl, { origin: origin.origin });
+  let finished = false;
+  const timer = setTimeout(() => finish(new Error("Guest party WebSocket ping timed out")), 15000);
+  function finish(error?: Error) {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    if (error) { ws.terminate(); reject(error); }
+    else { ws.close(); resolve(); }
+  }
+  ws.once("open", () => ws.send(JSON.stringify({ type: "ping" })));
+  ws.once("message", raw => {
+    try {
+      assertPartyPing(JSON.parse(raw.toString()));
+      finish();
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error("Malformed guest WebSocket response"));
+    }
+  });
+  ws.once("error", error => finish(error));
+});
+console.log("Public React and 31-game party pages, Solo Test, assets, HTTP/DB readiness, private API safeguards and both WebSocket smoke checks passed");
