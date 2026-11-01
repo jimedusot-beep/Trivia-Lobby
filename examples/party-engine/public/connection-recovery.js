@@ -28,7 +28,8 @@ export function createRecoveringConnection(url, {
       clearTimer(connectDeadline); onStatus("restoring"); ping(current); onOpen(current, event);
     };
     current.onmessage = event => {
-      if (stopped || socket !== current) return;
+      // Reject queued frames after a socket closes, before reconnect starts.
+      if (stopped || socket !== current || current.readyState !== 1) return;
       try {
         const message = JSON.parse(event.data);
         if (message?.type === "pong" && Number.isFinite(message.serverNow)) { clearTimer(pongDeadline); return; }
