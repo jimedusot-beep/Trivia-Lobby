@@ -137,7 +137,8 @@ export class Party {
     if (raceModes.includes(this.mode)) { openArcadeRace(this); return; }
     if (packIds.includes(this.mode)) { openPack(this); return; }
     if (this.mode === "charades") {
-      this.turn = makeTurn(this.roster[this.index], this.category);
+      this.turn = makeTurn(this.roster[this.index], this.category,
+        this.championship.playedTotal ?? this.championship.games.length);
       this.enter("acting", this.charadesMs);
       return;
     }
