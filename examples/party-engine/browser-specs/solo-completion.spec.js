@@ -31,7 +31,13 @@ test("completion: Four in a Row plays to a winner, scores once, then returns to 
     await page.locator("#solo-all-seat-switch").selectOption(String(seatIndex));
     const control = seats[seatIndex].getByRole("button", { name: "Drop " + column, exact: true });
     await expect(control).toBeEnabled({ timeout: 12000 });
-    await control.click();
+    // Chromium may place a nested iframe control outside the *outer* page viewport.
+    // Activate the real, focused button with Enter: its ordinary DOM click
+    // handler still sends the authenticated move through the party server.
+    // Pointer input is covered separately by solo-all-games.spec.js.
+    await control.focus();
+    await expect(control).toBeFocused();
+    await control.press("Enter");
     const discs = host.locator(
       ".four-cell[aria-label='" + (seatIndex === 0 ? "First player disc" : "Second player disc") + "']"
     );
