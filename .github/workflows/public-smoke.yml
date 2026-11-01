@@ -25,5 +25,7 @@ jobs:
         run: |
           node -e 'const u=new URL(process.env.SMOKE_URL); if(u.protocol!=="https:" || !u.hostname.includes(".") || /(^localhost$|\.localhost$|^127\.|^10\.|^192\.168\.|^172\.)/.test(u.hostname)) throw Error("Use an actual public HTTPS website URL");'
       - run: npm ci
+      - name: Verify public party smoke assertions against committed pages
+        run: node --test tests/public-party-smoke-contract.test.mjs
       - name: Check public HTTP, DB readiness and WebSockets
         run: npm run smoke
