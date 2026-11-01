@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { smoothStrokePath } from "./drawing-stroke.js";
 const palette = [
   ["Ink", "#20264b"],
   ["Rose", "#e23867"],
@@ -71,9 +72,9 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
   );
   e("div").append(svg);
   function line(stroke) {
-    const path = document.createElementNS(ns, "polyline");
+    const path = document.createElementNS(ns, "path");
     for (const [key, value] of Object.entries({
-      points: stroke.points.map((p) => p.join(",")).join(" "),
+      d: smoothStrokePath(stroke.points),
       fill: "none",
       stroke: stroke.color,
       "stroke-width": stroke.width,
@@ -269,8 +270,8 @@ export function renderDrawing(state, { e, b, play, refresh, canAct, getPack }) {
           (_, i, a) => i % 2 === 0 || i === a.length - 1,
         );
       gesture.preview.setAttribute(
-        "points",
-        gesture.previewPoints.map((p) => p.join(",")).join(" "),
+        "d",
+        smoothStrokePath(gesture.previewPoints),
       );
     };
     function release(event) {
