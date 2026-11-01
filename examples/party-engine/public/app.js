@@ -13,7 +13,12 @@ import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
 import { mountPhoneController, disposePhoneController } from "./phone-controller.js";
 
 let invitationCode, invitationPhase;
-const launchGame = new URLSearchParams(location.search).get("game");
+const query = new URLSearchParams(location.search);
+const launchGame = query.get("game");
+// Each embedded test seat owns its own in-memory identity. It must never read
+// or overwrite the normal party's reconnect or host-choice session storage.
+const soloSeat = /^solo-[a-z0-9-]{8,80}$/.test(query.get("solo-seat") || "") ? query.get("solo-seat") : null;
+if (soloSeat) document.body.classList.add("solo-embedded");
 let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
 let preferredSettings = {};
@@ -61,10 +66,10 @@ $("tv-fullscreen").addEventListener("click", async () => {
 });
 document.addEventListener("fullscreenchange", syncTvFullscreen);
 try {
-  credential = JSON.parse(sessionStorage.getItem(credentialKey));
+  if (!soloSeat) credential = JSON.parse(sessionStorage.getItem(credentialKey));
 } catch {}
 try {
-  const saved = JSON.parse(sessionStorage.getItem(preferenceKey));
+  const saved = soloSeat ? null : JSON.parse(sessionStorage.getItem(preferenceKey));
   if (credential?.actor === "host" && saved?.code === credential.code) {
     if (gameById(saved.mode)) preferredMode = saved.mode;
     if (["actions", "animals"].includes(saved.category))
@@ -78,7 +83,7 @@ let resumeSavedParty = entry.resumeSavedParty;
 function saveHostChoice(mode = preferredMode, category = preferredCategory) {
   preferredMode = mode;
   preferredCategory = category;
-  if (credential?.actor !== "host") return;
+  if (credential?.actor !== "host" || soloSeat) return;
   try {
     sessionStorage.setItem(preferenceKey, JSON.stringify({
       code: credential.code, mode, category, settings: preferredSettings,
@@ -86,6 +91,7 @@ function saveHostChoice(mode = preferredMode, category = preferredCategory) {
   } catch {}
 }
 function save() {
+  if (soloSeat) return; // ephemeral test accounts cannot persist as real guests
   try {
     sessionStorage.setItem(credentialKey, JSON.stringify(credential));
   } catch {

@@ -2,17 +2,31 @@
 // Deliberately not a new backend "bot" privilege or a minimum-player bypass.
 import { renderRace, receiveRaceFrame, disposeRace } from "./race-ui.js";
 import { renderTap, receiveTapFrame, disposeTap } from "./tap-ui.js";
+import { guestGames } from "./game-catalog.js";
+import { makeFullGameLab } from "./solo-all-games.js";
 
 const $ = id => document.getElementById(id);
-const games = {
-  quiz: { title: "Trivia Quiz", players: 3, description: "Answer real quiz rounds while two demo rivals answer automatically." },
-  race: { title: "Party Grand Prix", players: 2, description: "Watch the real TV race and steer your kart from this page." },
-  tap: { title: "Tap Dash", players: 2, description: "Tap against a simulated rival through three real server-scored heats." },
-};
+const automatedModes = new Set(["quiz", "race", "tap"]);
+const games = Object.fromEntries(guestGames.map(game => [game.id, {
+  title: game.name, players: game.min,
+  description: automatedModes.has(game.id)
+    ? game.rules + " Demo opponents act automatically in this mode."
+    : game.rules + " Switch test seats to operate every player's real controller.",
+}]));
+// Render every supported server-side game mode from the single game catalog.
+const selector = $("solo-mode");
+selector.replaceChildren();
+for (const game of guestGames) {
+  const option = document.createElement("option");
+  option.value = game.id;
+  option.textContent = game.icon + " " + game.name;
+  selector.append(option);
+}
+selector.value = "race";
 const endpoint = new URL("socket", new URL("./", location.href));
 endpoint.protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
-let host = null, human = null, bots = [], clients = [], active = false, runId = 0;
+let host = null, human = null, bots = [], clients = [], active = false, runId = 0, fullLab = null;
 let stageKey = "", playerKey = "", mode = "", loop = null, lastTap = 0;
 let steer = 0, drifting = false;
 const text = value => String(value == null ? "" : value);
@@ -34,6 +48,9 @@ function makeButton(parent, label, onClick, disabled = false) {
 function stop() {
   runId++;
   active = false;
+  fullLab?.stop();
+  fullLab = null;
+  $("solo-all-stage").hidden = true;
   document.body.classList.remove("solo-session-active");
   if (loop) clearInterval(loop);
   loop = null;
@@ -234,7 +251,24 @@ async function start() {
   $("solo-start").disabled = true;
   $("solo-stop").disabled = false;
   $("solo-setup").hidden = true;
-  $("solo-stage").hidden = false;
+  const embedded = !automatedModes.has(mode);
+  $("solo-stage").hidden = embedded;
+  $("solo-all-stage").hidden = !embedded;
+  if (embedded) {
+    info("Opening real host and player screens for " + games[mode].title + "…");
+    try {
+      fullLab = makeFullGameLab({
+        game: guestGames.find(game => game.id === mode), seats,
+        isActive: () => active && run === runId, report: info,
+      });
+      await fullLab.start();
+    } catch (error) {
+      if (run !== runId) return;
+      stop();
+      info("Could not start the full-game test: " + (error instanceof Error ? error.message : "Unknown error."));
+    }
+    return;
+  }
   info("Creating a temporary test room…");
   try {
     host = await connect({ type: "create" });
@@ -289,6 +323,9 @@ $("solo-mode").addEventListener("change", () => {
   seats.value = String(selected.players);
   $("solo-description").textContent = selected.description +
     " The server validates all seats and game actions normally.";
+  $("solo-disclaimer").textContent = automatedModes.has($("solo-mode").value)
+    ? "Automated simulated opponents. Temporary real-server test sessions do not replace physical-phone testing."
+    : "All games: the real game controls open inside this one tab. For this mode, switch between seats to play all turns; other test seats do not play automatically. Nothing bypasses the regular game server.";
 });
 $("solo-mode").dispatchEvent(new Event("change"));
 $("solo-start").addEventListener("click", start);
