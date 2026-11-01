@@ -171,21 +171,21 @@ test("Doodle Dash: private word, pointer drawing, keyboard stroke, guess and can
     await artist.mouse.down();
     await artist.mouse.move(box.x + 80, box.y + 90, { steps: 5 });
     await artist.mouse.up();
-    await expect.poll(() => guesser.locator(".doodle-pad polyline").count()).toBeGreaterThan(0);
+    await expect.poll(() => guesser.locator(".doodle-pad path").count()).toBeGreaterThan(0);
     await expect(artist.locator(".doodle-pad")).toHaveAttribute("aria-disabled", "false");
-    const drawnSegments = await guesser.locator(".doodle-pad polyline").count();
+    const drawnSegments = await guesser.locator(".doodle-pad path").count();
     await pad.focus();
     await artist.keyboard.press("ArrowRight");
     await artist.keyboard.press("Enter");
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 1);
+    await expect(guesser.locator(".doodle-pad path")).toHaveCount(drawnSegments + 1);
     await expect(pad).toBeFocused();
     await artist.keyboard.press("ArrowRight");
     await artist.keyboard.press("Enter");
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
-    const keyboardLines=await guesser.locator(".doodle-pad polyline").evaluateAll(lines=>lines.slice(-2).map(line=>line.getAttribute("points")));
-    expect(keyboardLines).toEqual(["500,500 530,500","530,500 560,500"]);
+    await expect(guesser.locator(".doodle-pad path")).toHaveCount(drawnSegments + 2);
+    const keyboardLines=await guesser.locator(".doodle-pad path").evaluateAll(lines=>lines.slice(-2).map(line=>line.getAttribute("d")));
+    expect(keyboardLines).toEqual(["M 500 500 L 530 500","M 530 500 L 560 500"]);
     await artist.reload();
-    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(drawnSegments + 2);
+    await expect(artist.locator(".doodle-pad path")).toHaveCount(drawnSegments + 2);
     await guesser.getByLabel("Guess the drawing").fill(word);
     await guesser
       .locator(".pack-entry")
@@ -484,14 +484,14 @@ test("Drawing waits for a slow submission instead of showing a stroke that was n
     await expect(pad).toHaveAttribute("aria-disabled","true");
     await stroke(60);
     expect(await artist.evaluate(()=>window.__heldStrokes.length)).toBe(1);
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(0);
+    await expect(guesser.locator(".doodle-pad path")).toHaveCount(0);
     await artist.evaluate(()=>{window.__drawingReleased=true;window.__heldStrokes.shift()();});
     await expect(pad).toHaveAttribute("aria-disabled","false");
-    const committed=await guesser.locator(".doodle-pad polyline").count();
+    const committed=await guesser.locator(".doodle-pad path").count();
     expect(committed).toBeGreaterThan(0);
-    expect(await guesser.locator(".doodle-pad polyline").evaluateAll(lines=>new Set(lines.map(line=>line.dataset.strokeId)).size)).toBe(1);
+    expect(await guesser.locator(".doodle-pad path").evaluateAll(lines=>new Set(lines.map(line=>line.dataset.strokeId)).size)).toBe(1);
     await artist.reload();
-    await expect(artist.locator(".doodle-pad polyline")).toHaveCount(committed);
+    await expect(artist.locator(".doodle-pad path")).toHaveCount(committed);
   } finally { await f.close(); }
 });
 
@@ -516,16 +516,16 @@ test("Doodle Dash streams while drawing, preserves tools, groups undo/redo and e
       await artist.mouse.move(box.x+25+i*12,box.y+25+i*10);
       await artist.waitForTimeout(90);
     }
-    await expect.poll(()=>guesser.locator(".doodle-pad polyline").count()).toBeGreaterThan(0);
+    await expect.poll(()=>guesser.locator(".doodle-pad path").count()).toBeGreaterThan(0);
     await artist.mouse.up();
     await expect(pad).toHaveAttribute("aria-disabled","false");
-    const segments=await guesser.locator(".doodle-pad polyline").count();
+    const segments=await guesser.locator(".doodle-pad path").count();
     await expect(artist.getByLabel("Pen color",{exact:true})).toHaveValue("#2477db");
     await expect(artist.getByLabel("Pen width",{exact:true})).toHaveValue("16");
     await artist.getByRole("button",{name:"Undo stroke",exact:true}).click();
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(0);
+    await expect(guesser.locator(".doodle-pad path")).toHaveCount(0);
     await artist.getByRole("button",{name:"Redo stroke",exact:true}).click();
-    await expect(guesser.locator(".doodle-pad polyline")).toHaveCount(segments);
+    await expect(guesser.locator(".doodle-pad path")).toHaveCount(segments);
     await artist.reload();
     await expect(artist.getByLabel("Pen color",{exact:true})).toHaveValue("#2477db");
     await expect(artist.getByLabel("Pen width",{exact:true})).toHaveValue("16");
