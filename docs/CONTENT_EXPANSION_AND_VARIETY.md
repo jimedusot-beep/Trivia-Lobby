@@ -17,7 +17,7 @@ This work adds **original, checked-in, family-friendly** packs. It borrows archi
 - **Family Bingo:** the word list increases from 24 to 64. Each match draws 20 calls; a player's 16-card words now come from that same chosen call set, so all squares can actually be called by the end. A line is still scored at most once per player.
 - **Bracket Battle:** the selection pool increases from 16 to 48, while an individual game retains exactly 16 contestants / 15 votes.
 - **Family Showdown:** five authored complete show packs (the original plus four new). Each includes three boards with house-ranked points adding to 100 and five lightning questions. **These are not actual survey statistics.** Imported custom shows remain unchanged.
-- **Charades:** both existing action/animal categories increase from 16 to 32.
+- **Charades:** both existing action/animal banks increase from 16 to 32; each performer's turn still contains exactly 16 shuffled clues, preserving the original ending and scoring. A completed same-party rematch uses the next 16-clue group, rotating back after the bank is exhausted.
 - **Doodle Dash:** new original drawable words supplement the existing 90-word pool.
 - **Forbidden Word Frenzy:** retains 160 distinct built-in cards. It did not need an artificial expansion.
 
