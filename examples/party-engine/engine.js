@@ -1,3 +1,4 @@
+import { matchContent } from "./content-rotation.js";
 import { randomInt, randomUUID } from "node:crypto";
 import { quiz as demoQuiz, prompts } from "./content.js";
 import { validateAction } from "./protocol.js";
@@ -7,6 +8,7 @@ import { socialModes, socialPackLength, openSocial, openSocialVoting, acceptSoci
 import { bonusModes, bonusRoundCount, openBonus, openBonusVoting, acceptBonus, scoreBonus } from "./bonus-games.js";
 import { packIds, packMin, validatePackSettings, openPack, tickPack, acceptPack, nextPack } from "./open-pack/index.js";
 import { defaultShow } from "./open-pack/feud.js";
+import { originalFeudShows } from "./open-pack/feud-content.js";
 import { currentHomewardBoardVersion } from "./open-pack/homeward.js";
 import { newChampionship, completeChampionshipGame } from "./championship.js";
 import { advanceRace, raceReconnected } from "./open-pack/race.js";
@@ -43,9 +45,11 @@ export class Party {
       raceLaps,
     });
     // The host can supply a bounded original guest quiz at room creation.
-    this.quiz = customQuiz?.questions ?? demoQuiz;
+    this.quiz = customQuiz?.questions ?? demoQuiz.slice(0, 5);
+    this.usesDemoQuiz = !customQuiz;
     this.quizTitle = customQuiz?.title ?? "Sample Quiz";
     this.show = customShow ?? defaultShow;
+    this.usesDefaultShow = !customShow;
     this.players = new Map();
     this.championship = newChampionship();
     this.hostConnected = true;
@@ -133,7 +137,8 @@ export class Party {
     if (raceModes.includes(this.mode)) { openArcadeRace(this); return; }
     if (packIds.includes(this.mode)) { openPack(this); return; }
     if (this.mode === "charades") {
-      this.turn = makeTurn(this.roster[this.index], this.category);
+      this.turn = makeTurn(this.roster[this.index], this.category,
+        this.championship.playedTotal ?? this.championship.games.length);
       this.enter("acting", this.charadesMs);
       return;
     }
@@ -223,6 +228,10 @@ export class Party {
       for (const [id, p] of this.players)
         if (!p.connected) this.players.delete(id);
       this.mode = msg.value;
+      if (this.mode === "quiz" && this.usesDemoQuiz)
+        this.quiz = matchContent(demoQuiz, this.championship.playedTotal ?? this.championship.games.length, 5);
+      if (this.mode === "feud" && this.usesDefaultShow)
+        this.show = originalFeudShows[(this.championship.playedTotal ?? this.championship.games.length) % originalFeudShows.length];
       this.packSettings = settings;
       this.pack = null;
       this.race = null;
@@ -239,7 +248,7 @@ export class Party {
         p.correct = 0;
       });
       this.pairs = this.roster.map((id, i) => ({
-        prompt: prompts[i % prompts.length],
+        prompt: prompts[(i + (this.championship.playedTotal ?? this.championship.games.length) * 5) % prompts.length],
         authors: [id, this.roster[(i + 1) % this.roster.length]],
       }));
       this.enter("countdown", this.countdownMs);
