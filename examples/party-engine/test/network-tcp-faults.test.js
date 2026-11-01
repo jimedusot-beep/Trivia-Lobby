@@ -142,8 +142,11 @@ test("real TCP delay and forced reset preserve authenticated Grand Prix race rec
   assert.equal(resumedState.players.length, 2);
   assert.ok(resumedState.pack.roster.some(k => k.id === credential.actor));
   assert.ok(!JSON.stringify(resumedState).includes(credential.token), "secret never leaks in state projection");
-  const resumedFrame = await restored.until(m => m.type === "race_frame" && m.own?.number === 1);
-  assert.ok(resumedFrame.own && !resumedFrame.karts);
+  // An authenticated reconnect must regain control, not only receive snapshots.
+  restored.send({ v: 1, type: "race_input", matchId: party.matchId, heat: party.index,
+    seq: 0, steer: 0.35, drift: false, item: false, assist: false });
+  const resumedFrame = await restored.until(m => m.type === "race_frame" && m.own?.number === 1 && m.own.seq === 0);
+  assert.ok(resumedFrame.own && !resumedFrame.karts, "reconnected controller can still steer privately");
   assert.equal(app.rooms.get(room.code).party.players.size, 2);
   assert.equal(host.ws.readyState, WebSocket.OPEN, "host connection survives one phone network loss");
   t.diagnostic(`local TCP proxy traffic: ${proxy.traffic.upstreamBytes} upstream bytes, ${proxy.traffic.downstreamBytes} downstream bytes; forced reset + credential resume verified`);
