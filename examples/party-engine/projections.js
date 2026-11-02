@@ -97,7 +97,7 @@ export function projectParty(party, actor) {
     };
     if (party.phase === "acting" && actor === performerId) {
       const clue = turn.queue[turn.cursor];
-      v.charades.clue = { id: clue.id, text: clue.text };
+      v.charades.clue = { id: clue.id, text: clue.text, ...(clue.textEs ? { textEs: clue.textEs } : {}) };
     }
     if (party.phase === "reveal")
       v.charades.history = turn.marks.map(({ text, result }) => ({
