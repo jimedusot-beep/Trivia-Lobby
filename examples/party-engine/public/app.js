@@ -337,11 +337,13 @@ function render() {
   if (state.phase === "lobby") {
     element(
       "p",
-      `Quiz (${state.quizTitle}): ${state.quizLength} questions. Each round shows its timer and point value.`,
+      getLocale() === "es"
+        ? `Trivia (${state.quizTitle}): ${state.quizLength} preguntas. Cada ronda muestra el tiempo y los puntos.`
+        : `Quiz (${state.quizTitle}): ${state.quizLength} questions. Each round shows its timer and point value.`,
     );
     const rules = element("details");
     rules.className = "mode-rules";
-    element("summary", "How these games work", rules);
+    element("summary", t("How these games work"), rules);
     element("p", "Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.", rules);
     if (host) {
       const label = element("label", t("Game mode"));
@@ -371,7 +373,9 @@ function render() {
       const selection = element("p");
       selection.className = "pick-game-selection";
       const showSelection = () => {
-        selection.textContent = `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} connected · ${gameById(select.value)?.min ?? 3}–20 needed.`;
+        selection.textContent = getLocale() === "es"
+          ? `Listo para iniciar: ${localizeGame(gameById(select.value))?.name ?? "Trivia"} · ${state.players.filter(p => p.connected).length} conectados · ${gameById(select.value)?.min ?? 3}–20 necesarios.`
+          : `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} connected · ${gameById(select.value)?.min ?? 3}–20 needed.`;
       };
       select.onchange = () => {
         saveHostChoice(select.value, pack.value);
@@ -418,7 +422,9 @@ function render() {
   if (state.phase === "countdown") element("p", t("Get ready!"));
   if (displayState.question) {
     element("h2", displayState.question.prompt);
-    element("p", `${state.question.seconds} seconds · ${state.question.points} points${state.question.penalty ? ` · ${state.question.penalty} wrong-answer penalty` : ""}`);
+    element("p", getLocale() === "es"
+      ? `${state.question.seconds} segundos · ${state.question.points} puntos${state.question.penalty ? ` · penalización de ${state.question.penalty} por error` : ""}`
+      : `${state.question.seconds} seconds · ${state.question.points} points${state.question.penalty ? ` · ${state.question.penalty} wrong-answer penalty` : ""}`);
     displayState.question.choices.forEach((choice, i) => {
       let tile;
       if (state.phase === "question" && !host)
@@ -426,7 +432,7 @@ function render() {
       else
         tile = element(
           "p",
-          `${choice}${state.question.correct === i ? " ✓ Correct" : ""}`,
+          `${choice}${state.question.correct === i ? (getLocale() === "es" ? " ✓ Correcto" : " ✓ Correct") : ""}`,
         );
       tile.className = "answer-tile";
       tile.dataset.answerTone = String(i);
@@ -439,7 +445,7 @@ function render() {
     });
     if (state.locked) element("p", t("Answer locked."));
     if (displayState.question.explanation) element("p", displayState.question.explanation);
-    element("p", `${state.received} answers received.`);
+    element("p", getLocale() === "es" ? `${state.received} respuestas recibidas.` : `${state.received} answers received.`);
   }
   if (state.social) renderSocial(displayState,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
@@ -513,7 +519,9 @@ function render() {
     const c = displayState.charades;
     element(
       "p",
-      `Turn ${c.turnNumber} of ${c.totalTurns} · Performer: ${c.performerName} · ${c.category}`,
+      getLocale() === "es"
+        ? `Turno ${c.turnNumber} de ${c.totalTurns} · Actúa: ${c.performerName} · ${c.category}`
+        : `Turn ${c.turnNumber} of ${c.totalTurns} · Performer: ${c.performerName} · ${c.category}`,
     );
     if (state.phase === "acting") {
       if (c.canMark) {
@@ -522,14 +530,18 @@ function render() {
         clue.tabIndex = -1;
         element(
           "p",
-          "Act this out without speaking. Agree with your group before marking Correct. Scoring is self-reported.",
+          getLocale() === "es"
+            ? "Representa la pista sin hablar. Ponte de acuerdo con tu grupo antes de marcar Correcto. La puntuación se confirma entre ustedes."
+            : "Act this out without speaking. Agree with your group before marking Correct. Scoring is self-reported.",
         );
         button(t("Correct (+1)"), () => action("mark", "correct"));
         button(t("Pass"), () => action("mark", "pass"));
       } else
         element(
           "p",
-          `Guess what ${c.performerName} is acting. Their clue is private until this turn ends.`,
+          getLocale() === "es"
+            ? `Adivina qué representa ${c.performerName}. La pista es privada hasta que termine el turno.`
+            : `Guess what ${c.performerName} is acting. Their clue is private until this turn ends.`,
         );
     }
     if (c.history) {
@@ -568,7 +580,9 @@ function render() {
     token.setAttribute("aria-hidden", "true");
     element(
       "span",
-      `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
+      getLocale() === "es"
+        ? `${p.name}: ${p.score} puntos${p.connected ? "" : " · desconectado"}`
+        : `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
       row,
     );
   }
