@@ -157,3 +157,26 @@ test("unknown packs and invented actor/score fields fail before starting or scor
   );
   assert.equal(party.players.get(ids[0]).score, 0);
 });
+
+test("new bilingual Charades category shows translations only to the performer", () => {
+  const {party,ids,send}=setup("sports");
+  const mine=party.view(ids[0]).charades.clue;
+  assert.ok(mine.text.length>0 && mine.textEs?.length>0);
+  assert.equal(party.turn.queue.length,16);
+  for (const actor of ["host",ids[1],ids[2]]) {
+    const projection=party.view(actor);
+    assert.ok(!projection.charades.clue);
+    assert.ok(!JSON.stringify(projection).includes(mine.textEs));
+    assert.ok(!JSON.stringify(projection).includes(mine.id));
+  }
+  send(ids[0],"mark",{value:"correct",clueId:mine.id});
+  assert.equal(party.players.get(ids[0]).score,1);
+});
+test("every bilingual category is supported and validates private cue and turn limit",()=>{
+  for (const category of ["actions","animals","sports","jobs","emotions","transport","nature","home","music","silly"]) {
+    const {party,ids}=setup(category);
+    assert.equal(party.turn.queue.length,16);
+    assert.ok(party.view(ids[0]).charades.clue?.text);
+    assert.equal(party.view(ids[1]).charades.clue,undefined);
+  }
+});
