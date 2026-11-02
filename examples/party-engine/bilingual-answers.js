@@ -50,6 +50,17 @@ const surveySpanish = Object.freeze([
   ],
 ]);
 
+// The English survey text is deliberately repeated here as a guardrail:
+// an edited/custom deck must never inherit unrelated starter-pack Spanish
+// aliases merely because an answer occupies the same rank.
+const surveyCanonical = Object.freeze([
+  ["Passport", "Toothbrush", "Phone charger", "Tickets", "Sunscreen"],
+  ["Popcorn", "Seats", "Screen", "Tickets", "Soda"],
+  ["Syrup", "Butter", "Fruit", "Chocolate", "Whipped cream"],
+  ["Towel", "Sunscreen", "Umbrella", "Sunglasses", "Water"],
+  ["Milk", "Eggs", "Cheese", "Vegetables", "Juice"],
+]);
+
 export function surveyAnswerIndex(round, answer, canonicalItems) {
   if (!Number.isInteger(round) || !Array.isArray(canonicalItems) ||
       !Array.isArray(surveySpanish[round])) return -1;
@@ -57,7 +68,8 @@ export function surveyAnswerIndex(round, answer, canonicalItems) {
   if (!key) return -1;
   for (let index = 0; index < canonicalItems.length; index++) {
     if (key === normalizeAnswer(canonicalItems[index])) return index;
-    if (surveySpanish[round][index]?.some(alias => key === normalizeAnswer(alias))) return index;
+    if (normalizeAnswer(canonicalItems[index]) === normalizeAnswer(surveyCanonical[round]?.[index]) &&
+        surveySpanish[round][index]?.some(alias => key === normalizeAnswer(alias))) return index;
   }
   return -1;
 }
