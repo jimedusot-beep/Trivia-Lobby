@@ -19,5 +19,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      - run: node --test tests/public-party-smoke-contract.test.mjs
       - run: npm run build
       - run: npm audit --audit-level=moderate
