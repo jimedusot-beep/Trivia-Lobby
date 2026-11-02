@@ -13,6 +13,9 @@ async function mixedRoom(browser, mode) {
   try {
     const host = await openPage();
     await host.locator("#create").click();
+    // Creating the room is asynchronous: never read the join code before
+    // the authoritative host lobby state has arrived over the WebSocket.
+    await expect(host.locator("#heading")).toHaveText(/^[A-Z0-9]{6} · lobby$/);
     const code=(await host.locator("#heading").innerText()).split(" · ")[0];
     const guests=[];
     for(let i=0;i<3;i++) {
