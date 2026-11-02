@@ -3,6 +3,7 @@
  * These labels describe existing server-side modes; game logic stays authoritative.
  */
 import { packGames } from "./pack-config.js";
+import { getLocale, t, localizeGame, spanishContentModes } from "./i18n.js";
 export const guestGames = Object.freeze([
   { id:"quiz", name:"Trivia Quiz", icon:"❓", color:"violet", players:"3–20", min:3, max:20, rounds:"5 demo questions or up to 20 of your own", rules:"Choose the correct answer before the clock ends. Sample rounds allow 30 seconds and award 100 points; imported quizzes can set their own timers and scoring.", tag:"Classic" },
   { id:"duel", name:"Prompt Duel", icon:"💬", color:"pink", players:"3–20", min:3, max:20, rounds:"One matchup per player", rules:"Write two funny responses, then vote on other players' answers. Each vote earns its author 100 points.", tag:"Creative" },
@@ -28,7 +29,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const make = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
+    if (text !== undefined) node.textContent = t(text);
     return node;
   };
   const cardModes = ["colors", "table"], boardModes = ["homeward", "four", "chess", "checkers", "reversi", "mancala", "backgammon"];
@@ -49,6 +50,8 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   previewAction.type = "button";
   const previewActions = make("div", "pick-spotlight-actions");
   previewActions.append(previewAction, make("small", "pick-spotlight-action-note", asHost ? "Uses the current room and players" : "Room code and QR appear next"));
+  const languageNote = make("small", "pick-spotlight-language");
+  previewActions.append(languageNote);
   spotlight.append(previewIcon, previewCopy, previewActions);
   const cards = new Map();
   let previewId = selected;
@@ -60,15 +63,16 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     next.disabled = position < 0 || position >= ids.length - 1;
   };
   const showPreview = id => {
-    const game = gameById(id);
+    const game = localizeGame(gameById(id));
     if (!game) return;
     previewId = id;
     previewIcon.textContent = game.icon;
     previewName.textContent = game.name;
-    previewMeta.textContent = game.players + " players · " + game.rounds + " · " + game.tag;
+    previewMeta.textContent = game.players + (getLocale() === "es" ? " jugadores · " : " players · ") + game.rounds + " · " + game.tag;
     previewRules.textContent = game.rules;
-    previewAction.textContent = asHost ? "Choose this game" : "Host this game";
-    previewAction.setAttribute("aria-label", (asHost ? "Choose this game: " : "Host this game: ") + game.name);
+    previewAction.textContent = t(asHost ? "Choose this game" : "Host this game");
+    languageNote.textContent = getLocale() !== "es" ? "" : spanishContentModes.includes(game.id) ? "Preguntas y pistas en español" : "Este juego puede contener texto en inglés";
+    previewAction.setAttribute("aria-label", previewAction.textContent + ": " + game.name);
     previewAction.onclick = () => play(game.id);
     spotlight.dataset.tone = game.color;
     spotlight.dataset.genre = groupFor(game.id);
@@ -146,11 +150,17 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   spotlight.addEventListener("keydown", handleArrows);
   // A TV remote or keyboard can browse immediately from the default body
   // focus. Never steal arrows from search, forms, links or active games.
-  if (!asHost) document.addEventListener("keydown", event => {
-    if (document.activeElement !== document.body || document.body.classList.contains("party-playing") ||
-        document.body.classList.contains("party-invited") || spotlight.hidden) return;
-    handleArrows(event);
-  });
+  if (!asHost) {
+    if (container._gamePickerKeyboardHandler)
+      document.removeEventListener("keydown", container._gamePickerKeyboardHandler);
+    const keyboardHandler = event => {
+      if (document.activeElement !== document.body || document.body.classList.contains("party-playing") ||
+          document.body.classList.contains("party-invited") || spotlight.hidden) return;
+      handleArrows(event);
+    };
+    document.addEventListener("keydown", keyboardHandler);
+    container._gamePickerKeyboardHandler = keyboardHandler;
+  }
   const choices = [
     ["all", "All games"], ["party", "Party & trivia"],
     ["arcade", "Racing & arcade"], ["cards", "Cards & dice"], ["boards", "Board games"],
@@ -174,11 +184,13 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     for (const [id, card] of cards) {
       const game = gameById(id);
       card.hidden = (category !== "all" && category !== groupFor(id)) ||
-        ![game.name, game.tag, game.rules].join(" ").toLocaleLowerCase().includes(query);
+        ![game.name, game.tag, game.rules, localizeGame(game).name, localizeGame(game).rules].join(" ").toLocaleLowerCase().includes(query);
       if (!card.hidden) { visible++; firstVisible ??= id; }
     }
     for (const filter of filters.children) filter.setAttribute("aria-pressed", String(filter.dataset.category === category));
-    status.textContent = visible + " of " + guestGames.length + " games · Preview the rules, then " + (asHost ? "choose your game." : "host a party.");
+    status.textContent = getLocale() === "es"
+      ? visible + " de " + guestGames.length + " juegos · Mira las reglas y elige un juego."
+      : visible + " of " + guestGames.length + " games · Preview the rules, then " + (asHost ? "choose your game." : "host a party.");
     empty.hidden = visible !== 0;
     spotlight.hidden = visible === 0;
     grid.scrollLeft = 0;
@@ -196,7 +208,8 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     filter.addEventListener("click", () => chooseCategory(category));
     filters.append(filter);
   }
-  for (const game of guestGames) {
+  for (const source of guestGames) {
+    const game = localizeGame(source);
     const card = make("article", "pick-game-card");
     card.dataset.tone = game.color; card.dataset.game = game.id;
     if (selected === game.id && asHost) card.dataset.selected = "true";
@@ -206,7 +219,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     const art = make("button", "pick-game-art pick-game-preview-button");
     art.type = "button";
     art.dataset.genre = groupFor(game.id);
-    art.setAttribute("aria-label", "Preview " + game.name);
+    art.setAttribute("aria-label", (getLocale() === "es" ? "Ver " : "Preview ") + game.name);
     const posterOrbit = make("span", "pick-game-art-orbit");
     const posterIcon = make("span", "pick-game-art-icon", game.icon);
     const posterKicker = make("span", "pick-poster-kicker", "TRIVIA LOBBY · GAME LIBRARY");
@@ -224,12 +237,13 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     });
     const title = make("h3", null, game.name);
     const marker = make("span", "pick-game-tag", game.tag);
-    const people = make("p", "pick-game-players", game.players + " players · " + game.rounds);
+    const people = make("p", "pick-game-players", game.players + (getLocale() === "es" ? " jugadores · " : " players · ") + game.rounds);
     const rules = make("p", "pick-game-rules", game.rules);
     const actions = make("div", "pick-game-actions");
-    const host = make("button", "pick-game-button", (asHost ? "Choose " : "Host ") + game.name);
+    const verb = getLocale() === "es" ? (asHost ? "Elegir " : "Crear ") : (asHost ? "Choose " : "Host ");
+    const host = make("button", "pick-game-button", verb + game.name);
     host.type = "button";
-    host.setAttribute("aria-label", (asHost ? "Choose" : "Host") + " " + game.name + ", " + game.players + " players");
+    host.setAttribute("aria-label", verb + game.name + ", " + game.players + (getLocale() === "es" ? " jugadores" : " players"));
     host.addEventListener("click", () => play(game.id));
     actions.append(host);
     card.append(cover, marker, title, people, rules, actions);

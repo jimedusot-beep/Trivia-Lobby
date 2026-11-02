@@ -19,24 +19,24 @@
   <body class="public-party">
     <main>
       <header>
-        <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="#pick-games">🎮 Game library</a><a href="./solo-test.html">Solo test</a><a href="#join-entry">Join party</a><a href="./create.html">Make a quiz</a><a href="./learn.html">My courses</a><span class="party-nav-count" aria-label="31 available games">31 games</span><span class="party-nav-count">No sign-in</span></div></nav>
+        <nav class="page-nav" aria-label="Party navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="#pick-games" data-i18n="🎮 Game library">🎮 Game library</a><a href="./solo-test.html" data-i18n="Solo test">Solo test</a><a href="#join-entry" data-i18n="Join party">Join party</a><a href="./create.html" data-i18n="Make a quiz">Make a quiz</a><a href="./learn.html" data-i18n="My courses">My courses</a><span class="party-nav-count" aria-label="31 available games" data-i18n="31 games">31 games</span><span class="party-nav-count" data-i18n="No sign-in">No sign-in</span></div><label class="party-language" for="party-language">🌐 <span>Language / Idioma</span><select id="party-language" aria-label="Language / Idioma"><option value="en">English</option><option value="es">Español</option></select></label></nav>
         <div id="party-intro" class="party-intro"><span class="lobby-kicker">✿ Sakura Arcade · Your people. Your party.</span><h1>One code. <span>Everyone plays.</span></h1><p>2–20 players · nicknames welcome · no account needed</p><div class="mode-preview" role="group" aria-label="Available activities"><span><b aria-hidden="true">?</b> Quiz</span><span><b aria-hidden="true">“</b> Prompt Duel</span><span><b aria-hidden="true">✦</b> Charades</span><span>Majority Rules</span><span>Family Bingo</span><span>Bracket Battle</span></div></div>
       </header>
       <p id="status" role="status" aria-live="polite">Connecting…</p>
-      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">✿ SAKURA ARCADE · TV GAME LIBRARY</span><h1 id="pick-games-title">Pick a Game</h1><p>Browse the covers. Choose what to play. Invite everyone with a QR code.</p></div><div id="game-picker"></div><p class="solo-test-entry">Playing alone? <a href="./solo-test.html">Try Solo Test Mode</a> — run the host and virtual opponents in one tab.</p><p class="opl-library-entry"><strong>More games:</strong> <a href="./open-party-lab.html">Browse all 21 Open Party Lab games</a> · separate, self-hosted companion collection; not part of this room.</p></section>
+      <section id="pick-games" class="pick-games" aria-labelledby="pick-games-title"><div class="pick-game-heading"><span class="eyebrow">✿ SAKURA ARCADE · TV GAME LIBRARY</span><h1 id="pick-games-title" data-i18n="Pick a Game">Pick a Game</h1><p data-i18n="Browse the covers. Choose what to play. Invite everyone with a QR code.">Browse the covers. Choose what to play. Invite everyone with a QR code.</p></div><div id="game-picker"></div><p class="solo-test-entry">Playing alone? <a href="./solo-test.html">Try Solo Test Mode</a> — run the host and virtual opponents in one tab.</p><p class="opl-library-entry"><strong>More games:</strong> <a href="./open-party-lab.html">Browse all 21 Open Party Lab games</a> · separate, self-hosted companion collection; not part of this room.</p></section>
       <section id="entry" class="entry-grid" aria-label="Host or join a party">
-        <article id="host-entry"><span class="eyebrow">TAKE THE LEAD</span><h2>Start a party</h2><p>Gather your crew. We’ll bring the questions.</p><img class="host-spark lobby-hello" src="./lobby-spark.svg" alt="" width="114" height="114" />
-        <button id="create">Create host screen</button>
+        <article id="host-entry"><span class="eyebrow">TAKE THE LEAD</span><h2 data-i18n="Start a party">Start a party</h2><p data-i18n="Gather your crew. We’ll bring the questions.">Gather your crew. We’ll bring the questions.</p><img class="host-spark lobby-hello" src="./lobby-spark.svg" alt="" width="114" height="114" />
+        <button id="create" data-i18n="Create host screen">Create host screen</button>
         <p id="custom-hint">Want your own questions? <a href="./create.html">Make and save a quiz</a>, then select Save &amp; host.</p>
-        </article><article id="join-entry"><div id="join-default-intro"><span class="eyebrow">PULL UP A CHAIR</span><h2>Join on your phone</h2></div>
+        </article><article id="join-entry"><div id="join-default-intro"><span class="eyebrow">PULL UP A CHAIR</span><h2 data-i18n="Join on your phone">Join on your phone</h2></div>
         <div id="invite-intro" hidden><img class="invite-spark" src="./lobby-spark.svg" alt="" width="64" height="64" /><span class="eyebrow">PULL UP A CHAIR</span><h1>You're invited!</h1><p>Choose a nickname. No account needed.</p><p class="invite-room">Room <strong id="invited-room-code"></strong></p></div>
         <div id="other-party" class="other-party" hidden><p id="other-party-note"></p><a id="return-to-party" href="./">Return to your party</a></div>
         <p id="join-error" class="join-error" role="alert" hidden></p>
         <form id="join">
-          <div id="code-fields"><label for="code">Party code</label
+          <div id="code-fields"><label data-i18n="Party code" for="code">Party code</label
           ><input id="code" maxlength="6" required autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="join-error" /></div><label
             for="name"
-            >Nickname</label
+             data-i18n="Nickname">Nickname</label
           ><input
             id="name"
             maxlength="24"
@@ -44,9 +44,9 @@
             autocomplete="nickname"
             enterkeyhint="go"
             aria-describedby="join-error"
-          /><button>Join party</button>
+          /><button data-i18n="Join party">Join party</button>
         </form>
-        <button id="change-code" class="change-code" type="button" aria-controls="code-fields" hidden>Change room code</button>
+        <button data-i18n="Change room code" id="change-code" class="change-code" type="button" aria-controls="code-fields" hidden>Change room code</button>
         <a id="browse-games" class="browse-games" href="./" hidden>Browse the games instead</a>
         <p id="join-footnote">
           The host is a separate display. Open player tabs or phones to join.
@@ -54,14 +54,14 @@
       </section>
       <details class="house-notes"><summary>Before the first round</summary><p>Demo games use original sample questions. A custom quiz is shared with this temporary party and its players, not stored in the private server library. Private decks and documents remain protected. Rooms and scores end when the server restarts.</p></details>
       <section id="game" class="sakura-game-stage" hidden>
-        <div class="game-topline"><h1 id="heading" tabindex="-1"></h1><div id="tv-host-tools" class="tv-host-tools" hidden><button type="button" id="tv-fullscreen" aria-pressed="false">Enter TV full screen</button><p id="tv-fullscreen-status" role="status" aria-live="polite"></p></div><img class="game-mascot" src="./lobby-spark.svg" alt="" width="68" height="68" /></div>
+        <div class="game-topline"><h1 id="heading" tabindex="-1"></h1><div id="tv-host-tools" class="tv-host-tools" hidden><label class="tv-language" for="tv-language">🌐 Language / Idioma <select id="tv-language" aria-label="TV language / Idioma"><option value="en">English</option><option value="es">Español</option></select></label><button type="button" id="tv-fullscreen" aria-pressed="false">Enter TV full screen</button><p id="tv-fullscreen-status" role="status" aria-live="polite"></p></div><img class="game-mascot" src="./lobby-spark.svg" alt="" width="68" height="68" /></div>
         <details id="party-invitation" class="lobby-invite-panel" hidden><summary>Invite friends · QR &amp; sharing</summary><div id="invitation-card"></div></details>
         <p id="timer" aria-live="off"></p>
         <div id="content"></div>
-        <h2 id="roster-title">Players & points</h2>
+        <h2 id="roster-title" data-i18n="Players & points">Players & points</h2>
         <ol id="roster"></ol>
         <section id="championship" class="championship" aria-label="Game Night Championship" aria-live="polite"></section>
-        <button id="leave">Leave this device</button>
+        <button id="leave" data-i18n="Leave this device">Leave this device</button>
       </section>
       <footer class="open-source-footer"><a href="./sources.html">Game credits, licenses &amp; source code</a></footer>
     </main>

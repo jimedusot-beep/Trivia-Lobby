@@ -11,6 +11,9 @@ import { renderTap, updateTapState, receiveTapFrame, disposeTap } from "./tap-ui
 import { renderTrails, updateTrailsState, receiveTrailsFrame, disposeTrails } from "./trails-ui.js";
 import { renderRace as renderArcadeRace } from "./arcade-race-ui.js";
 import { mountPhoneController, disposePhoneController } from "./phone-controller.js";
+import { loadLocale, getLocale, setLocale, t, localizeState, localizeGame, translateStatic } from "./i18n.js";
+
+loadLocale();
 
 let invitationCode, invitationPhase;
 const query = new URLSearchParams(location.search);
@@ -36,15 +39,17 @@ const partyUrl = new URL("./", location.href);
 const credentialKey = `party-credential:${partyUrl.pathname}`;
 const preferenceKey = `party-host-choice:${partyUrl.pathname}`;
 const $ = (id) => document.getElementById(id);
+let latestStatus = "Connecting…";
 const status = (text) => {
-  $("status").textContent = text;
+  latestStatus = text;
+  $("status").textContent = t(text);
 };
 
 // This only changes the host's local display. It does not alter rooms, scores,
 // player identities or server traffic. Browser fullscreen requires a real click.
 function syncTvFullscreen() {
   const active = document.fullscreenElement === $("game");
-  $("tv-fullscreen").textContent = active ? "Exit TV full screen" : "Enter TV full screen";
+  $("tv-fullscreen").textContent = t(active ? "Exit TV full screen" : "Enter TV full screen");
   $("tv-fullscreen").setAttribute("aria-pressed", String(active));
 }
 $("tv-fullscreen").addEventListener("click", async () => {
@@ -57,10 +62,10 @@ $("tv-fullscreen").addEventListener("click", async () => {
     } else if (typeof $("game").requestFullscreen === "function") {
       await $("game").requestFullscreen();
     } else {
-      info.textContent = "Full screen is unavailable here. On Windows, try F11 for browser full screen.";
+      info.textContent = t("Full screen is unavailable here. On Windows, try F11 for browser full screen.");
     }
   } catch {
-    info.textContent = "The browser couldn't enter full screen. On Windows, try F11.";
+    info.textContent = t("The browser couldn't enter full screen. On Windows, try F11.");
   }
   syncTvFullscreen();
 });
@@ -308,6 +313,7 @@ function render() {
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
+  const displayState = localizeState(state);
   $("tv-host-tools").hidden = !host;
   const invitation = $("party-invitation");
   invitation.hidden = false;
@@ -319,7 +325,7 @@ function render() {
   } else if (invitationPhase === "lobby" && state.phase !== "lobby") invitation.open = false;
   else if (invitationPhase !== "lobby" && state.phase === "lobby" && host) invitation.open = true;
   invitationPhase = state.phase;
-  $("heading").textContent = `${state.code} · ${state.phase}`;
+  $("heading").textContent = `${state.code} · ${t(state.phase)}`;
   const key = `${state.matchId}:${state.phase}:${state.index}:${state.charades?.clue?.id ?? ""}`;
   if (key !== phaseKey) {
     phaseKey = key;
@@ -333,23 +339,25 @@ function render() {
   if (state.phase === "lobby") {
     element(
       "p",
-      `Quiz (${state.quizTitle}): ${state.quizLength} questions. Each round shows its timer and point value.`,
+      getLocale() === "es"
+        ? `Trivia (${state.quizTitle}): ${state.quizLength} preguntas. Cada ronda muestra el tiempo y los puntos.`
+        : `Quiz (${state.quizTitle}): ${state.quizLength} questions. Each round shows its timer and point value.`,
     );
     const rules = element("details");
     rules.className = "mode-rules";
-    element("summary", "How these games work", rules);
+    element("summary", t("How these games work"), rules);
     element("p", "Prompt Duel: 90 seconds to write two responses, then 20 seconds per vote. Authors do not vote on their own matchup. Charades: each player acts for up to 60 seconds, marks Correct (+1) or Pass (0), then everyone sees the round summary.", rules);
     if (host) {
-      const label = element("label", "Game mode");
+      const label = element("label", t("Game mode"));
       label.htmlFor = "mode";
       const select = element("select");
       select.id = "mode";
       for (const { id: value, name: text } of guestGames) {
-        const o = element("option", text, select);
+        const o = element("option", t(text), select);
         o.value = value;
       }
       select.value = selectedMode;
-      const packLabel = element("label", "Charades pack");
+      const packLabel = element("label", t("Charades pack"));
       packLabel.htmlFor = "charades-category";
       const pack = element("select");
       pack.id = "charades-category";
@@ -357,7 +365,7 @@ function render() {
         ["actions", "Everyday actions"],
         ["animals", "Animals"],
       ]) {
-        const option = element("option", text, pack);
+        const option = element("option", t(text), pack);
         option.value = value;
       }
       pack.value = selectedCategory;
@@ -367,7 +375,9 @@ function render() {
       const selection = element("p");
       selection.className = "pick-game-selection";
       const showSelection = () => {
-        selection.textContent = `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} connected · ${gameById(select.value)?.min ?? 3}–20 needed.`;
+        selection.textContent = getLocale() === "es"
+          ? `Listo para iniciar: ${localizeGame(gameById(select.value))?.name ?? "Trivia"} · ${state.players.filter(p => p.connected).length} conectados · ${gameById(select.value)?.min ?? 3}–20 necesarios.`
+          : `Ready to host: ${gameById(select.value)?.name ?? "Trivia Quiz"} · ${state.players.filter(p => p.connected).length} connected · ${gameById(select.value)?.min ?? 3}–20 needed.`;
       };
       select.onchange = () => {
         saveHostChoice(select.value, pack.value);
@@ -403,26 +413,28 @@ function render() {
         start.disabled = state.players.filter(p=>p.connected).length < (gameById(select.value)?.min ?? 3) || !!pending;
       }
       const start = button(
-        "Start match",
+        t("Start match"),
         () => action("start", select.value),
         undefined,
         state.players.filter((p) => p.connected).length < (gameById(select.value)?.min ?? 3),
       );
       showSettings();
-    } else element("p", "Waiting for the host to start.");
+    } else element("p", t("Waiting for the host to start."));
   }
-  if (state.phase === "countdown") element("p", "Get ready!");
-  if (state.question) {
-    element("h2", state.question.prompt);
-    element("p", `${state.question.seconds} seconds · ${state.question.points} points${state.question.penalty ? ` · ${state.question.penalty} wrong-answer penalty` : ""}`);
-    state.question.choices.forEach((choice, i) => {
+  if (state.phase === "countdown") element("p", t("Get ready!"));
+  if (displayState.question) {
+    element("h2", displayState.question.prompt);
+    element("p", getLocale() === "es"
+      ? `${state.question.seconds} segundos · ${state.question.points} puntos${state.question.penalty ? ` · penalización de ${state.question.penalty} por error` : ""}`
+      : `${state.question.seconds} seconds · ${state.question.points} points${state.question.penalty ? ` · ${state.question.penalty} wrong-answer penalty` : ""}`);
+    displayState.question.choices.forEach((choice, i) => {
       let tile;
       if (state.phase === "question" && !host)
         tile = button(choice, () => action("answer", i), undefined, state.locked);
       else
         tile = element(
           "p",
-          `${choice}${state.question.correct === i ? " ✓ Correct" : ""}`,
+          `${choice}${state.question.correct === i ? (getLocale() === "es" ? " ✓ Correcto" : " ✓ Correct") : ""}`,
         );
       tile.className = "answer-tile";
       tile.dataset.answerTone = String(i);
@@ -433,11 +445,11 @@ function render() {
       letter.textContent = String.fromCharCode(65 + i);
       tile.prepend(letter);
     });
-    if (state.locked) element("p", "Answer locked.");
-    if (state.question.explanation) element("p", state.question.explanation);
-    element("p", `${state.received} answers received.`);
+    if (state.locked) element("p", t("Answer locked."));
+    if (displayState.question.explanation) element("p", displayState.question.explanation);
+    element("p", getLocale() === "es" ? `${state.received} respuestas recibidas.` : `${state.received} answers received.`);
   }
-  if (state.social) renderSocial(state,{element,button,action,actor:()=>credential?.actor});
+  if (state.social) renderSocial(displayState,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(state,{element,button,action,actor:()=>credential?.actor});
   if (state.race) renderArcadeRace(state,{element,button,action,actor:()=>credential?.actor});
   if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
@@ -505,11 +517,13 @@ function render() {
           : "Waiting: you have voted or are an author on this matchup.",
       );
   }
-  if (state.charades) {
-    const c = state.charades;
+  if (displayState.charades) {
+    const c = displayState.charades;
     element(
       "p",
-      `Turn ${c.turnNumber} of ${c.totalTurns} · Performer: ${c.performerName} · ${c.category}`,
+      getLocale() === "es"
+        ? `Turno ${c.turnNumber} de ${c.totalTurns} · Actúa: ${c.performerName} · ${c.category}`
+        : `Turn ${c.turnNumber} of ${c.totalTurns} · Performer: ${c.performerName} · ${c.category}`,
     );
     if (state.phase === "acting") {
       if (c.canMark) {
@@ -518,24 +532,28 @@ function render() {
         clue.tabIndex = -1;
         element(
           "p",
-          "Act this out without speaking. Agree with your group before marking Correct. Scoring is self-reported.",
+          getLocale() === "es"
+            ? "Representa la pista sin hablar. Ponte de acuerdo con tu grupo antes de marcar Correcto. La puntuación se confirma entre ustedes."
+            : "Act this out without speaking. Agree with your group before marking Correct. Scoring is self-reported.",
         );
-        button("Correct (+1)", () => action("mark", "correct"));
-        button("Pass", () => action("mark", "pass"));
+        button(t("Correct (+1)"), () => action("mark", "correct"));
+        button(t("Pass"), () => action("mark", "pass"));
       } else
         element(
           "p",
-          `Guess what ${c.performerName} is acting. Their clue is private until this turn ends.`,
+          getLocale() === "es"
+            ? `Adivina qué representa ${c.performerName}. La pista es privada hasta que termine el turno.`
+            : `Guess what ${c.performerName} is acting. Their clue is private until this turn ends.`,
         );
     }
     if (c.history) {
-      element("h2", "Turn summary");
+      element("h2", t("Turn summary"));
       const list = element("ul");
       for (const mark of c.history)
         element("li", `${mark.text} — ${mark.result}`, list);
     }
   }
-  if (state.phase === "reveal" && host) button("Next", () => action("next"));
+  if (state.phase === "reveal" && host) button(t("Next"), () => action("next"));
   if (state.phase === "finished") {
     if (previousPhase !== phaseKey && !state.interrupted && !state.endedByHost) celebrate();
     element(
@@ -554,7 +572,7 @@ function render() {
           .join(", ")}`,
       );
     }
-    if (host) button("Return to same party", () => action("lobby"));
+    if (host) button(t("Return to same party"), () => action("lobby"));
   }
   $("roster").replaceChildren();
   for (const p of state.players) {
@@ -564,7 +582,9 @@ function render() {
     token.setAttribute("aria-hidden", "true");
     element(
       "span",
-      `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
+      getLocale() === "es"
+        ? `${p.name}: ${p.score} puntos${p.connected ? "" : " · desconectado"}`
+        : `${p.name}: ${p.score} points${p.connected ? "" : " · disconnected"}`,
       row,
     );
   }
@@ -593,7 +613,7 @@ function render() {
       }
     }
   }
-  mountPhoneController(state, { actor: credential?.actor, game: gameById(state.mode), releaseControls: releaseRaceControls });
+  mountPhoneController(displayState, { actor: credential?.actor, game: localizeGame(gameById(state.mode)), releaseControls: releaseRaceControls });
   if (previousPhase !== phaseKey && $("current-clue"))
     $("current-clue").focus();
   if (previousPhase === phaseKey && focusedId && $(focusedId)) {
@@ -606,14 +626,30 @@ function render() {
 }
 // The public TV shelf opens on its featured kart game, matching the cover-first
 // home preview. This is presentation only: a game is not started until Host.
-mountGamePicker($("game-picker"), { selected: "race", onHost: game => { preferredMode = game; $("create").click(); } });
+const mountLibrary = () => mountGamePicker($("game-picker"), { selected: "race", onHost: game => { preferredMode = game; $("create").click(); } });
+const languageChooser = $("party-language");
+const tvLanguageChooser = $("tv-language");
+for (const select of [languageChooser, tvLanguageChooser]) {
+  select.value = getLocale();
+  select.addEventListener("change", () => setLocale(select.value));
+}
+document.addEventListener("party-locale-change", () => {
+  for (const select of [languageChooser, tvLanguageChooser]) select.value = getLocale();
+  translateStatic(document);
+  status(latestStatus);
+  syncTvFullscreen();
+  mountLibrary();
+  if (state) render();
+});
+translateStatic(document);
+mountLibrary();
 setInterval(() => {
   if (!state) return;
   const now = Date.now() + offset;
   if (state.pack?.kind === "homeward") tickHomewardClocks(now);
   const timer = $("timer");
   const remaining = state.deadline
-    ? `${Math.max(0, Math.ceil((state.deadline - now) / 1000))} seconds remaining`
+    ? `${Math.max(0, Math.ceil((state.deadline - now) / 1000))} ${getLocale() === "es" ? "segundos restantes" : "seconds remaining"}`
     : "";
   // Keep 200 ms clock checks for the urgent threshold and Homeward clocks,
   // but avoid waking layout/observers and recreating text on identical ticks.
