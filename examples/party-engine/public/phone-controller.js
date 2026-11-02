@@ -1,4 +1,5 @@
 // Original presentation adapter. Server projections and action contracts are unchanged.
+import { getLocale, setLocale, t, spanishContentModes } from "./i18n.js";
 let active;
 const remembered = new Map();
 const byId = (id) => document.getElementById(id);
@@ -72,12 +73,12 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   const pager = make("nav", undefined, shell, "phone-pager");
   pager.setAttribute("aria-label", "Controller pages");
   const previous = control(
-      "← Previous",
+      t("← Previous"),
       () => show(saved.page - 1, true),
       pager,
     ),
     pageLabel = make("span", "", pager),
-    next = control("Next →", () => show(saved.page + 1, true), pager);
+    next = control(t("Next →"), () => show(saved.page + 1, true), pager);
   pageLabel.setAttribute("aria-live", "polite");
   const footer = make("nav", undefined, shell, "phone-menu");
   footer.setAttribute("aria-label", "Controller menu");
@@ -87,7 +88,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     ["scores", "Scores"],
     ["options", "Options"],
   ]) {
-    menuButtons[name] = control(label, (event) => open(name, event.currentTarget), footer);
+    menuButtons[name] = control(t(label), (event) => open(name, event.currentTarget), footer);
     // app.js restores focus by ID after an authoritative state broadcast.
     menuButtons[name].id = `phone-menu-${name}`;
   }
@@ -96,7 +97,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     dialogTitle = make("h2", "", dialogBar);
   dialogTitle.id = "phone-dialog-title";
   dialog.setAttribute("aria-labelledby", dialogTitle.id);
-  const close = control("Back to game", () => dialog.close(), dialogBar);
+  const close = control(t("Back to game"), () => dialog.close(), dialogBar);
   close.id = "phone-dialog-close";
   const dialogFeedback = make(
     "p",
@@ -146,7 +147,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     const result = make("div", undefined, undefined, "phone-result");
     make(
       "h2",
-      state.phase === "finished" ? "Match complete" : "Round complete",
+      t(state.phase === "finished" ? "Match complete" : "Round complete"),
       result,
     );
     make("strong", `${own?.score ?? 0} points`, result);
@@ -159,7 +160,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     if (state.pack?.kind === "draw" && state.pack.word)
       make("p", `The word was: ${state.pack.word}`, result);
     make("p", "Watch the shared screen. Your host will continue.", result);
-    const details = control("See round details", (event) => open("info", event.currentTarget), result);
+    const details = control(t("See round details"), (event) => open("info", event.currentTarget), result);
     details.id = "phone-round-details";
     add(result);
   } else if (state.pack?.kind === "draw") {
@@ -377,12 +378,25 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
       list,
     );
   if (state.championship?.standings?.length) {
-    make("h3", "Game Night Championship", scores);
+    make("h3", t("Game Night Championship"), scores);
     const standings = make("ol", undefined, scores);
     for (const p of state.championship.standings)
       make("li", `${p.name}: ${p.points} points · ${p.wins} wins`, standings);
   }
   make("h3", `Room ${state.code}`, panels.options);
+  const localeLabel = make("label", "Language / Idioma", panels.options);
+  const localeSelect = make("select", undefined, panels.options);
+  localeSelect.id = "phone-language";
+  localeLabel.htmlFor = localeSelect.id;
+  for (const [value, label] of [["en", "English"], ["es", "Español"]]) {
+    const option = make("option", label, localeSelect);
+    option.value = value;
+  }
+  localeSelect.value = getLocale();
+  localeSelect.addEventListener("change", () => setLocale(localeSelect.value));
+  if (getLocale() === "es" && (!spanishContentModes.includes(state.mode) ||
+      (state.mode === "quiz" && state.quizTitle !== "Sample Quiz")))
+    make("p", "Aviso: este juego todavía puede mostrar preguntas y reglas en inglés.", panels.options);
   make(
     "p",
     `Playing as ${own?.name ?? "Guest"}. Keep this tab to retain your reconnect credential.`,
@@ -396,7 +410,7 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
   credits.href = new URL("./sources.html", location.href).href;
   credits.id = "phone-credits";
   const leave = control(
-    "Leave party",
+    t("Leave party"),
     () => {
       if (confirm("Leave this party on this device?")) byId("leave").click();
     },
@@ -423,11 +437,11 @@ export function mountPhoneController(state, { actor, game, releaseControls }) {
     saved.dialog = name;
     for (const [key, panel] of Object.entries(panels))
       panel.hidden = key !== name;
-    dialogTitle.textContent = {
+    dialogTitle.textContent = t({
       info: "Game information",
       scores: "Scores",
       options: "Controller options",
-    }[name];
+    }[name]);
     if (!dialog.open) dialog.showModal();
     close.focus({ preventScroll: true });
   }
