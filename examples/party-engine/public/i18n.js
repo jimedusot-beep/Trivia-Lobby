@@ -150,7 +150,7 @@ export function localizeGame(game) {
   return { ...game, name: t(game.name), rules: t(game.rules), rounds: t(game.rounds), tag: t(game.tag) };
 }
 // Other modes keep English game material until their answer validators can safely support Spanish.
-export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest"]);
+export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest", "percentage"]);
 const quizSpanish = Object.freeze({
   "Which shape has exactly three sides?": { original: ["Circle","Triangle","Square","Pentagon"], prompt: "¿Qué figura tiene exactamente tres lados?", choices: ["Círculo","Triángulo","Cuadrado","Pentágono"], explanation: "Un triángulo es un polígono con tres lados." },
   "Which number is a prime number?": { original: ["9","15","17","21"], prompt: "¿Cuál de estos números es primo?", choices: ["9","15","17","21"], explanation: "17 tiene exactamente dos divisores positivos: 1 y 17." },
@@ -214,6 +214,15 @@ const closestSpanish = Object.freeze({
   "How many squares are on a chessboard?": "¿Cuántas casillas tiene un tablero de ajedrez?",
 });
 const closestUnits = Object.freeze({ keys: "teclas", minutes: "minutos", bones: "huesos", year: "año", squares: "casillas" });
+// These are the six fixed Percentage-mode server prompts. Numeric vote/guess payloads remain untouched.
+const percentageSpanish = Object.freeze({
+  "Would you rather live near the ocean than in the mountains?": "¿Preferirías vivir cerca del océano en vez de las montañas?",
+  "Do you put pineapple on pizza?": "¿Le pones piña a la pizza?",
+  "Would you rather be able to fly than turn invisible?": "¿Preferirías poder volar en lugar de volverte invisible?",
+  "Do you think breakfast foods taste better at dinner?": "¿Crees que la comida del desayuno sabe mejor en la cena?",
+  "Would you trade your phone for a week of free vacation?": "¿Cambiarías tu teléfono por una semana de vacaciones gratis?",
+  "What percentage of your group voted YES? (0–100)": "¿Qué porcentaje del grupo votó SÍ? (0–100)",
+});
 export function localizeState(state) {
   if (!state || language !== "es") return state;
   const translated = { ...state };
@@ -247,6 +256,14 @@ export function localizeState(state) {
       translated.social = { ...social, prompt: closestSpanish[social.prompt] ?? social.prompt,
         ...(social.unit ? { unit: closestUnits[social.unit] ?? social.unit } : {}) };
     }
+  }
+  if (state.mode === "percentage" && state.bonus?.kind === "percentage") {
+    // Presentation-only: never change the server's integer vote (0/1),
+    // 0–100 percentage guess, authoritative tally, or phase.
+    translated.bonus = {
+      ...state.bonus,
+      prompt: percentageSpanish[state.bonus.prompt] ?? state.bonus.prompt,
+    };
   }
   return translated;
 }

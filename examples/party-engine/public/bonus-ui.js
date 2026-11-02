@@ -1,9 +1,13 @@
 // All guest-authored text is inserted via textContent, not HTML.
+import { getLocale } from "./i18n.js";
 export function renderBonus(state,{element,button,action,actor}){
  const b=state.bonus,host=state.role==="host",reveal=state.phase==="reveal";
+ const percentageES=b.kind==="percentage" && getLocale()==="es";
  const answerable=!host&&!reveal&&!b.locked;
  element("h2",b.prompt).className="social-prompt";
- element("p","Round "+b.round+" of "+b.total+" · "+b.received+" submitted");
+ element("p",percentageES
+  ? "Ronda "+b.round+" de "+b.total+" · "+b.received+" respuestas"
+  : "Round "+b.round+" of "+b.total+" · "+b.received+" submitted");
  const key="family-draft:"+state.matchId+":"+b.kind+":"+b.round+":"+state.phase;
  function typed(label,{maxLength=80,numeric=false,multiline=false}={}){
   if(!answerable)return;
@@ -16,7 +20,7 @@ export function renderBonus(state,{element,button,action,actor}){
   if(numeric){input.min="0";input.max="100";input.step="1";input.inputMode="numeric";}
   try{input.value=sessionStorage.getItem(key)||"";}catch{}
   input.oninput=()=>{try{sessionStorage.setItem(key,input.value);}catch{}};
-  button("Lock answer",()=>{
+  button(percentageES?"Confirmar respuesta":"Lock answer",()=>{
    const value=numeric?(input.value===""?NaN:Number(input.value)):input.value.trim();
    action("respond",value);
   },wrap);
@@ -82,13 +86,17 @@ export function renderBonus(state,{element,button,action,actor}){
  }
  if(b.kind==="percentage"){
    if(state.phase==="writing"){
-     element("p","Vote privately. Nobody sees the group's result until the reveal.");
-     if(answerable){button("Yes",()=>action("respond",1));button("No",()=>action("respond",0));}
+     element("p",percentageES?"Vota en privado. Nadie ve el resultado hasta el final.":"Vote privately. Nobody sees the group's result until the reveal.");
+     if(answerable){button(percentageES?"Sí":"Yes",()=>action("respond",1));button(percentageES?"No":"No",()=>action("respond",0));}
    }else if(state.phase==="voting"){
-     element("p","Guess the percent who said YES.");
-     typed("Your guess, 0–100%",{numeric:true,maxLength:3});
+     element("p",percentageES?"Adivina qué porcentaje votó SÍ.":"Guess the percent who said YES.");
+     typed(percentageES?"Tu estimación, 0–100 %":"Your guess, 0–100%",{numeric:true,maxLength:3});
    }
-   if(reveal)element("h3",b.actual===null?"No votes submitted":b.actual+"% said YES ("+b.yes+" of "+b.totalVotes+" votes)");
+   if(reveal)element("h3",b.actual===null
+     ? (percentageES?"No se recibieron votos":"No votes submitted")
+     : percentageES
+       ? b.actual+" % votó SÍ ("+b.yes+" de "+b.totalVotes+" votos)"
+       : b.actual+"% said YES ("+b.yes+" of "+b.totalVotes+" votes)");
  }
  if(b.kind==="bingo"){
    if(!host){
@@ -105,6 +113,8 @@ export function renderBonus(state,{element,button,action,actor}){
    }else element("p","The call is shown on each player's private card. Marking is server-verified.");
    if(reveal && b.winners?.length)element("p","New bingo winners: "+b.winners.join(", "));
  }
- if(b.locked && !reveal)element("p","Your response is locked for this phase.");
- if(host && !reveal)element("p","The server tracks every vote and answer. The next phase begins automatically after the deadline or all players finish.");
+ if(b.locked && !reveal)element("p",percentageES?"Tu respuesta está confirmada para esta fase.":"Your response is locked for this phase.");
+ if(host && !reveal)element("p",percentageES
+  ? "El servidor registra los votos y respuestas. La siguiente fase comienza automáticamente."
+  : "The server tracks every vote and answer. The next phase begins automatically after the deadline or all players finish.");
 }
