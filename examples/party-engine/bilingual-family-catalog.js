@@ -12,10 +12,10 @@ export const familyBoards = Object.freeze(rawTopics.flatMap((entry,i)=>{
   const a=answers.map(bilingual);
   return [
     {id:"family-"+i+"-a",theme:themeOf(i),difficulty:"easy",
-      question:{en:"Name something you might see at a "+en.toLowerCase()+".",es:"Nombra algo que podrías ver en "+es.toLowerCase()+"."},
+      question:{en:"Name something associated with: "+en+".",es:"Nombra algo relacionado con: "+es+"."},
       answers:a.map((label,index)=>({label,points:scores[index]}))},
     {id:"family-"+i+"-b",theme:themeOf(i),difficulty:"medium",
-      question:{en:"Name something associated with "+en.toLowerCase()+".",es:"Nombra algo relacionado con "+es.toLowerCase()+"."},
+      question:{en:"What might you find at or near: "+en+"?",es:"¿Qué podrías encontrar en o cerca de: "+es+"?"},
       answers:[...a].reverse().map((label,index)=>({label,points:scores[index]}))}
   ];
 }));
