@@ -2,7 +2,7 @@
 import { getLocale } from "./i18n.js";
 export function renderSocial(state, {element,button,action,actor}) {
   const s=state.social, reveal=state.phase==="reveal", host=state.role==="host";
-  const es=getLocale()==="es" && ["majority","likely","closest"].includes(s.kind);
+  const es=getLocale()==="es" && ["majority","likely","closest","survey"].includes(s.kind);
   const title=element("h2",s.prompt);
   title.className="social-prompt";
   element("p",es
@@ -48,11 +48,11 @@ export function renderSocial(state, {element,button,action,actor}) {
     }
   }
   if(s.kind==="survey"){
-    textAnswer("Name one popular answer");
+    textAnswer(es?"Nombra una respuesta popular":"Name one popular answer");
     if(reveal){
-      element("h3","Top survey answers");
+      element("h3",es?"Respuestas más populares":"Top survey answers");
       for(const answer of s.topAnswers)
-        element("p",`${answer.text}: ${answer.points} points · ${answer.count} matches`);
+        element("p",`${answer.text}: ${answer.points} ${es?"puntos":"points"} · ${answer.count} ${es?"coincidencias":"matches"}`);
     }
   }
   if(s.kind==="impostor"){
