@@ -55,7 +55,7 @@ jobs:
           printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
           npx playwright install --with-deps ${{ matrix.browser }}
       - name: Mixed-language party controller and scoring tests
-        run: npm run test:browser -- browser-specs/bilingual.spec.js browser-specs/bilingual-tv.spec.js browser-specs/bilingual-answer-scoring.spec.js --project=${{ matrix.browser }} --reporter=line
+        run: npm run test:browser -- browser-specs/bilingual.spec.js browser-specs/bilingual-tv.spec.js browser-specs/bilingual-answer-scoring.spec.js browser-specs/bilingual-answer-all-rounds.spec.js --project=${{ matrix.browser }} --reporter=line
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
