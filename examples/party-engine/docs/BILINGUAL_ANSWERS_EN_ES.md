@@ -13,14 +13,20 @@ This is Phase 2 of the English/Spanish party work, stacked on the Phase 1 displa
 
 - Do not use free-form machine translation to decide whether an answer is correct. Unknown words get no credit, as before.
 - A Spanish word that does **not** start with the requested category letter is not accepted for that round, even if its English translation does. This first pass doesn't give every concept an equally natural translation.
-- Alternate country-specific terms are not exhaustively covered. Review with Spanish-speaking players and expand only tested, clear, equivalent aliases.
+- Regional Spanish terms are supported only when curated and unambiguous in context (examples: `pochoclo`, `crispetas`, `canguil` and `palomitas` for popcorn; `boleto`/`entrada` for a ticket; `jarabe de maple` for syrup). Alternate country-specific terms are not exhaustively covered; expand with reviewed, unambiguous equivalents only.
 - **Family Showdown** can use custom author-supplied answers and host-assisted judgment. It is *not* automatically translated or modified here. **Forbidden Word Frenzy** is a spoken game with a human referee and still needs a carefully translated clue/forbidden-word pack.
 - Custom-created quizzes, player-submitted captions, nicknames, proprietary decks and other game packs remain unchanged.
 
 ## Tests required before merge
 
 1. Run party-engine Node tests and browser suites in Chromium/Firefox/WebKit.
-2. Test Survey 5/5 rounds with mixed English/Spanish guests and rank-equivalent score / reveal counts.
-3. Test Category 5/5 rounds, accents, exact matching, invalid words and shared uniqueness counts.
+2. Test Survey 5/5 rounds with mixed English/Spanish guests and rank-equivalent score / reveal counts. Automated coverage: `test/bilingual-full-rounds.test.js` and `browser-specs/bilingual-answer-all-rounds.spec.js`.
+3. Test Category 5/5 rounds, accents, exact matching, invalid words and shared uniqueness counts. Both test files above exercise the entire five-round progression. Invalid-answer / locked-answer scenarios are covered by Node tests.
 4. Check 320px/390px phone controllers, no-scrolling play, reconnect and text accessibility.
 5. Do not merge/deploy until parent PR #131 is verified. After #131 merges, retarget this PR to main and re-run all checks.
+
+## Validation notes (November 2, 2026)
+
+- The original PR #132 covered the opening round of both games in browser tests. The current branch adds complete five-round browser scenarios, server-level five-round tests, privacy guards, invalid-answer cases, and duplicate-submission assertions.
+- CI for pull requests targets `main` only; this stacked PR targets PR #131's feature branch. A green status on PR #131 does **not** verify the changes in PR #132. Run/check CI against #132's own head commit before calling this phase complete.
+- Physical phones, actual TV presentation, Spanish regional-language review, and reconnect behavior remain separate manual release gates.
