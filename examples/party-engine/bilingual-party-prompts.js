@@ -1,0 +1,34 @@
+// Original bilingual prompt libraries. Optional future integration: no live game imports this yet.
+const pair = v => {const [en,es]=v.split("|"); return {en,es};};
+const objects = ["robot|robot","dragon|dragón","penguin|pingüino","bicycle|bicicleta","castle|castillo","rocket|cohete","elephant|elefante","umbrella|paraguas","guitar|guitarra","snowman|muñeco de nieve","dinosaur|dinosaurio","pirate ship|barco pirata","balloon|globo","tree house|casa del árbol","sunflower|girasol","octopus|pulpo","train|tren","airplane|avión","volcano|volcán","whale|ballena","library|biblioteca","telescope|telescopio","birthday cake|pastel de cumpleaños","ice cream|helado","backpack|mochila","dragonfly|libélula","skateboard|patineta","windmill|molino de viento","waterfall|cascada","sailboat|velero","submarine|submarino","fire truck|camión de bomberos","lighthouse|faro","roller coaster|montaña rusa","tree|árbol","butterfly|mariposa","rainbow|arcoíris","spaceship|nave espacial","teapot|tetera","parrot|loro","crab|cangrejo","beehive|colmena","kite|cometa","moon|luna","starfish|estrella de mar","book|libro","owl|búho","jellyfish|medusa","sandcastle|castillo de arena","camera|cámara"].map(pair);
+const settings = [
+ ["at the beach","en la playa"],["in outer space","en el espacio"],["in a garden","en un jardín"],
+ ["on a mountain","en una montaña"],["at a birthday party","en una fiesta de cumpleaños"],
+ ["under the sea","bajo el mar"],["in a museum","en un museo"],["at the park","en el parque"],
+ ["during a storm","durante una tormenta"],["inside a castle","dentro de un castillo"]
+];
+export const drawingPrompts500 = Object.freeze(settings.flatMap(([en,es],scene)=>objects.map((word,i)=>({
+ id:"draw-"+scene+"-"+i,category:["objects","animals","places","fantasy","nature"][i%5],
+ difficulty:["easy","medium","hard"][(i+scene)%3],
+ text:{en:"A "+word.en+" "+en,es:word.es+" "+es}
+}))));
+const seeds = {"actions":["brushing teeth|cepillarse los dientes","climbing a ladder|subir una escalera","flying a kite|volar una cometa","opening a present|abrir un regalo","planting a tree|plantar un árbol","washing a car|lavar un automóvil","folding a blanket|doblar una manta","carrying a suitcase|llevar una maleta","baking a cake|hornear un pastel","playing drums|tocar la batería"],"animals":["walking like a penguin|caminar como pingüino","jumping like a kangaroo|saltar como canguro","swimming like a dolphin|nadar como delfín","roaring like a lion|rugir como león","stretching like a cat|estirarse como gato","flapping like an eagle|alear como águila","slithering like a snake|reptar como serpiente","hopping like a frog|saltar como rana","stomping like an elephant|pisar fuerte como elefante","crawling like a crab|gatear como cangrejo"],"sports":["kicking a soccer ball|patear un balón","shooting a basketball|lanzar una pelota de baloncesto","swimming a lap|nadar un largo","serving in tennis|sacar en tenis","bowling a strike|tirar una bola de boliche","lifting weights|levantar pesas","skating on ice|patinar sobre hielo","running a race|correr una carrera","hitting a baseball|batear una pelota","skiing downhill|esquiar cuesta abajo"],"jobs":["teaching a class|enseñar una clase","fighting a fire|apagar un incendio","delivering mail|repartir correo","painting a wall|pintar una pared","checking a patient's pulse|revisar el pulso de un paciente","building a house|construir una casa","driving a bus|conducir un autobús","cooking in a restaurant|cocinar en un restaurante","fixing a bicycle|reparar una bicicleta","photographing a wedding|fotografiar una boda"],"emotions":["celebrating good news|celebrar buenas noticias","feeling surprised|sentirse sorprendido","being very sleepy|tener mucho sueño","feeling nervous|sentirse nervioso","laughing uncontrollably|reír sin parar","acting confused|actuar confundido","being proud|sentirse orgulloso","feeling impatient|sentirse impaciente","looking curious|mostrar curiosidad","being frightened|tener miedo"],"transport":["riding a bicycle|montar una bicicleta","steering a boat|dirigir un barco","driving a tractor|conducir un tractor","piloting an airplane|pilotar un avión","rowing a canoe|remar una canoa","riding a scooter|montar un patinete","driving a taxi|conducir un taxi","boarding a train|subir a un tren","parking a bus|estacionar un autobús","flying a helicopter|volar un helicóptero"],"nature":["watching a sunrise|mirar el amanecer","walking in rain|caminar bajo la lluvia","climbing a mountain|subir una montaña","planting flowers|plantar flores","collecting seashells|recoger conchas","watching butterflies|observar mariposas","crossing a river|cruzar un río","looking at stars|mirar las estrellas","building a snowman|hacer un muñeco de nieve","hiking in a forest|caminar por el bosque"],"home":["sweeping a floor|barrer el piso","making a bed|hacer la cama","watering plants|regar las plantas","washing dishes|lavar platos","setting a table|poner la mesa","vacuuming a room|aspirar una habitación","opening curtains|abrir las cortinas","folding laundry|doblar ropa","finding lost keys|buscar llaves perdidas","changing a light bulb|cambiar una bombilla"],"music":["playing a violin|tocar un violín","singing opera|cantar ópera","conducting an orchestra|dirigir una orquesta","playing piano|tocar piano","strumming guitar|rasguear guitarra","dancing salsa|bailar salsa","playing trumpet|tocar trompeta","beating a drum|golpear un tambor","playing flute|tocar flauta","singing into a microphone|cantar en un micrófono"],"silly":["walking on the moon|caminar en la luna","talking to a houseplant|hablar con una planta","fighting an invisible dragon|luchar con un dragón invisible","balancing a giant pizza|equilibrar una pizza gigante","catching imaginary butterflies|atrapar mariposas imaginarias","escaping from a robot|escapar de un robot","driving an invisible car|conducir un coche invisible","wearing enormous shoes|llevar zapatos enormes","flying like a superhero|volar como superhéroe","hiding from a tiny mouse|esconderse de un ratón pequeño"]};
+const scenarios=[
+ ["normally","normalmente"],["in slow motion","en cámara lenta"],["as quietly as possible","lo más silenciosamente posible"],
+ ["as if very tired","como si estuvieras muy cansado"],["while pretending to be a giant","fingiendo ser gigante"]
+];
+export const charadesCategories10 = Object.freeze(Object.fromEntries(
+ Object.entries(seeds).map(([category,entries])=>[category,Object.freeze(entries.flatMap((source,i)=>{
+ const base=pair(source);
+ return scenarios.map(([en,es],variant)=>({
+   id:"charades-"+category+"-"+i+"-"+variant,category,
+   difficulty:["easy","medium","hard"][variant%3],
+   text:{en:base.en+" "+en,es:base.es+" "+es}
+ }));
+ }))])
+));
+export const charadesClues500 = Object.freeze(Object.values(charadesCategories10).flat());
+export function localizePrompt(item,language="en"){
+ if(!["en","es"].includes(language))throw new Error("Unsupported language");
+ return item.text[language];
+}
