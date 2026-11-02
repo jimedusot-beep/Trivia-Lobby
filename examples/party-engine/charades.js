@@ -21,6 +21,7 @@ export const CHARADES_PACKS = Object.freeze({
     "Riding a bicycle",
     "Blowing up a balloon",
     ...extraCharades.actions,
+    ...charadesCategories10.actions,
   ],
   animals: [
     "Penguin",
@@ -40,6 +41,7 @@ export const CHARADES_PACKS = Object.freeze({
     "Frog",
     "Peacock",
     ...extraCharades.animals,
+    ...charadesCategories10.animals,
   ],
   ...Object.fromEntries(Object.entries(charadesCategories10).filter(([key]) => !["actions","animals"].includes(key)).map(([key,clues]) => [key,clues])),
 });
