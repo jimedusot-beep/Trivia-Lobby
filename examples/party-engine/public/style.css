@@ -181,6 +181,8 @@ body[data-party-phase="finished"] #heading::after { content:" ✿"; color:#ba639
 
 /* Host-only full-screen presentation. Keep Sakura styling and normal game controls. */
 .tv-host-tools { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-left:auto; }
+.tv-host-tools .tv-language { display:flex; align-items:center; gap:6px; font-size:.84rem; font-weight:750; }
+.tv-host-tools .tv-language select { width:auto; min-width:96px; min-height:44px; padding:6px 10px; margin:0; }
 .tv-host-tools #tv-fullscreen { width:auto; min-height:44px; margin:2px 0; padding:8px 16px; font-size:.95rem; background:var(--sakura-indigo); }
 .tv-host-tools #tv-fullscreen-status { margin:0; max-width:320px; color:var(--lobby-ink); font-size:.82rem; font-weight:750; }
 #game:fullscreen.sakura-game-stage { width:100%; height:100%; max-width:none; box-sizing:border-box; margin:0; padding:clamp(14px,2vw,38px); overflow:auto; border-radius:0; box-shadow:none; }

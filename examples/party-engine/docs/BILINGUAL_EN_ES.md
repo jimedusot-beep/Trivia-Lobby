@@ -13,7 +13,8 @@ Included in the first release candidate:
 - Who's Most Likely?: five prompts; player IDs and nicknames stay intact.
 - Closest Wins: five prompts and display units; numeric scoring unchanged.
 
-A guest chooses Spanish in Controller options; the entry screen also has a
+A guest chooses Spanish in Controller options; the TV host also has an
+in-game language selector visible inside browser fullscreen. The entry screen has a
 Language / Idioma selector. The selection is saved only in that browser.
 English remains the default. This uses no translation service and no new dependency.
 

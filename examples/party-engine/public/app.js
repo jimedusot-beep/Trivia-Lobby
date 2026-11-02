@@ -39,7 +39,9 @@ const partyUrl = new URL("./", location.href);
 const credentialKey = `party-credential:${partyUrl.pathname}`;
 const preferenceKey = `party-host-choice:${partyUrl.pathname}`;
 const $ = (id) => document.getElementById(id);
+let latestStatus = "Connecting…";
 const status = (text) => {
+  latestStatus = text;
   $("status").textContent = t(text);
 };
 
@@ -47,7 +49,7 @@ const status = (text) => {
 // player identities or server traffic. Browser fullscreen requires a real click.
 function syncTvFullscreen() {
   const active = document.fullscreenElement === $("game");
-  $("tv-fullscreen").textContent = active ? "Exit TV full screen" : "Enter TV full screen";
+  $("tv-fullscreen").textContent = t(active ? "Exit TV full screen" : "Enter TV full screen");
   $("tv-fullscreen").setAttribute("aria-pressed", String(active));
 }
 $("tv-fullscreen").addEventListener("click", async () => {
@@ -60,10 +62,10 @@ $("tv-fullscreen").addEventListener("click", async () => {
     } else if (typeof $("game").requestFullscreen === "function") {
       await $("game").requestFullscreen();
     } else {
-      info.textContent = "Full screen is unavailable here. On Windows, try F11 for browser full screen.";
+      info.textContent = t("Full screen is unavailable here. On Windows, try F11 for browser full screen.");
     }
   } catch {
-    info.textContent = "The browser couldn't enter full screen. On Windows, try F11.";
+    info.textContent = t("The browser couldn't enter full screen. On Windows, try F11.");
   }
   syncTvFullscreen();
 });
@@ -323,7 +325,7 @@ function render() {
   } else if (invitationPhase === "lobby" && state.phase !== "lobby") invitation.open = false;
   else if (invitationPhase !== "lobby" && state.phase === "lobby" && host) invitation.open = true;
   invitationPhase = state.phase;
-  $("heading").textContent = `${state.code} · ${state.phase}`;
+  $("heading").textContent = `${state.code} · ${t(state.phase)}`;
   const key = `${state.matchId}:${state.phase}:${state.index}:${state.charades?.clue?.id ?? ""}`;
   if (key !== phaseKey) {
     phaseKey = key;
@@ -626,11 +628,16 @@ function render() {
 // home preview. This is presentation only: a game is not started until Host.
 const mountLibrary = () => mountGamePicker($("game-picker"), { selected: "race", onHost: game => { preferredMode = game; $("create").click(); } });
 const languageChooser = $("party-language");
-languageChooser.value = getLocale();
-languageChooser.addEventListener("change", () => setLocale(languageChooser.value));
+const tvLanguageChooser = $("tv-language");
+for (const select of [languageChooser, tvLanguageChooser]) {
+  select.value = getLocale();
+  select.addEventListener("change", () => setLocale(select.value));
+}
 document.addEventListener("party-locale-change", () => {
-  languageChooser.value = getLocale();
+  for (const select of [languageChooser, tvLanguageChooser]) select.value = getLocale();
   translateStatic(document);
+  status(latestStatus);
+  syncTvFullscreen();
   mountLibrary();
   if (state) render();
 });
@@ -642,7 +649,7 @@ setInterval(() => {
   if (state.pack?.kind === "homeward") tickHomewardClocks(now);
   const timer = $("timer");
   const remaining = state.deadline
-    ? `${Math.max(0, Math.ceil((state.deadline - now) / 1000))} seconds remaining`
+    ? `${Math.max(0, Math.ceil((state.deadline - now) / 1000))} ${getLocale() === "es" ? "segundos restantes" : "seconds remaining"}`
     : "";
   // Keep 200 ms clock checks for the urgent threshold and Homeward clocks,
   // but avoid waking layout/observers and recreating text on identical ticks.
