@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { surveyAnswerIndex } from "./bilingual-answers.js";
 
 // Original family-friendly packs. All answer keys stay on the server.
 export const socialModes = Object.freeze(["majority", "likely", "closest", "survey", "impostor"]);
@@ -35,7 +36,6 @@ const impostor = [
  {category:"Places",word:"Airport"}, {category:"Objects",word:"Umbrella"},
  {category:"Activities",word:"Camping"},
 ];
-const clean = (text) => text.toLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu," ").trim();
 export const socialPackLength = 5;
 const err = (message) => { throw new Error(message); };
 const active = (p,actor) => actor !== "host" && p.roster.includes(actor);
@@ -95,7 +95,7 @@ export function scoreSocial(p) {
   }else if(p.mode==="survey"){
     const items=survey[p.index].items;
     for(const [id,text] of s.responses){
-      const index=items.findIndex(item=>clean(item)===clean(text));
+      const index=surveyAnswerIndex(p.index,text,items);
       if(index>=0)award(id,(5-index)*20);
     }
   }else if(p.mode==="impostor"){
@@ -131,7 +131,7 @@ export function projectSocial(p,actor) {
     }
   }else if(p.mode==="survey"){
     data.prompt=survey[p.index].prompt;
-    if(reveal)data.topAnswers=survey[p.index].items.map((text,index)=>({text,points:(5-index)*20,count:[...s.responses.values()].filter(v=>clean(v)===clean(text)).length}));
+    if(reveal)data.topAnswers=survey[p.index].items.map((text,index)=>({text,points:(5-index)*20,count:[...s.responses.values()].filter(v=>surveyAnswerIndex(p.index,v,survey[p.index].items)===index).length}));
   }else if(p.mode==="impostor"){
     data.prompt=p.phase==="clue"?"Submit a short clue about your secret word.":"Read the clues and vote for the impostor.";
     data.category=impostor[p.index].category;
