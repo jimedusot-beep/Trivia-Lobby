@@ -51,9 +51,12 @@ test("language selection survives reload and leaves English fallback intact", as
   await page.locator("#party-language").selectOption("es");
   await expect(page.getByRole("heading",{name:"Elige un juego"})).toBeVisible();
   await expect(page.locator("[data-game='quiz']")).toContainText("Trivia");
-  // The default selected game is Quiz, which has Spanish starter content.
+  // The cover-first library opens on Race, which still uses English content.
+  await expect(page.locator(".pick-spotlight-language")).toContainText("inglés");
+  // Quiz has a reviewed Spanish starter pack and must lose that warning.
+  await page.locator("[data-game='quiz'] .pick-game-preview-button").click();
   await expect(page.locator(".pick-spotlight-language")).toContainText("español");
-  // An unlocalized game must instead show an accurate English fallback notice.
+  // Selecting an untranslated game restores the English fallback warning.
   await page.locator("[data-game='race'] .pick-game-preview-button").click();
   await expect(page.locator(".pick-spotlight-language")).toContainText("inglés");
   await page.reload();
