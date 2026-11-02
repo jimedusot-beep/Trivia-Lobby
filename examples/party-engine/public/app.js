@@ -67,7 +67,7 @@ try {
   const saved = JSON.parse(sessionStorage.getItem(preferenceKey));
   if (credential?.actor === "host" && saved?.code === credential.code) {
     if (gameById(saved.mode)) preferredMode = saved.mode;
-    if (["actions", "animals"].includes(saved.category))
+    if (["actions", "animals", "sports", "jobs", "emotions", "transport", "nature", "home", "music", "silly"].includes(saved.category))
       preferredCategory = saved.category;
     if (saved.settings && typeof saved.settings === "object") preferredSettings = saved.settings;
   }
@@ -350,6 +350,14 @@ function render() {
       for (const [value, text] of [
         ["actions", "Everyday actions"],
         ["animals", "Animals"],
+        ["sports", "Sports / Deportes"],
+        ["jobs", "Jobs / Profesiones"],
+        ["emotions", "Emotions / Emociones"],
+        ["transport", "Transport / Transporte"],
+        ["nature", "Nature / Naturaleza"],
+        ["home", "Home / Hogar"],
+        ["music", "Music / Música"],
+        ["silly", "Silly / Divertido"],
       ]) {
         const option = element("option", text, pack);
         option.value = value;
@@ -507,7 +515,7 @@ function render() {
     );
     if (state.phase === "acting") {
       if (c.canMark) {
-        const clue = element("h2", c.clue.text);
+        const clue = element("h2", c.clue.textEs ? `${c.clue.text} / ${c.clue.textEs}` : c.clue.text);
         clue.id = "current-clue";
         clue.tabIndex = -1;
         element(
