@@ -10,7 +10,7 @@ function match(mode) {
   const ids = ["Spanish", "English", "Other"].map(name => party.join(name));
   function act(actor, type, value) {
     return party.handle(actor, {
-      v: 1, type, value, requestId: "es-round-" + ++serial,
+      v: 1, type, ...(value === undefined ? {} : { value }), requestId: "es-round-" + ++serial,
       matchId: party.matchId, revision: party.revision,
     });
   }
