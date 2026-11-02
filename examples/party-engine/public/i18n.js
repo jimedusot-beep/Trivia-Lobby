@@ -299,28 +299,32 @@ export function localizeState(state) {
   }
   if (state.mode === "survey" && state.social?.kind === "survey") {
     const social = state.social;
-    translated.social = {
-      ...social,
-      prompt: surveyPromptsSpanish[social.prompt] ?? social.prompt,
-      ...(social.topAnswers ? {
-        topAnswers: social.topAnswers.map(answer => ({
-          ...answer, text: surveyAnswersSpanish[answer.text] ?? answer.text,
-        })),
-      } : {}),
-    };
+    if (Object.hasOwn(surveyPromptsSpanish, social.prompt)) {
+      translated.social = {
+        ...social,
+        prompt: surveyPromptsSpanish[social.prompt],
+        ...(social.topAnswers ? {
+          topAnswers: social.topAnswers.map(answer => ({
+            ...answer, text: surveyAnswersSpanish[answer.text] ?? answer.text,
+          })),
+        } : {}),
+      };
+    }
   }
   if (state.mode === "category" && state.bonus?.kind === "category") {
     const bonus = state.bonus;
-    translated.bonus = {
-      ...bonus, prompt: categoryPromptsSpanish[bonus.prompt] ?? bonus.prompt,
-      ...(bonus.allowed ? {
-        allowed: bonus.allowed.map(word => {
-          const spanish = categoryExamplesSpanish[word];
-          return spanish && spanish.toLocaleLowerCase() !== word.toLocaleLowerCase()
-            ? word + " / " + spanish : word;
-        }),
-      } : {}),
-    };
+    if (Object.hasOwn(categoryPromptsSpanish, bonus.prompt)) {
+      translated.bonus = {
+        ...bonus, prompt: categoryPromptsSpanish[bonus.prompt],
+        ...(bonus.allowed ? {
+          allowed: bonus.allowed.map(word => {
+            const spanish = categoryExamplesSpanish[word];
+            return spanish && spanish.toLocaleLowerCase() !== word.toLocaleLowerCase()
+              ? word + " / " + spanish : word;
+          }),
+        } : {}),
+      };
+    }
   }
   return translated;
 }
