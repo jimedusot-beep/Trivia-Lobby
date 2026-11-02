@@ -13,6 +13,10 @@ test("English host and Spanish guest share quiz answers without changing scores"
   try {
     const host = await newPage({width:1280,height:800});
     await host.locator("#create").click();
+    // Room creation is acknowledged asynchronously over WebSocket. Without
+    // waiting for lobby, the heading is still empty and guests try joining
+    // with an invalid/empty room code rather than testing bilingual gameplay.
+    await expect(host.locator("#heading")).toContainText("lobby");
     const code = (await host.locator("#heading").innerText()).split(" · ")[0];
     const guests = [];
     for (let i=0;i<3;i++) {
