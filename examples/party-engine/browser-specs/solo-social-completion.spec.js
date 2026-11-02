@@ -111,6 +111,10 @@ for (const scenario of scenarios) {
         await expect(host.locator("#roster")).toContainText(
           names[seat] + ": " + scenario.roundScores[seat] * round + " points"
         );
+        // Solo Test deliberately shows one embedded phone at a time.
+        // Select this seat before asserting visibility; other iframes
+        // are intentionally hidden while their own contents remain mounted.
+        await page.locator("#solo-all-seat-switch").selectOption(String(seat));
         // Phone menus and the permitted "See round details" button remain.
         // Only *playable answer controls* must disappear after a reveal.
         await expect(seats[seat].locator(".phone-surface .phone-result")).toBeVisible();
