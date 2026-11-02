@@ -11,6 +11,7 @@ import { gzipSync } from "node:zlib";
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool } from "pg";
 import WebSocket from "ws";
+import { assertPartyPage, assertPartyAsset, assertPartyMissingAsset, assertPartyPing } from "../script/public-party-smoke-contract.mjs";
 
 const databaseUrl = process.env.PRODUCTION_TEST_DATABASE_URL;
 assert.ok(databaseUrl, "PRODUCTION_TEST_DATABASE_URL must name a disposable empty PostgreSQL database");
@@ -148,6 +149,24 @@ test("built production runtime migrates a fresh database and retains private con
     assert.equal(response.status, 200, asset);
     assert.doesNotMatch(response.headers.get("content-type") ?? "", /text\/html/);
   }
+  // The actual compiled public 31-game room and Solo Test must be served by
+  // production (not just by the standalone development guest server).
+  for (const path of ["/party/", "/party/solo-test.html"]) {
+    const response = await request(path);
+    assertPartyPage(path, response, await response.text());
+  }
+  for (const path of ["/party/app.js", "/party/solo-test.js"]) {
+    const response = await request(path);
+    assertPartyAsset(path, response);
+    await response.body?.cancel();
+  }
+  const missingGuestAsset = await request("/party/__smoke_missing__.js");
+  assertPartyMissingAsset(missingGuestAsset);
+  await missingGuestAsset.body?.cancel();
+  const publicGuestPing = await openParty();
+  publicGuestPing.send("ping");
+  assertPartyPing(await publicGuestPing.take("pong"));
+
   for (const path of ["/api/not-a-route", "/assets/missing.js"]) assert.equal((await request(path)).status, 404);
   assert.equal((await request("/api/decks")).status, 401);
   // GHSA-27r3-jxmh-p828: compression must be rejected before decompression,
