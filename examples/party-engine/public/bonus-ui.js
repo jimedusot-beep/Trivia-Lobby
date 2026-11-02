@@ -1,9 +1,12 @@
 // All guest-authored text is inserted via textContent, not HTML.
+import { getLocale } from "./i18n.js";
 export function renderBonus(state,{element,button,action,actor}){
  const b=state.bonus,host=state.role==="host",reveal=state.phase==="reveal";
+  const es = getLocale()==="es" && b.kind==="category";
  const answerable=!host&&!reveal&&!b.locked;
  element("h2",b.prompt).className="social-prompt";
- element("p","Round "+b.round+" of "+b.total+" · "+b.received+" submitted");
+ element("p",es ? "Ronda "+b.round+" de "+b.total+" · "+b.received+" respuestas"
+    : "Round "+b.round+" of "+b.total+" · "+b.received+" submitted");
  const key="family-draft:"+state.matchId+":"+b.kind+":"+b.round+":"+state.phase;
  function typed(label,{maxLength=80,numeric=false,multiline=false}={}){
   if(!answerable)return;
@@ -16,7 +19,7 @@ export function renderBonus(state,{element,button,action,actor}){
   if(numeric){input.min="0";input.max="100";input.step="1";input.inputMode="numeric";}
   try{input.value=sessionStorage.getItem(key)||"";}catch{}
   input.oninput=()=>{try{sessionStorage.setItem(key,input.value);}catch{}};
-  button("Lock answer",()=>{
+  button(es?"Confirmar respuesta":"Lock answer",()=>{
    const value=numeric?(input.value===""?NaN:Number(input.value)):input.value.trim();
    action("respond",value);
   },wrap);
@@ -57,10 +60,10 @@ export function renderBonus(state,{element,button,action,actor}){
    if(reveal){element("h3","Correct order");b.correctOrder.forEach((pos,i)=>element("p",(i+1)+". "+b.events[pos]));}
  }
  if(b.kind==="category"){
-   typed("Your valid category answer",{maxLength:55});
+   typed(es?"Tu respuesta de la categoría": "Your valid category answer",{maxLength:55});
    if(reveal){
-     element("p","Valid answers in this starter pack: "+b.allowed.join(", ")+".");
-     for(const r of b.results)element("p",r.name+" — "+r.answer+" ("+r.points+" pts)");
+     element("p",(es?"Respuestas válidas de este paquete: ":"Valid answers in this starter pack: ")+b.allowed.join(", ")+".");
+     for(const r of b.results)element("p",r.name+" — "+r.answer+" ("+r.points+(es?" puntos":" pts")+")");
    }
  }
  if(b.kind==="caption"){
@@ -105,6 +108,8 @@ export function renderBonus(state,{element,button,action,actor}){
    }else element("p","The call is shown on each player's private card. Marking is server-verified.");
    if(reveal && b.winners?.length)element("p","New bingo winners: "+b.winners.join(", "));
  }
- if(b.locked && !reveal)element("p","Your response is locked for this phase.");
- if(host && !reveal)element("p","The server tracks every vote and answer. The next phase begins automatically after the deadline or all players finish.");
+ if(b.locked && !reveal)element("p",es?"Tu respuesta está confirmada.":"Your response is locked for this phase.");
+ if(host && !reveal)element("p",es
+    ?"El servidor valida las respuestas. La siguiente fase empieza cuando termina el tiempo o todos responden."
+    :"The server tracks every vote and answer. The next phase begins automatically after the deadline or all players finish.");
 }
