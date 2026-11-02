@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { defaultShow, validateShow, importShow } from "./show-format.js";
+import { familyShows50, showForLanguage, selectDeck } from "./bilingual-family-catalog.js";
 const $ = (id) => document.getElementById(id),
   say = (text) => ($("show-status").textContent = text),
   key = "trivia-lobby-show-v1";
@@ -186,5 +187,30 @@ $("import-show").onchange = async (event) => {
     event.target.value = "";
   }
 };
+
+// Deck selection changes only editor content, not scoring or running rooms.
+// The counter advances on each host selection; it never leaks private answers.
+const selectionKey = "trivia-lobby-bilingual-show-selection-v1";
+$("load-bilingual-deck").onclick = () => attempt(() => {
+  if (!confirm("Replace the current editor with a curated show? Save your custom show first. / ¿Reemplazar el contenido actual?")) return;
+  const theme = $("deck-theme").value;
+  const difficulty = $("deck-difficulty").value;
+  const mode = $("deck-mode").value;
+  const language = $("deck-language").value;
+  let completed = 0;
+  try {
+    const stored = Number(sessionStorage.getItem(selectionKey) || "0");
+    completed = Number.isSafeInteger(stored) && stored >= 0 ? stored : 0;
+  } catch { /* storage is optional */ }
+  const deck = selectDeck(familyShows50, {theme, difficulty, mode, completed, seed:completed});
+  const selected = validateShow(showForLanguage(deck, language));
+  show = selected;
+  render();
+  try { sessionStorage.setItem(selectionKey, String(completed + 1)); } catch { /* storage is optional */ }
+  say(language === "es"
+    ? "Programa cargado: " + deck.title.es + ". Revisa y guarda antes de jugar."
+    : "Show loaded: " + deck.title.en + ". Review and save before hosting.");
+});
+
 render();
 say("Ready. Edit your boards and lightning questions, then Save & host.");
