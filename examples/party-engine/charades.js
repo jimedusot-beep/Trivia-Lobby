@@ -1,3 +1,4 @@
+import { charadesCategories10 } from "./bilingual-party-prompts.js";
 import { extraCharades } from "./content-extra.js";
 import { randomInt, randomUUID } from "node:crypto";
 // Original plain-language packs. A fresh shuffle per performer; no repeats within a turn.
@@ -40,6 +41,7 @@ export const CHARADES_PACKS = Object.freeze({
     "Peacock",
     ...extraCharades.animals,
   ],
+  ...Object.fromEntries(Object.entries(charadesCategories10).filter(([key]) => !["actions","animals"].includes(key)).map(([key,clues]) => [key,clues])),
 });
 // Keep the historical 16-clue turn length even as the optional bank grows.
 // New parties use the original starter sixteen; completed rematches rotate to
@@ -51,10 +53,11 @@ export function makeTurn(performerId, category, completedMatches = 0) {
     throw new Error("Invalid completed Charades match count.");
   const pool = CHARADES_PACKS[category];
   const offset = ((completedMatches % pool.length) * 16) % pool.length;
-  const queue = Array.from({ length: Math.min(16, pool.length) }, (_, index) => ({
-    id: randomUUID(),
-    text: pool[(offset + index) % pool.length],
-  }));
+  const queue = Array.from({ length: Math.min(16, pool.length) }, (_, index) => {
+    const clue = pool[(offset + index) % pool.length];
+    return { id: randomUUID(), text: typeof clue === "string" ? clue : clue.text.en,
+      ...(typeof clue === "string" ? {} : { textEs: clue.text.es }) };
+  });
   for (let i = queue.length - 1; i > 0; i--) {
     const j = randomInt(i + 1);
     [queue[i], queue[j]] = [queue[j], queue[i]];
