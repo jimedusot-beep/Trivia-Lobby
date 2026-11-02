@@ -15,6 +15,8 @@ test("Percentage mode accepts Spanish and English votes with identical scores", 
   try {
     const host = await open({width:1280,height:800});
     await host.locator("#create").click();
+    // Wait for server-created lobby before reading the room code.
+    await expect(host.locator("#heading")).toContainText("lobby");
     const code = (await host.locator("#heading").innerText()).split(" · ")[0];
     const guests = [];
     for (let n=0;n<3;n++) {
