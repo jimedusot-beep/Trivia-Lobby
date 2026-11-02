@@ -14,9 +14,9 @@
 ## NOT yet integrated
 
 1. Doodle Dash game mode still imports the legacy word bank; it does **not** draw from `bilingual-party-prompts.js`. Before integrating, preserve the current 3-word artist choice, hints, server-authoritative exact-match scoring and reconnect checkpoints. Spanish answers need canonical answer IDs or approved bilingual aliases rather than trusting client claims.
-2. Charades runtime still uses its existing two clue banks; it does **not** use the new 10-category library. Before integrating, preserve exactly 16 clues per timed turn, the known privacy boundaries, and avoid exposing the performer's clue on other phone screens.
+2. **Charades partially integrated:** the server and host now support 10 categories, preserving the original starter clues and exactly 16 clues per turn. Spanish alternatives are visible only to the performer. PR #131 is still needed for per-device language selection. CI and physical phone tests remain unverified.
 3. Family Showdown editor-selected shows preserve the existing format but bilingual score equivalence between players who answer in different languages is **not yet implemented**. Current party can host a Spanish or English show, not automatically translate answer judging in mixed-language rooms.
-4. Selector controls for Charades and Doodle Dash have not been added to the TV/host lobby. The selector on show.html does not change a running room.
+4. Charades host category selector now offers 10 choices, but does not yet filter by difficulty. Doodle Dash remains unconnected to the new library and still needs a host deck selector.
 5. PR #131 (presentation locale) and PR #132 (server-side bilingual answer recognition) remain separate draft branches. This draft must be integrated with both before claiming comprehensive bilingual multiplayer.
 6. This draft's generated prompts require a human review for idiomatic Spanish, age appropriateness, creativity, and repeated words/themes. Counts are **not** equivalent to 500 independently authored prompts.
 7. No live deployment, TV test, physical phone test, or completed automated CI matrix is claimed here.
