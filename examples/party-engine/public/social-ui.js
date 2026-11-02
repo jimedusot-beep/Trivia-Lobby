@@ -1,9 +1,13 @@
 // Phone and presenter views for original family games. Never inserts player text as HTML.
+import { getLocale } from "./i18n.js";
 export function renderSocial(state, {element,button,action,actor}) {
   const s=state.social, reveal=state.phase==="reveal", host=state.role==="host";
+  const es=getLocale()==="es" && ["majority","likely","closest"].includes(s.kind);
   const title=element("h2",s.prompt);
   title.className="social-prompt";
-  element("p",`Round ${state.index+1} of ${s.total} · ${s.received} / ${s.expected} submitted`);
+  element("p",es
+    ? `Ronda ${state.index+1} de ${s.total} · ${s.received} / ${s.expected} respuestas`
+    : `Round ${state.index+1} of ${s.total} · ${s.received} / ${s.expected} submitted`);
   const draftKey=`social-draft:${state.matchId}:${state.index}:${state.phase}`;
   function textAnswer(label, type="text") {
     if(host || s.locked || reveal) return;
@@ -17,7 +21,7 @@ export function renderSocial(state, {element,button,action,actor}) {
     else input.maxLength=80;
     try{input.value=sessionStorage.getItem(draftKey)||"";}catch{}
     input.oninput=()=>{try{sessionStorage.setItem(draftKey,input.value);}catch{}};
-    button("Lock answer",()=>{
+    button(es?"Confirmar respuesta":"Lock answer",()=>{
       const value=type==="number"?input.value===""?NaN:Number(input.value):input.value.trim();
       action("respond",value);
     },wrap);
@@ -25,21 +29,21 @@ export function renderSocial(state, {element,button,action,actor}) {
   if(s.kind==="majority") {
     s.choices.forEach((choice,index)=>{
       if(!host && !s.locked && !reveal) button(choice,()=>action("respond",index));
-      else element("p",reveal?`${choice}: ${s.counts[index]} votes (${s.received?Math.round(s.counts[index]/s.received*100):0}%)${s.winners.includes(index)?" · Majority!":""}`:choice);
+      else element("p",reveal?`${choice}: ${s.counts[index]} ${es?"votos":"votes"} (${s.received?Math.round(s.counts[index]/s.received*100):0}%)${s.winners.includes(index)?(es?" · ¡Mayoría!":" · Majority!"):""}`:choice);
     });
   }
   if(s.kind==="likely") {
     for(const person of s.candidates){
       if(!host&&!s.locked&&!reveal)
         button(person.name,()=>action("respond",person.id),undefined,person.id===actor());
-      else element("p",reveal?`${person.name} · ${s.counts.find(x=>x.id===person.id)?.count??0} votes${s.winners.includes(person.id)?" · Top choice!":""}`:person.name);
+      else element("p",reveal?`${person.name} · ${s.counts.find(x=>x.id===person.id)?.count??0} ${es?"votos":"votes"}${s.winners.includes(person.id)?(es?" · ¡Más elegido!":" · Top choice!"):""}`:person.name);
     }
   }
   if(s.kind==="closest"){
-    textAnswer("Your closest estimate (whole number)","number");
+    textAnswer(es?"Tu estimación (número entero)":"Your closest estimate (whole number)","number");
     if(reveal){
-      element("p",`Answer: ${s.target} ${s.unit}`);
-      element("p",`Closest: ${s.winners.join(", ")||"No estimates submitted"}`);
+      element("p",`${es?"Respuesta":"Answer"}: ${s.target} ${s.unit}`);
+      element("p",`${es?"Más cercanos":"Closest"}: ${s.winners.join(", ")||(es?"Sin estimaciones":"No estimates submitted")}`);
       for(const g of s.guesses) element("p",`${g.name}: ${g.value}`);
     }
   }
@@ -72,6 +76,8 @@ export function renderSocial(state, {element,button,action,actor}) {
       }
     }
   }
-  if(s.locked && !reveal)element("p","Your response is locked. Awaiting everyone else.");
-  if(host && !reveal)element("p","Players answer privately on their phones. The round advances automatically after everyone answers or the timer ends.");
+  if(s.locked && !reveal)element("p",es?"Respuesta confirmada. Esperando a los demás.":"Your response is locked. Awaiting everyone else.");
+  if(host && !reveal)element("p",es
+    ?"Los jugadores responden en privado desde sus teléfonos. La ronda avanza cuando todos responden o termina el tiempo."
+    :"Players answer privately on their phones. The round advances automatically after everyone answers or the timer ends.");
 }
