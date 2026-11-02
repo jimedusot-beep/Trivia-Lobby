@@ -150,7 +150,7 @@ export function localizeGame(game) {
   return { ...game, name: t(game.name), rules: t(game.rules), rounds: t(game.rounds), tag: t(game.tag) };
 }
 // Other modes keep English game material until their answer validators can safely support Spanish.
-export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest"]);
+export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest", "survey", "category"]);
 const quizSpanish = Object.freeze({
   "Which shape has exactly three sides?": { original: ["Circle","Triangle","Square","Pentagon"], prompt: "¿Qué figura tiene exactamente tres lados?", choices: ["Círculo","Triángulo","Cuadrado","Pentágono"], explanation: "Un triángulo es un polígono con tres lados." },
   "Which number is a prime number?": { original: ["9","15","17","21"], prompt: "¿Cuál de estos números es primo?", choices: ["9","15","17","21"], explanation: "17 tiene exactamente dos divisores positivos: 1 y 17." },
@@ -214,6 +214,47 @@ const closestSpanish = Object.freeze({
   "How many squares are on a chessboard?": "¿Cuántas casillas tiene un tablero de ajedrez?",
 });
 const closestUnits = Object.freeze({ keys: "teclas", minutes: "minutos", bones: "huesos", year: "año", squares: "casillas" });
+
+const surveyPromptsSpanish = Object.freeze({
+  "Name something people might forget when going on vacation.": "Nombra algo que la gente puede olvidar al salir de vacaciones.",
+  "Name something you might find in a movie theater.": "Nombra algo que puedes encontrar en un cine.",
+  "Name something people put on pancakes.": "Nombra algo que se pone sobre los panqueques.",
+  "Name something you bring to the beach.": "Nombra algo que llevas a la playa.",
+  "Name something commonly found in a refrigerator.": "Nombra algo que suele haber en un refrigerador.",
+});
+const surveyAnswersSpanish = Object.freeze({
+  "Passport":"Pasaporte", "Toothbrush":"Cepillo de dientes",
+  "Phone charger":"Cargador de teléfono", "Tickets":"Entradas",
+  "Sunscreen":"Protector solar", "Popcorn":"Palomitas",
+  "Seats":"Asientos", "Screen":"Pantalla", "Soda":"Refresco",
+  "Syrup":"Sirope", "Butter":"Mantequilla", "Fruit":"Fruta",
+  "Chocolate":"Chocolate", "Whipped cream":"Crema batida",
+  "Towel":"Toalla", "Umbrella":"Sombrilla",
+  "Sunglasses":"Gafas de sol", "Water":"Agua",
+  "Milk":"Leche", "Eggs":"Huevos", "Cheese":"Queso",
+  "Vegetables":"Verduras", "Juice":"Jugo",
+});
+const categoryPromptsSpanish = Object.freeze({
+  "Name a fruit starting with P.": "Escribe una fruta que empiece con P, en inglés o español.",
+  "Name a animal starting with C.": "Escribe un animal que empiece con C, en inglés o español.",
+  "Name an animal starting with C.": "Escribe un animal que empiece con C, en inglés o español.",
+  "Name a city starting with B.": "Escribe una ciudad que empiece con B, en inglés o español.",
+  "Name a food starting with S.": "Escribe una comida que empiece con S, en inglés o español.",
+  "Name a country starting with M.": "Escribe un país que empiece con M, en inglés o español.",
+});
+const categoryExamplesSpanish = Object.freeze({
+  "pineapple": "piña", "pear": "pera", "plantain": "plátano",
+  "papaya": "papaya", "passion fruit": "parchita",
+  "camel": "camello", "capybara": "capibara",
+  "chimpanzee": "chimpancé", "crocodile": "cocodrilo",
+  "berlin": "Berlín", "bogota": "Bogotá", "brussels": "Bruselas",
+  "salmon": "salmón", "sandwich": "sándwich",
+  "sausage": "salchicha", "soup": "sopa",
+  "malaysia": "Malasia", "maldives": "Maldivas",
+  "mexico": "México", "morocco": "Marruecos",
+  "moldova": "Moldavia",
+});
+
 export function localizeState(state) {
   if (!state || language !== "es") return state;
   const translated = { ...state };
@@ -247,6 +288,31 @@ export function localizeState(state) {
       translated.social = { ...social, prompt: closestSpanish[social.prompt] ?? social.prompt,
         ...(social.unit ? { unit: closestUnits[social.unit] ?? social.unit } : {}) };
     }
+  }
+  if (state.mode === "survey" && state.social?.kind === "survey") {
+    const social = state.social;
+    translated.social = {
+      ...social,
+      prompt: surveyPromptsSpanish[social.prompt] ?? social.prompt,
+      ...(social.topAnswers ? {
+        topAnswers: social.topAnswers.map(answer => ({
+          ...answer, text: surveyAnswersSpanish[answer.text] ?? answer.text,
+        })),
+      } : {}),
+    };
+  }
+  if (state.mode === "category" && state.bonus?.kind === "category") {
+    const bonus = state.bonus;
+    translated.bonus = {
+      ...bonus, prompt: categoryPromptsSpanish[bonus.prompt] ?? bonus.prompt,
+      ...(bonus.allowed ? {
+        allowed: bonus.allowed.map(word => {
+          const spanish = categoryExamplesSpanish[word];
+          return spanish && spanish.toLocaleLowerCase() !== word.toLocaleLowerCase()
+            ? word + " / " + spanish : word;
+        }),
+      } : {}),
+    };
   }
   return translated;
 }
