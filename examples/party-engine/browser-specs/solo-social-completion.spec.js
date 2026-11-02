@@ -10,7 +10,7 @@ const scenarios = [
     roundScores: [100, 100, 0],
     async submit(frame, seat) {
       // Two seats choose the first option; the third chooses the second.
-      const buttons = frame.locator("#content button");
+      const buttons = frame.locator(".phone-surface .phone-choices button");
       await expect(buttons).toHaveCount(2);
       const choice = buttons.nth(seat === 2 ? 1 : 0);
       await expect(choice).toBeEnabled();
@@ -111,7 +111,11 @@ for (const scenario of scenarios) {
         await expect(host.locator("#roster")).toContainText(
           names[seat] + ": " + scenario.roundScores[seat] * round + " points"
         );
-        await expect(seats[seat].locator("#content button")).toHaveCount(0);
+        // Phone menus and the permitted "See round details" button remain.
+        // Only *playable answer controls* must disappear after a reveal.
+        await expect(seats[seat].locator(".phone-surface .phone-result")).toBeVisible();
+        await expect(seats[seat].locator(".phone-surface .phone-choices button")).toHaveCount(0);
+        await expect(seats[seat].locator(".phone-surface #social-response")).toHaveCount(0);
       }
       await host.getByRole("button", { name: "Next", exact: true }).click();
     }
