@@ -51,9 +51,12 @@ test("Spanish TV host and mixed-language phones keep one authoritative Majority 
       await buttons.first().click();
     }
     await expect(host.locator("#heading")).toContainText("resultados");
-    await expect(host.locator("#roster")).toContainText("100 points");
+    await expect(host.locator("#roster")).toContainText("100 puntos");
     await expect(host.locator("#content")).toContainText("¡Mayoría!");
-    const scoresBefore = await host.locator("#roster").innerText();
+    // Compare canonical player names and numeric scores; presentation labels
+    // intentionally change from "puntos" to "points" on a locale switch.
+    const scoresBefore = (await host.locator("#roster li").allInnerTexts())
+      .map(text => text.replace(/\bpuntos\b/g, "points"));
 
     // Switch the host only, in a live round; result data and guest languages
     // must remain unchanged. This is display-only, no room action.
@@ -61,7 +64,9 @@ test("Spanish TV host and mixed-language phones keep one authoritative Majority 
     await expect(host.locator("#party-language")).toHaveValue("en");
     await expect(host.locator("#heading")).toContainText("reveal");
     await expect(host.locator("#content")).toContainText("Majority!");
-    expect(await host.locator("#roster").innerText()).toBe(scoresBefore);
+    await expect(host.locator("#roster")).toContainText("100 points");
+    expect((await host.locator("#roster li").allInnerTexts())
+      .map(text => text.replace(/\bpuntos\b/g, "points"))).toEqual(scoresBefore);
     await expect(guests[0].locator("html")).toHaveAttribute("lang", "es");
     await expect(guests[1].locator("html")).toHaveAttribute("lang", "en");
   } finally {
