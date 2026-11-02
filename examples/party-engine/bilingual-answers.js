@@ -68,7 +68,7 @@ export function surveyAnswerIndex(round, answer, canonicalItems) {
 const categorySpanish = Object.freeze([
   { "papaya": ["papaya"], "passion fruit": ["parchita"],
     "pear": ["pera"], "pineapple": ["piña"], "plantain": ["plátano"],
-    "pomegranate": ["punica"] },
+    "pomegranate": [] },
   { "camel": ["camello"], "capybara": ["capibara", "carpincho"],
     "cheetah": ["chita"], "chimpanzee": ["chimpancé"],
     "cobra": ["cobra"], "crocodile": ["cocodrilo"] },
