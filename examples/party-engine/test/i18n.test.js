@@ -60,13 +60,33 @@ test("Majority, Likely and Closest keep their score-significant values", () => {
   assert.deepEqual(vc.social.guesses, closest.social.guesses);
 });
 
+test("Percentage Spanish changes only prompt text, never numeric votes or scoring", () => {
+  setLocale("es");
+  const original = {mode:"percentage",phase:"reveal",bonus:{kind:"percentage",
+    prompt:"Would you rather live near the ocean than in the mountains?",
+    round:1,total:5,actual:67,yes:2,totalVotes:3,locked:true,received:3}};
+  const translated = localizeState(original);
+  assert.equal(translated.bonus.prompt,"¿Preferirías vivir cerca del océano en vez de las montañas?");
+  assert.equal(translated.bonus.actual,67);
+  assert.equal(translated.bonus.yes,2);
+  assert.equal(translated.bonus.totalVotes,3);
+  assert.equal(translated.phase,"reveal");
+  assert.equal(original.bonus.prompt,"Would you rather live near the ocean than in the mountains?");
+  const guess = localizeState({mode:"percentage",phase:"voting",bonus:{kind:"percentage",
+    prompt:"What percentage of your group voted YES? (0–100)"}});
+  assert.match(guess.bonus.prompt,/porcentaje/);
+  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage","survey","category"]);
+  const unrecognized = {mode:"percentage",bonus:{kind:"percentage",prompt:"Custom poll",actual:10}};
+  assert.equal(localizeState(unrecognized).bonus.prompt,"Custom poll");
+});
+
 test("No translation of unsupported modes or user-authored values", () => {
   const state={mode:"survey",social:{kind:"survey",prompt:"User prompt",topAnswers:[{text:"Sí"}]}};
   assert.equal(localizeState(state).social, state.social);
   const game={id:"quiz",name:"Trivia Quiz"};
   assert.equal(localizeGame(game).name, "Trivia");
   assert.equal(game.name, "Trivia Quiz");
-  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","survey","category"]);
+  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage","survey","category"]);
   setLocale("en");
   assert.equal(localizeState(state), state);
   assert.equal(t("Start match"), "Start match");

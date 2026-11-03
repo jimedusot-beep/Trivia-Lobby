@@ -6,7 +6,7 @@ const MAX_COMPLETED_IDS = 80;
 const award = place => Math.max(10, 100 - 20 * (place - 1));
 
 export function newChampionship() {
-  return { entries: new Map(), games: [], completed: new Set() };
+  return { entries: new Map(), games: [], completed: new Set(), playedTotal: 0 };
 }
 
 // Called exactly when a complete (not abandoned/interrupted) game reaches finished.
@@ -31,6 +31,8 @@ export function completeChampionshipGame(party) {
     return { id:player.id, name:player.name, matchScore:player.score, place:rank, points };
   });
   champ.completed.add(party.matchId);
+  // Unlike the bounded history list, this counter keeps advancing after 40 games.
+  champ.playedTotal = Math.min(Number.MAX_SAFE_INTEGER, (champ.playedTotal ?? champ.games.length) + 1);
   if (champ.completed.size > MAX_COMPLETED_IDS) champ.completed.delete(champ.completed.values().next().value);
   champ.games.push({
     matchId:party.matchId, mode:party.mode, finishedAt:party.clock(),

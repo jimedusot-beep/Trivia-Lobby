@@ -95,7 +95,9 @@ test("every player receives one turn; exhaustion ends without looping and lobby 
       seen.add(clue.text);
       send(ids[turn], "mark", { value: "correct", clueId: clue.id });
     }
-    assert.equal(seen.size, CHARADES_PACKS.animals.length);
+    assert.equal(seen.size, 16, "a Charades turn must end at the original 16-clue limit");
+    assert.ok([...seen].every(clue => CHARADES_PACKS.animals.includes(clue)),
+      "every scored clue must come from the selected private pack");
     assert.equal(party.phase, "reveal");
     assert.equal(party.players.get(ids[turn]).score, seen.size);
     send("host", "next");

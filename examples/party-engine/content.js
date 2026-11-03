@@ -1,3 +1,4 @@
+import { extraQuiz, extraPrompts } from "./content-extra.js";
 // Original demo content. No commercial questions, prompts or assets.
 export const quiz = [
   {
@@ -42,3 +43,7 @@ export const prompts = [
   "Name a school subject taught by penguins.",
   "Write a warning label for a time-travelling toaster.",
 ];
+
+// Fresh content is read from the server's bounded, original pack.
+quiz.push(...extraQuiz);
+prompts.push(...extraPrompts);

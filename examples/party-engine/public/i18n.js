@@ -132,14 +132,6 @@ const spanishUI = Object.freeze({
   "Pick one of two choices. The most popular choice wins 100 points for its voters; a tie rewards both sides.": "Elige entre dos opciones. La más votada da 100 puntos a quienes la eligieron; un empate recompensa a ambos grupos.",
   "Secretly nominate someone else for a funny prompt. Players who choose the top nominee score 100.": "Elige en secreto a otra persona según una pregunta divertida. Quienes elijan a la persona más nominada ganan 100 puntos.",
   "Guess a whole number. Closest valid guesses earn 100 points; the correct answer stays hidden until reveal.": "Adivina un número entero. Las respuestas válidas más cercanas ganan 100 puntos; la solución se revela al final.",
-  "Survey Showdown": "Duelo de encuestas",
-  "Category Clash": "Duelo de categorías",
-  "5 prompts": "5 preguntas",
-  "5 word rounds": "5 rondas de palabras",
-  "Family favorites": "Favoritos de familia",
-  "Word game": "Juego de palabras",
-  "Name an answer from the host's curated survey board. The highest-ranked matches earn the most points.": "Escribe una respuesta popular de la encuesta. Las respuestas mejor clasificadas ganan más puntos. Puedes responder en inglés o español.",
-  "Think of a valid word beginning with the given letter. Unique accepted answers earn extra points.": "Escribe una palabra válida que empiece con la letra indicada, en inglés o español. Las respuestas aceptadas que nadie repita ganan más puntos.",
   "actions": "acciones",
   "animals": "animales",
   "correct": "correcto",
@@ -158,7 +150,7 @@ export function localizeGame(game) {
   return { ...game, name: t(game.name), rules: t(game.rules), rounds: t(game.rounds), tag: t(game.tag) };
 }
 // Other modes keep English game material until their answer validators can safely support Spanish.
-export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest", "survey", "category"]);
+export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest", "percentage", "survey", "category"]);
 const quizSpanish = Object.freeze({
   "Which shape has exactly three sides?": { original: ["Circle","Triangle","Square","Pentagon"], prompt: "¿Qué figura tiene exactamente tres lados?", choices: ["Círculo","Triángulo","Cuadrado","Pentágono"], explanation: "Un triángulo es un polígono con tres lados." },
   "Which number is a prime number?": { original: ["9","15","17","21"], prompt: "¿Cuál de estos números es primo?", choices: ["9","15","17","21"], explanation: "17 tiene exactamente dos divisores positivos: 1 y 17." },
@@ -222,7 +214,15 @@ const closestSpanish = Object.freeze({
   "How many squares are on a chessboard?": "¿Cuántas casillas tiene un tablero de ajedrez?",
 });
 const closestUnits = Object.freeze({ keys: "teclas", minutes: "minutos", bones: "huesos", year: "año", squares: "casillas" });
-
+// These are the six fixed Percentage-mode server prompts. Numeric vote/guess payloads remain untouched.
+const percentageSpanish = Object.freeze({
+  "Would you rather live near the ocean than in the mountains?": "¿Preferirías vivir cerca del océano en vez de las montañas?",
+  "Do you put pineapple on pizza?": "¿Le pones piña a la pizza?",
+  "Would you rather be able to fly than turn invisible?": "¿Preferirías poder volar en lugar de volverte invisible?",
+  "Do you think breakfast foods taste better at dinner?": "¿Crees que la comida del desayuno sabe mejor en la cena?",
+  "Would you trade your phone for a week of free vacation?": "¿Cambiarías tu teléfono por una semana de vacaciones gratis?",
+  "What percentage of your group voted YES? (0–100)": "¿Qué porcentaje del grupo votó SÍ? (0–100)",
+});
 const surveyPromptsSpanish = Object.freeze({
   "Name something people might forget when going on vacation.": "Nombra algo que la gente puede olvidar al salir de vacaciones.",
   "Name something you might find in a movie theater.": "Nombra algo que puedes encontrar en un cine.",
@@ -296,6 +296,14 @@ export function localizeState(state) {
       translated.social = { ...social, prompt: closestSpanish[social.prompt] ?? social.prompt,
         ...(social.unit ? { unit: closestUnits[social.unit] ?? social.unit } : {}) };
     }
+  }
+  if (state.mode === "percentage" && state.bonus?.kind === "percentage") {
+    // Presentation-only: never change the server's integer vote (0/1),
+    // 0–100 percentage guess, authoritative tally, or phase.
+    translated.bonus = {
+      ...state.bonus,
+      prompt: percentageSpanish[state.bonus.prompt] ?? state.bonus.prompt,
+    };
   }
   if (state.mode === "survey" && state.social?.kind === "survey") {
     const social = state.social;
