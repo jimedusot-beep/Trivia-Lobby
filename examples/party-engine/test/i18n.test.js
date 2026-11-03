@@ -75,7 +75,7 @@ test("Percentage Spanish changes only prompt text, never numeric votes or scorin
   const guess = localizeState({mode:"percentage",phase:"voting",bonus:{kind:"percentage",
     prompt:"What percentage of your group voted YES? (0–100)"}});
   assert.match(guess.bonus.prompt,/porcentaje/);
-  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage"]);
+  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage","survey","category"]);
   const unrecognized = {mode:"percentage",bonus:{kind:"percentage",prompt:"Custom poll",actual:10}};
   assert.equal(localizeState(unrecognized).bonus.prompt,"Custom poll");
 });
@@ -86,8 +86,37 @@ test("No translation of unsupported modes or user-authored values", () => {
   const game={id:"quiz",name:"Trivia Quiz"};
   assert.equal(localizeGame(game).name, "Trivia");
   assert.equal(game.name, "Trivia Quiz");
-  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage"]);
+  assert.deepEqual(spanishContentModes, ["quiz","charades","majority","likely","closest","percentage","survey","category"]);
   setLocale("en");
   assert.equal(localizeState(state), state);
   assert.equal(t("Start match"), "Start match");
+});
+
+test("Survey and Category translations keep server scoring and player submissions untouched", () => {
+  setLocale("es");
+  const survey = {mode:"survey",social:{kind:"survey",
+    prompt:"Name something people might forget when going on vacation.",
+    topAnswers:[{text:"Passport",points:100,count:2}],
+    locked:true,received:3,expected:3}};
+  const ds=localizeState(survey);
+  assert.match(ds.social.prompt,/vacaciones/);
+  assert.equal(ds.social.topAnswers[0].text,"Pasaporte");
+  assert.equal(ds.social.topAnswers[0].points,100);
+  assert.equal(ds.social.topAnswers[0].count,2);
+  assert.equal(survey.social.topAnswers[0].text,"Passport");
+
+  const category={mode:"category",bonus:{kind:"category",
+    prompt:"Name a fruit starting with P.",
+    allowed:["peach","pineapple"],
+    results:[{name:"María",answer:"piña",points:50}]}};
+  const dc=localizeState(category);
+  assert.match(dc.bonus.prompt,/inglés o español/);
+  assert.deepEqual(dc.bonus.allowed,["peach","pineapple / piña"]);
+  assert.equal(dc.bonus.results[0].answer,"piña");
+  assert.equal(dc.bonus.results[0].points,50);
+  assert.equal(category.bonus.allowed[1],"pineapple");
+  const unknown={mode:"survey",social:{kind:"survey",prompt:"My original prompt"}};
+  assert.equal(localizeState(unknown).social,unknown.social);
+  setLocale("en");
+  assert.equal(localizeState(survey),survey);
 });

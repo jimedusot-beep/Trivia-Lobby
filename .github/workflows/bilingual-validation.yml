@@ -1,0 +1,64 @@
+name: Bilingual party validation
+on:
+  pull_request:
+    branches: [main, feature/bilingual-party-en-es-20261102]
+    paths:
+      - 'examples/party-engine/**'
+      - '.github/workflows/bilingual-validation.yml'
+permissions:
+  contents: read
+concurrency:
+  group: bilingual-party-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  bilingual-node:
+    name: bilingual-node-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: examples/party-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: examples/party-engine/package-lock.json
+      - run: npm ci
+      - run: npm test
+  bilingual-browser:
+    name: bilingual-browser (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      PARTY_CROSS_BROWSER: '1'
+    defaults:
+      run:
+        working-directory: examples/party-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: examples/party-engine/package-lock.json
+      - run: npm ci
+      - name: Install selected browser
+        timeout-minutes: 7
+        run: |
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "20";' 'Acquire::https::Timeout "20";' | sudo tee /etc/apt/apt.conf.d/99-trivia-ci-network >/dev/null
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Mixed-language party controller and scoring tests
+        run: npm run test:browser -- browser-specs/bilingual.spec.js browser-specs/bilingual-tv.spec.js browser-specs/bilingual-answer-scoring.spec.js browser-specs/bilingual-answer-all-rounds.spec.js browser-specs/bilingual-reconnect.spec.js --project=${{ matrix.browser }} --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: bilingual-browser-failure-${{ matrix.browser }}
+          path: examples/party-engine/test-results/
+          retention-days: 7

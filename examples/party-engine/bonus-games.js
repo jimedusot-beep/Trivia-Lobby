@@ -1,6 +1,7 @@
 import { extraBonus } from "./content-extra.js";
 import { roundContent } from "./content-rotation.js";
 import { randomInt, randomUUID } from "node:crypto";
+import { categoryAnswerKey } from "./bilingual-answers.js";
 
 // Small original, family-safe content packs. Kept server-side, never trusted from a client.
 export const bonusModes = Object.freeze(["percentage","category","bingo","caption","timeline","bracket"]);
@@ -164,18 +165,19 @@ export function scoreBonus(p){
       const submitted=answer.split(",").map(Number);
       award(id,submitted.reduce((n,choice,i)=>n+(choice===correct[i]?25:0),0));
    }
- }else if(p.mode==="category"){
-   const pack=roundContent(p, categories, bonusRoundCount[p.mode]),bank=new Set(pack.words.map(normalize));
-   const counts=new Map();
-   for(const v of state.entries.values()){const key=normalize(v);if(bank.has(key))counts.set(key,(counts.get(key)||0)+1);}
-   state.answers=pack.words;
-   state.results=[];
-   for(const [id,v] of state.entries){
-     const norm=normalize(v),valid=bank.has(norm),score=valid?(counts.get(norm)===1?100:50):0;
-     award(id,score);
-     state.results.push({name:toName(p,id),answer:v,points:score});
-   }
- }else if(p.mode==="caption"){
+  }else if(p.mode==="category"){
+    const pack=roundContent(p, categories, bonusRoundCount[p.mode]);
+    const canonical=text=>categoryAnswerKey(p.index,text,pack.words,pack.letter);
+    const counts=new Map();
+    for(const v of state.entries.values()){const key=canonical(v);if(key)counts.set(key,(counts.get(key)||0)+1);}
+    state.answers=pack.words;
+    state.results=[];
+    for(const [id,v] of state.entries){
+      const key=canonical(v),score=key===null?0:counts.get(key)===1?100:50;
+      award(id,score);
+      state.results.push({name:toName(p,id),answer:v,points:score});
+    }
+  }else if(p.mode==="caption"){
    const tallies=new Map();
    for(const selected of state.votes.values())tallies.set(selected,(tallies.get(selected)||0)+1);
    state.results=state.options.map(o=>({id:o.id,name:toName(p,o.author),text:o.text,votes:tallies.get(o.id)||0}));
