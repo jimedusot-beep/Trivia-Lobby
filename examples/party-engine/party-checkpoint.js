@@ -1,11 +1,13 @@
 import { Party } from "./engine.js";
+import { quiz as defaultQuizBank } from "./content.js";
+import { defaultShow } from "./public/show-format.js";
 import { Chess } from "chess.js";
 import { validatePokerCheckpoint } from "./open-pack/poker.js";
 import { validateHomewardCheckpoint } from "./open-pack/homeward.js";
 
 // Explicit engine fields. Functions, socket bindings and arbitrary future properties never persist.
 const fields = ["quizMs", "writeMs", "voteMs", "countdownMs", "charadesMs", "raceMs", "raceLaps", "quiz", "quizTitle", "show",
-  "players", "championship", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
+  "players", "championship", "usesDemoQuiz", "usesDefaultShow", "hostConnected", "phase", "mode", "revision", "matchId", "index", "deadline", "touched",
   "requests", "interrupted", "endedByHost", "hostWaitAt", "roster", "packSettings", "pack", "race", "category", "pairs", "turn", "answers", "responses",
   "votes", "options", "skipped", "social", "bonus", "bonusBingo", "bonusBracket"];
 
@@ -47,6 +49,18 @@ export function restoreParty(code, state, options, savedAt) {
   if (!state || !fields.every(key => key !== "players" || Object.hasOwn(state, key))) throw new Error("Unsupported room recovery state.");
   const party = new Party(code, options);
   for (const key of fields) if (Object.hasOwn(state, key)) party[key] = decode(state[key]);
+  // Older snapshots predate content-selection flags. Infer conservative defaults
+  // from the exact saved authoring data; never replace a custom game pack.
+  if (!Object.hasOwn(state, "usesDemoQuiz"))
+    party.usesDemoQuiz = party.quizTitle === "Sample Quiz" &&
+      Array.isArray(party.quiz) && party.quiz.length === 5 &&
+      party.quiz.every((q,i) => q.prompt === defaultQuizBank[i]?.prompt);
+  if (!Object.hasOwn(state, "usesDefaultShow"))
+    party.usesDefaultShow = JSON.stringify(party.show) === JSON.stringify(defaultShow);
+  // Pre-expansion checkpoint formats store a capped history, but no monotonic
+  // content counter. Start the counter from the valid legacy history length.
+  if (party.championship && !Object.hasOwn(party.championship, "playedTotal"))
+    party.championship.playedTotal = party.championship.games?.length ?? 0;
   if (!(party.players instanceof Map) || party.players.size > 20 || !(party.requests instanceof Map)
     || party.requests.size > 4096 || !Number.isSafeInteger(party.revision) || !Number.isFinite(party.touched)
     || !["lobby", "countdown", "question", "clue", "writing", "voting", "acting", "playing", "racing", "reveal", "finished"].includes(party.phase))
@@ -63,6 +77,7 @@ export function restoreParty(code, state, options, savedAt) {
   // A newly initialized championship is valid for older version-1 checkpoints.
   if (!(party.championship?.entries instanceof Map) || party.championship.entries.size > 20 ||
       !Array.isArray(party.championship.games) || party.championship.games.length > 40 ||
+      !Number.isSafeInteger(party.championship.playedTotal) || party.championship.playedTotal < party.championship.games.length ||
       !(party.championship.completed instanceof Set) || party.championship.completed.size > 80)
     throw new Error("Unsupported championship recovery state.");
   if (party.mode === "tap" && party.pack?.kind === "tap" &&

@@ -1,3 +1,5 @@
+import { extraBonus } from "./content-extra.js";
+import { roundContent } from "./content-rotation.js";
 import { randomInt, randomUUID } from "node:crypto";
 
 // Small original, family-safe content packs. Kept server-side, never trusted from a client.
@@ -50,6 +52,12 @@ const contenders=[
  "Pizza","Tacos","Ice Cream","Popcorn","Pancakes","Waffles","Burgers","Sushi",
  "Donuts","French Fries","Chocolate","Mac & Cheese","Cookies","Pasta","Nachos","Cupcakes"
 ];
+polls.push(...extraBonus.polls);
+categories.push(...extraBonus.categories);
+timelines.push(...extraBonus.timelines);
+captionPrompts.push(...extraBonus.captions);
+bingoTerms.push(...extraBonus.bingo);
+contenders.push(...extraBonus.contenders);
 export const bonusRoundCount = Object.freeze({percentage:5,category:5,bingo:20,caption:4,timeline:5,bracket:15});
 const live = p => p.roster.includes(p._bonusActor);
 const toName=(p,id)=>p.players.get(id)?.name ?? "Unknown";
@@ -60,14 +68,16 @@ const isBingo = marked => {
 };
 export function openBonus(p){
  const mode=p.mode;
- if(mode==="bracket" && !p.bonusBracket) p.bonusBracket={stage:shuffle(contenders),advance:[]};
+ if(mode==="bracket" && !p.bonusBracket) p.bonusBracket={stage:shuffle(contenders).slice(0,16),advance:[]};
  if(mode==="bingo" && !p.bonusBingo){
-  p.bonusBingo={calls:shuffle(bingoTerms).slice(0,20),
-    cards:new Map(p.roster.map(id=>[id,{cells:shuffle(bingoTerms).slice(0,16),marked:new Set(),won:false}]))};
+  const calls=shuffle(bingoTerms).slice(0,20);
+  // Make all 16 squares winnable within this match's 20-call sequence.
+  p.bonusBingo={calls,
+    cards:new Map(p.roster.map(id=>[id,{cells:shuffle(calls).slice(0,16),marked:new Set(),won:false}]))};
  }
  p.bonus={entries:new Map(),votes:new Map(),options:[],winners:[],revealed:false};
  if(mode==="bracket")p.bonus.contenders=p.bonusBracket.stage.slice(p.bonusBracket.advance.length*2,p.bonusBracket.advance.length*2+2);
- if(mode==="timeline")p.bonus.events=shuffle(timelines[p.index].events.map(([title,year])=>({title,year})));
+ if(mode==="timeline")p.bonus.events=shuffle(roundContent(p, timelines, bonusRoundCount[p.mode]).events.map(([title,year])=>({title,year})));
  if(mode==="caption" || mode==="percentage")p.enter("writing",mode==="caption"?55000:25000);
  else p.enter("question",mode==="bingo"?12000:mode==="bracket"?22000:35000);
 }
@@ -155,7 +165,7 @@ export function scoreBonus(p){
       award(id,submitted.reduce((n,choice,i)=>n+(choice===correct[i]?25:0),0));
    }
  }else if(p.mode==="category"){
-   const pack=categories[p.index],bank=new Set(pack.words.map(normalize));
+   const pack=roundContent(p, categories, bonusRoundCount[p.mode]),bank=new Set(pack.words.map(normalize));
    const counts=new Map();
    for(const v of state.entries.values()){const key=normalize(v);if(bank.has(key))counts.set(key,(counts.get(key)||0)+1);}
    state.answers=pack.words;
@@ -188,21 +198,21 @@ export function projectBonus(p,actor){
    view.prompt="Which should advance?";view.contenders=[...st.contenders];
    if(reveal){view.counts=st.counts;view.winner=st.winner;}
  }else if(p.mode==="timeline"){
-   view.prompt=timelines[p.index].prompt;view.events=st.events.map(e=>e.title);
+   view.prompt=roundContent(p, timelines, bonusRoundCount[p.mode]).prompt;view.events=st.events.map(e=>e.title);
    if(reveal)view.correctOrder=st.correctOrder;
  }else if(p.mode==="category"){
-   const item=categories[p.index];view.prompt="Name a "+item.category+" starting with "+item.letter+".";
+   const item=roundContent(p, categories, bonusRoundCount[p.mode]);view.prompt="Name a "+item.category+" starting with "+item.letter+".";
    if(reveal){view.allowed=st.answers;view.results=st.results;}
  }else if(p.mode==="caption"){
-   view.prompt=captionPrompts[p.index];
+   view.prompt=roundContent(p, captionPrompts, bonusRoundCount[p.mode]);
    if(p.phase==="voting"||reveal)view.options=st.options.map(o=>({id:o.id,text:o.text,
      ...(reveal?{name:toName(p,o.author),votes:st.votes.size?[...st.votes.values()].filter(x=>x===o.id).length:0}:{})}));
    if(p.phase==="voting")view.votable=st.options.filter(o=>o.author!==actor).map(o=>o.id);
    if(reveal)view.results=st.results;
  }else if(p.mode==="percentage"){
-   view.prompt=polls[p.index];
+   view.prompt=roundContent(p, polls, bonusRoundCount[p.mode]);
    if(p.phase==="voting")view.prompt="What percentage of your group voted YES? (0–100)";
-   if(reveal){view.actual=st.actual;view.yes=st.yes;view.totalVotes=st.total;view.prompt=polls[p.index];}
+   if(reveal){view.actual=st.actual;view.yes=st.yes;view.totalVotes=st.total;view.prompt=roundContent(p, polls, bonusRoundCount[p.mode]);}
  }else if(p.mode==="bingo"){
    view.prompt="Called word: "+p.bonusBingo.calls[p.index];
    if(actor!=="host"){
