@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GX2 feedback laboratory — Trivia Lobby</title>
+  <link rel="stylesheet" href="./gx2-feedback-demo.css">
+  <script type="module" src="./gx2-feedback-demo.js"></script>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Developer preview · no live game integration</p>
+    <h1>Feedback laboratory</h1>
+    <p>Original synthesized sounds and accessible visual cues. Audio is silent until you explicitly unlock it with a click. No recordings, downloads, accounts or telemetry.</p>
+    <section class="controls">
+      <button type="button" id="unlock">Enable sound</button>
+      <label><input id="mute" type="checkbox" checked> Mute</label>
+      <label>Volume <input id="volume" type="range" min="0" max="100" value="35"> <output id="volume-readout">35%</output></label>
+      <label><input id="low-power" type="checkbox"> Low power / no animation</label>
+      <button type="button" id="next-round">Start another round</button>
+    </section>
+    <section>
+      <h2>Try a cue</h2>
+      <div id="cue-grid" class="cue-grid"></div>
+      <p id="feedback" role="status" aria-live="polite" class="feedback"></p>
+      <p id="status" role="status" aria-live="polite">Audio is locked.</p>
+    </section>
+    <p><a href="./">Return to party lobby</a></p>
+  </main>
+</body>
+</html>
