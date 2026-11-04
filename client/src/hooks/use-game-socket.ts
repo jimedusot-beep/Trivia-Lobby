@@ -155,7 +155,12 @@ export function useGameSocket(role: "host" | "player" = "player") {
           case WS_EVENTS.PLAYER_STATUS:
             setGameState(prev=>({...prev,status:payload}));break;
           case WS_EVENTS.ANSWER_ACCEPTED:
-            setGameState(prev=>({...prev,answered:true}));break;
+            // The server includes the authoritative question index. Delayed
+            // acknowledgements for a prior round must not lock the new round's
+            // controls after QUESTION_START has reset answered to false.
+            setGameState(prev => payload.questionIndex === prev.currentQuestion?.questionIndex
+              ? {...prev, answered:true} : prev);
+            break;
           case WS_EVENTS.SUBMISSION_PROGRESS:
             if(role==="host") setGameState(prev=>({...prev,submissionProgress:payload}));
             break;
