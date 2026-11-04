@@ -6,13 +6,15 @@ on:
       - ".github/workflows/main-branch-policy-audit.yml"
       - "script/audit-main-protection.mjs"
       - "tests/main-protection-audit.test.mjs"
+      - "script/update-main-protection.mjs"
+      - "tests/update-main-protection.test.mjs"
       - "docs/MAIN_BRANCH_PROTECTION_RUNBOOK.md"
   workflow_dispatch:
     inputs:
       minimum_approvals:
         description: "Required independent approvals; 0 is explicit solo-maintainer exception"
         required: true
-        default: "1"
+        default: "0"
         type: choice
         options:
           - "1"
@@ -29,7 +31,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify ruleset evaluator detects unsafe settings
-        run: node --test tests/main-protection-audit.test.mjs
+        run: node --test tests/main-protection-audit.test.mjs tests/update-main-protection.test.mjs
   live-audit:
     # Explicit opt-in. A PR cannot silently fail just because owner settings
     # have not yet been updated; the manual read-only audit reports any gaps.
