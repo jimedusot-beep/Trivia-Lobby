@@ -314,13 +314,19 @@ $("solo-mode").addEventListener("change", () => {
   const selected = games[$("solo-mode").value];
   const seats = $("solo-seats");
   seats.replaceChildren();
+  const automatic = automatedModes.has($("solo-mode").value);
   for (let count = selected.players; count <= 5; count++) {
     const option = document.createElement("option");
     option.value = String(count);
-    option.textContent = count + " seats (you + " + (count - 1) + " demo rivals)";
+    option.textContent = automatic
+      ? count + " seats (you + " + (count - 1) + " automatic rivals)"
+      : count + " seats (you control all " + count + " seats)";
     seats.append(option);
   }
   seats.value = String(selected.players);
+  $("solo-seats-help").textContent = automatic
+    ? "Your opponents answer or race automatically in this test mode."
+    : "Switch between the real test controllers to play every turn; other seats do not act automatically.";
   $("solo-description").textContent = selected.description +
     " The server validates all seats and game actions normally.";
   $("solo-disclaimer").textContent = automatedModes.has($("solo-mode").value)
