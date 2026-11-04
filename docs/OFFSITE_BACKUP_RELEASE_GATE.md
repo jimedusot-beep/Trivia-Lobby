@@ -18,6 +18,18 @@ This change adds a schedule-only `scheduled-backup-audit` job that waits for bot
 6. **Enable scheduled backup only after proof.** Set repository variable `BACKUPS_ENABLED=true`, allow the scheduled workflow to run, and verify **two consecutive scheduled jobs** completed the real `backup` job successfully. An all-green workflow is not enough without reviewing that job and the offsite archive. Keep a sanitized audit trail of source SHA, run ID, object locator, archive hash, restore evidence and retention.
 7. **Add independent missed-run monitoring.** A scheduler that never fires produces no GitHub run to inspect. Connect an approved external heartbeat or scheduled monitoring channel with an alert if no fresh verified archive is produced inside the agreed time window. Avoid embedding secrets or archive contents in alert payloads.
 
+### Independent missed-schedule heartbeat (optional code support, owner setup required)
+
+Once a real backup has passed its manual encrypted offsite upload, isolated PostgreSQL + original-files restore and two scheduled runs, configure a **separate** missed-schedule monitor. A hosted [Healthchecks.io](https://healthchecks.io/docs/http_api/) check or an approved self-hosted compatible endpoint can accept one HTTPS GET when a scheduled backup succeeds. Healthchecks.io uses a secret HTTPS ping URL; do **not** put it in documentation, logs, PRs, files, or plain GitHub variables.
+
+1. In an independently administered monitor, create a daily check matching the existing workflow's `07:13 UTC` schedule; allow sufficient grace for GitHub scheduler delays and the backup job. Connect a real notification channel, and perform a safe missed-ping alert drill with a non-production test check. Setting up a check or notification provider requires owner approval, and provider pricing/retention must be reviewed before signup.
+2. Store the check's **base success ping URL** in the GitHub Actions repository **secret** named `BACKUP_HEARTBEAT_URL`. It must be an HTTPS URL with a nonempty path, no query string, fragment, or embedded credentials. Do not use a public repo variable.
+3. The scheduled `scheduled-backup-audit` job sends this URL with an HTTPS GET **only if** `BACKUPS_ENABLED=true` **and** both `recovery-postgres18` and real `backup` jobs reported `success`. It never pings on PRs, manual dispatch, disabled, skipped, failed or cancelled backups. No source data, object keys or archive hashes are transmitted.
+4. If delivery to the configured heartbeat fails, the scheduled audit fails with a sanitized error that does not print the secret URL. If no heartbeat is configured but the actual backup succeeds, the audit prints a **warning** that missed-run monitoring is still absent. Neither a successful ping nor a green backup job proves a full restoration.
+5. Verify in the independent monitor that a real successful scheduled backup produces one ping, a skipped/failed backup produces no success ping, and a missing run triggers the configured alert. Record sanitized evidence. The monitor's HTTP `200` response alone is not proof the correct check is configured, so inspect its event history.
+
+Source-side fixture tests (`tests/backup-heartbeat.test.mjs` and `tests/backup-schedule-monitor.test.mjs`) run without any external network, database or secrets.
+
 ## Failure handling
 
 - **Scheduled guard fails because backups are disabled:** Expected and truthful. Keep issue #48 open. Complete owner storage/setup before enabling the schedule. Do not silence this signal by removing the guard.
