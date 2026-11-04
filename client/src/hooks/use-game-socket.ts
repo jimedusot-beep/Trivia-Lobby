@@ -1,6 +1,7 @@
 import { createRecoveringConnection } from "../../../examples/party-engine/public/connection-recovery.js";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { shouldAcceptAnswerAck } from "@/lib/answer-ack";
 import { WS_EVENTS } from "@shared/schema";
 import {
   PROTOCOL_VERSION, serverMessageSchema,
@@ -158,7 +159,7 @@ export function useGameSocket(role: "host" | "player" = "player") {
             // The server includes the authoritative question index. Delayed
             // acknowledgements for a prior round must not lock the new round's
             // controls after QUESTION_START has reset answered to false.
-            setGameState(prev => payload.questionIndex === prev.currentQuestion?.questionIndex
+            setGameState(prev => shouldAcceptAnswerAck(prev.currentQuestion?.questionIndex, payload.questionIndex)
               ? {...prev, answered:true} : prev);
             break;
           case WS_EVENTS.SUBMISSION_PROGRESS:
