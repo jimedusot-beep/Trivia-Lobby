@@ -11,7 +11,9 @@ jobs:
   engine-and-browsers:
     name: guest-browsers (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Existing WebKit suite approached 25 minutes before new full-match tests.
+    # Keep a bounded CI deadline while allowing real five-round certification.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
