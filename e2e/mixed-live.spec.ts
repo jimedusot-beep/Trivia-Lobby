@@ -55,6 +55,10 @@ test("creator-backed four-kind live quiz works through host and mobile player", 
     await host.getByRole("button",{name:"Next / Finish"}).click();
 
     await expect(guest.getByText("Choose two animals")).toBeVisible();
+    // A late ANSWER_ACCEPTED from the prior question must never mark this
+    // new question answered. Verify real editable controls before submitting.
+    await expect(guest.getByText("Answer received. Waiting for reveal…")).toHaveCount(0);
+    await expect(guest.getByRole("checkbox").first()).toBeEnabled();
     await guest.getByRole("checkbox").nth(0).check();
     await guest.getByRole("checkbox").nth(1).check();
     await guest.getByRole("button",{name:"Submit selections"}).click();
