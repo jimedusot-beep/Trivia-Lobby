@@ -37,9 +37,26 @@ Still incomplete:
 6. Inspect bypass permissions and required signed commits/deployment choices according to actual repo governance. Do not grant broad routine bypass and do not turn off existing checks simply to get a green merge.
 7. Save and confirm `main.protected=true`, active ruleset policy and the correct exact check contexts by reading GitHub settings/API.
 
+## Optional one-command owner configuration (read-only by default)
+
+The repository includes `script/update-main-protection.mjs` to make the one-time owner settings change repeatable without accidentally replacing the existing rules. This helper is **not run by CI** and **not run automatically**. It requires GitHub CLI (`gh`) authenticated as a repository administrator.
+
+On your trusted local computer (PowerShell), check and authorize GitHub CLI access with `gh auth status` (or `gh auth login` if needed), then:
+
+```powershell
+node --test tests/update-main-protection.test.mjs
+node script/update-main-protection.mjs
+# Review the dry-run before deliberately applying:
+node script/update-main-protection.mjs --apply --confirm=26269964
+```
+
+The script reads current ruleset **26269964**, confirms its identity, refuses unexpected/changed review policies, preserves all other rules and bypass actors, adds only missing exact core/guest check contexts and enables strict up-to-date status checks. It reports the changes before writing and re-reads the ruleset to verify the eight-check, strict, zero-review policy. It never prints a GitHub token, manipulates secrets, creates test PRs or changes Render.
+
+If GitHub CLI/permissions reject the update, use the [existing Ruleset Settings UI](https://github.com/jimedusot-beep/Trivia-Lobby/settings/rules/26269964). **Neither merging this PR nor running the dry-run changes settings.** Separately verify stale and failing PRs are blocked. Keep issue #49 open until that real enforcement evidence exists.
+
 ## Evidence-backed verification
 
-- The new manual [Main branch policy audit workflow](../.github/workflows/main-branch-policy-audit.yml) has an ordinary PR fixture-test job and a **workflow_dispatch-only** live-read job. After its PR merges, use **Actions → Main branch policy audit → Run workflow**; by default it expects one independent approval, or explicitly select `0` for an owner-only documented exception. Its report lists missing settings without ever modifying rules. A failing report is truthful, not a justification to weaken an unrelated workflow.
+- The new manual [Main branch policy audit workflow](../.github/workflows/main-branch-policy-audit.yml) has an ordinary PR fixture-test job and a **workflow_dispatch-only** live-read job. After its PR merges, use **Actions → Main branch policy audit → Run workflow**; by default it now expects `0` approvals for the documented solo-maintainer policy. Select `1` only if an eligible independent reviewer is actually available. Its report lists missing settings without ever modifying rules. A failing report is truthful, not a justification to weaken an unrelated workflow.
 - Use a disposable unprivileged test collaborator/PR to prove: direct push and force push are denied; a failing core check or guest-browser check blocks merging; an outdated PR cannot merge until fresh combined CI; a clean reviewed PR merges. Do **not** test force push by overwriting `main` history.
 - Check that Render autoDeploy remains disabled until backup [#48](https://github.com/jimedusot-beep/Trivia-Lobby/issues/48) and device release gates are complete. GitHub rules do not replace data backups or live smoke testing.
 - Avoid requiring ephemeral or PR-only checks that don't always run. All eight proposed contexts currently run for `pull_request` targeting main.
