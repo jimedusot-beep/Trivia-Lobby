@@ -2,9 +2,16 @@ import { test, expect } from "@playwright/test";
 
 async function room(browser){
  const contexts=[];
+ const responses=new Map();
  const page=async mobile=>{
    const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1200,height:850}});
-   contexts.push(ctx);const p=await ctx.newPage();await p.goto("http://127.0.0.1:4317");
+   contexts.push(ctx);const p=await ctx.newPage();
+   const sent=[];responses.set(p,sent);
+   p.on("websocket",socket=>socket.on("framesent",({payload})=>{
+     const message=JSON.parse(payload);
+     if(message.type==="respond")sent.push(message);
+   }));
+   await p.goto("http://127.0.0.1:4317");
    await expect(p.locator("#status")).toHaveText("Connected.");return p;
  };
  const host=await page(false);
@@ -21,7 +28,7 @@ async function room(browser){
    players.push(p);
  }
  await expect(host.locator("#roster li")).toHaveCount(3);
- return {host,players,close:()=>Promise.all(contexts.map(c=>c.close()))};
+ return {host,players,responses,close:()=>Promise.all(contexts.map(c=>c.close()))};
 }
 for(const mode of ["bracket","timeline","caption","category","percentage","bingo"]){
  test("Family game "+mode+" works on 3 phone views with a QR guest lobby",async({browser})=>{
@@ -93,7 +100,10 @@ for(const mode of ["bracket","timeline","caption","category","percentage","bingo
      await expect(host.locator("#heading")).toContainText("reveal");
      if(mode==="bracket")await expect(host.locator("#content")).toContainText("Winner:");
      if(mode==="timeline")await expect(host.locator("#content")).toContainText("Correct order");
-     if(mode==="category")await expect(host.locator("#content")).toContainText("Peach");
+     if(mode==="category"){
+       await expect(host.locator("#content")).toContainText("Peach");
+       expect(f.responses.get(players[0]).map(message=>message.value)).toEqual(["Peach"]);
+     }
      if(mode==="caption")await expect(host.locator("#content")).toContainText("votes");
      if(mode==="percentage")await expect(host.locator("#content")).toContainText("100% said YES");
      await host.getByRole("button",{name:"Next",exact:true}).click();
