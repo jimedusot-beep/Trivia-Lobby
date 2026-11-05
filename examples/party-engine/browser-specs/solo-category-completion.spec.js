@@ -37,7 +37,7 @@ test("completion: Category Clash finishes five bilingual duplicate-scored rounds
     await expect(host.locator("#heading")).toContainText("question", { timeout: 15000 });
     await expect(host.locator(".social-prompt")).toBeVisible();
     await expect(host.locator("#content")).toContainText("Round " + roundNumber + " of 5");
-    await expect(host.locator("#content")).toContainText("0 / 3 submitted");
+    await expect(host.locator("#content")).toContainText("0 submitted");
     await expect(host.locator("#content")).not.toContainText("Valid answers in this starter pack:");
 
     // Same valid category entry, in Spanish and English, must share the
@@ -55,14 +55,14 @@ test("completion: Category Clash finishes five bilingual duplicate-scored rounds
       await lock.press("Enter");
       if (seat < 2) {
         await expect(host.locator("#heading")).toContainText("question");
-        await expect(host.locator("#content")).toContainText((seat + 1) + " / 3 submitted");
+        await expect(host.locator("#content")).toContainText((seat + 1) + " submitted");
         await expect(host.locator("#content")).not.toContainText(answers[seat]);
         await expect(host.locator("#roster")).toContainText("You: " + index * 50 + " points");
       }
     }
 
     await expect(host.locator("#heading")).toContainText("reveal", { timeout: 15000 });
-    await expect(host.locator("#content")).toContainText("3 / 3 submitted");
+    await expect(host.locator("#content")).toContainText("3 submitted");
     await expect(host.locator("#content")).toContainText("You — " + round.spanish + " (50 pts)");
     await expect(host.locator("#content")).toContainText("Test Seat 2 — " + round.english + " (50 pts)");
     await expect(host.locator("#content")).toContainText("Test Seat 3 — " + round.unique + " (100 pts)");
