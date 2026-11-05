@@ -1,3 +1,4 @@
+import { releaseAssets } from "./release-assets.js";
 import express from "express";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
@@ -18,14 +19,7 @@ export function createPartyServer(options = {}) {
     res.set("Content-Security-Policy", `default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors ${sameOriginTestFrame ? "'self'" : "'none'"}`);
     next();
   });
-  app.use(express.static(fileURLToPath(new URL("./public", import.meta.url)), {
-    setHeaders(res, path) {
-      // Unversioned assets must revalidate after deploys, but unchanged bytes
-      // can be reused via ETag/Last-Modified rather than downloaded again.
-      if (/\.(?:js|css|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)$/i.test(path))
-        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
-    },
-  }));
+  app.use(releaseAssets(fileURLToPath(new URL("./public", import.meta.url))));
   app.get("/health", (_req, res) => res.json({ ok: true }));
   const party = attachPartySocket(server, options);
   return {
