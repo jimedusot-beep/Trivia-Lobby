@@ -18,7 +18,7 @@ export function renderBonus(state,{element,button,action,actor}){
   const input=element(multiline?"textarea":"input",undefined,wrap);
   input.id="family-response";lbl.htmlFor=input.id;input.maxLength=maxLength;
   input.required=true;
-  if(!multiline)input.enterKeyHint="send";
+  if(!multiline)input.setAttribute("enterkeyhint","send");
   if(multiline)input.rows=3;
   else input.type=numeric?"number":"text";
   if(numeric){input.min="0";input.max="100";input.step="1";input.inputMode="numeric";}
