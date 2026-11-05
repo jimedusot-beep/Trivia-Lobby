@@ -11,6 +11,9 @@ on:
       # rather than only when the benchmark implementation is edited.
       - "examples/party-engine/render/**"
       - "examples/party-engine/public/race-ui.js"
+      - "examples/party-engine/server.js"
+      - "examples/party-engine/transport.js"
+      - "examples/party-engine/browser-specs/helpers/race-lobby.js"
       - "examples/party-engine/public/race-track.js"
       - "script/build-race-renderer.mjs"
       - "script/build-game-sources.mjs"
