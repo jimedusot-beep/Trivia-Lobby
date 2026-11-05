@@ -1,3 +1,17 @@
+test("Solo Test clearly distinguishes manual seat switching from automatic rivals", async ({ page }) => {
+  await page.goto("/solo-test.html");
+
+  await page.locator("#solo-mode").selectOption("survey");
+  await expect(page.locator("#solo-seats option").first()).toHaveText("3 seats (you control all 3 seats)");
+  await expect(page.locator("#solo-seats-help")).toContainText("other seats do not act automatically");
+  await expect(page.locator("#solo-disclaimer")).toContainText("switch between seats");
+
+  await page.locator("#solo-mode").selectOption("quiz");
+  await expect(page.locator("#solo-seats option").first()).toHaveText("3 seats (you + 2 automatic rivals)");
+  await expect(page.locator("#solo-seats-help")).toContainText("automatically");
+  await expect(page.locator("#solo-disclaimer")).toContainText("Automated simulated opponents");
+});
+
 import { test, expect } from "@playwright/test";
 
 test("one-tab Solo Test offers every existing server game without hardcoded duplicates", async ({ page }) => {
