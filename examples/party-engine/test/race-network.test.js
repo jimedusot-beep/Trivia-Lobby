@@ -5,7 +5,7 @@ import { setTimeout as wait } from "node:timers/promises";
 import { WebSocket } from "ws";
 import { createPartyServer } from "../server.js";
 
-async function server(t, options = {}, checkpointStore) {
+async function server(t, options = {}, checkpointStore, observe = () => {}) {
   const app = createPartyServer({ checkpointStore, partyOptions: { countdownMs: 10, raceMs: 8000, raceLaps: 99, ...options } });
   await new Promise(resolve => app.server.listen(0, "127.0.0.1", resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`, peers = [];
@@ -13,7 +13,7 @@ async function server(t, options = {}, checkpointStore) {
   async function connect(hello) {
     const ws = new WebSocket(origin.replace("http", "ws") + "/socket", { origin });
     const messages = [], listeners = new Set();
-    ws.on("message", raw => { messages.push(JSON.parse(raw)); for (const notify of listeners) notify(); });
+    ws.on("message", raw => { const message = JSON.parse(raw); observe(message); messages.push(message); for (const notify of listeners) notify(); });
     const peer = { ws, messages, send: m => ws.send(JSON.stringify(m)), seq: 0,
       until(predicate, cursor = 0) {
         const found = messages.slice(cursor).find(predicate);
@@ -49,10 +49,12 @@ async function server(t, options = {}, checkpointStore) {
 }
 for (const [size, storageDelay] of [[10, 0], [20, 0], [20, 150]]) test(`${size} controllers with ${storageDelay} ms checkpoint delay sustain bounded traffic and reconnect`, { timeout: 30000 }, async t => {
   const saved = new Map();
+  const checkpointTimes = [], hostFrames = new Map();
   let delay = 0, activeWrites = 0, maxWrites = 0, commits = 0;
   const checkpointStore = storageDelay ? {
     async load(_kind, code) { return saved.get(code); },
     async save(_kind, code, state, _expiresAt, version) {
+      const started = performance.now();
       activeWrites++; maxWrites = Math.max(maxWrites, activeWrites);
       try {
         if (delay) await wait(delay);
@@ -60,19 +62,21 @@ for (const [size, storageDelay] of [[10, 0], [20, 0], [20, 150]]) test(`${size} 
         saved.set(code, { state: structuredClone(state), version: next, savedAt: Date.now() });
         commits++;
         return next;
-      } finally { activeWrites--; }
+      } finally {
+        if (delay) checkpointTimes.push([started, performance.now()]);
+        activeWrites--;
+      }
     },
     async delete(_kind, code) { saved.delete(code); },
     async prune() {},
   } : undefined;
-  const f = await server(t, {}, checkpointStore), r = await f.room(size);
+  const f = await server(t, {}, checkpointStore, message => {
+    if (message.type === "race_frame" && message.karts && !hostFrames.has(message.frame))
+      hostFrames.set(message.frame, performance.now());
+  }), r = await f.room(size);
   await f.action(r.host, r.party, "start", "race");
   await r.host.until(m => m.type === "state" && m.state.phase === "playing");
   delay = storageDelay;
-  const frameArrivals = [];
-  r.host.ws.on("message", raw => {
-    if (JSON.parse(raw).type === "race_frame") frameArrivals.push(performance.now());
-  });
   let host = r.host;
   const credentials = r.players.map(p => p.credential);
   const start = performance.now();
@@ -114,8 +118,11 @@ for (const [size, storageDelay] of [[10, 0], [20, 0], [20, 150]]) test(`${size} 
     assert.equal(maxWrites, 1, "slow storage must not overlap writes within a room");
     assert.ok(commits > size, "live simulation must have committed checkpoints");
   }
+  const frameArrivals = [...hostFrames.values()];
+  const relative = time => Math.round(time - start);
   const gaps = frameArrivals.slice(1).map((time, i) => time - frameArrivals[i]).sort((a, b) => a - b);
   t.diagnostic(JSON.stringify({
+    ...(storageDelay ? {frameTimesMs: frameArrivals.map(relative), checkpointIntervalsMs: checkpointTimes.map(pair => pair.map(relative))} : {}),
     controllers: size, inputFrames: size * 60, checkpointDelayMs: storageDelay,
     elapsedMs: Math.round(performance.now() - start), maxConcurrentWrites: maxWrites,
     observedHostFrames: frameArrivals.length,

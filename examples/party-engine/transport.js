@@ -377,9 +377,13 @@ export function attachPartySocket(server, {
   // One persisted simulation transaction per active room per 100 ms, rather
   // than per 20 Hz controller. Frames are delivered only after durable commit.
   // A slow database delays frames rather than creating an unbounded write queue.
-  const raceTimer = setInterval(() => {
-    for (const record of rooms.values()) {
-      if (record.raceBusy || !["race", "tap", "trails"].includes(record.party.mode) || record.party.phase !== "playing") continue;
+  function runRaceTick(record) {
+      if (closing || rooms.get(record.party.code) !== record ||
+          !["race", "tap", "trails"].includes(record.party.mode) || record.party.phase !== "playing") return;
+      if (record.raceBusy) {
+        record.tickDue = true;
+        return;
+      }
       record.raceBusy = true;
       void transact(record, () => {
         const party = record.party;
@@ -390,8 +394,16 @@ export function attachPartySocket(server, {
         for (const [id, ws] of record.sessions.connections())
           if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 16384)
             send(ws, party.mode === "trails" ? trailsFrame(party,id) : party.mode === "tap" ? tapFrame(party, id) : raceFrame(party, id));
-      }).finally(() => { record.raceBusy = false; });
-    }
+      }).finally(() => {
+        record.raceBusy = false;
+        if (record.tickDue) {
+          record.tickDue = false;
+          runRaceTick(record);
+        }
+      });
+  }
+  const raceTimer = setInterval(() => {
+    for (const record of rooms.values()) runRaceTick(record);
   }, 100);
   function cleanup() {
     if (closing) return;
