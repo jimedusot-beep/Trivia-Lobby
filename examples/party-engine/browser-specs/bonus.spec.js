@@ -67,7 +67,8 @@ for(const mode of ["bracket","timeline","caption","category","percentage","bingo
          await caption.press("Enter");
          await expect(caption).toHaveValue("Draft\n");
          await expect(p.locator("#heading")).toContainText("writing");
-         await caption.fill("Caption "+i);
+         await caption.fill("Caption\n"+i);
+         await expect(caption).toHaveValue("Caption\n"+i);
          await p.getByRole("button",{name:"Lock answer"}).click();
        }
        if(mode==="percentage")await p.getByRole("button",{name:"Yes",exact:true}).click();
