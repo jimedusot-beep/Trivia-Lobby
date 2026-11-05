@@ -410,7 +410,7 @@ test("deployed party router revalidates assets without caching HTML or falling t
   }
   const asset = await request("/party/app.js");
   assert.equal(asset.status, 200);
-  assert.equal(asset.headers["cache-control"], "public, max-age=0, must-revalidate");
+  assert.equal(asset.headers["cache-control"], "no-cache");
   assert.ok(asset.headers.etag);
   const unchanged = await request("/party/app.js", { "If-None-Match": asset.headers.etag });
   assert.equal(unchanged.status, 304);

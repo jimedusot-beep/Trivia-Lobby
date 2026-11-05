@@ -422,7 +422,7 @@ test("static assets revalidate with 304 while HTML and health stay no-store", as
   for (const path of ["/app.js", "/style.css", "/lobby-spark.svg"]) {
     const asset = await request(path);
     assert.equal(asset.status, 200);
-    assert.equal(asset.headers["cache-control"], "public, max-age=0, must-revalidate");
+    assert.equal(asset.headers["cache-control"], "no-cache");
     assert.ok(asset.headers.etag);
     const unchanged = await request(path, { "If-None-Match": asset.headers.etag });
     assert.equal(unchanged.status, 304);
