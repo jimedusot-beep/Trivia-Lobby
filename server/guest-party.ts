@@ -23,7 +23,13 @@ export function attachGuestParty(server: Server, app: Express, checkpointStore?:
     res.set("Content-Security-Policy", `default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors ${sameOriginTestFrame ? "'self'" : "'none'"}`);
     next();
   });
-  router.use(express.static(assets));
+  router.use(express.static(assets, {
+    setHeaders(res, filePath) {
+      // Revalidate unversioned public assets on every reuse after deployment.
+      if (/\.(?:js|css|woff2?|ttf|otf|svg|png|jpe?g|webp|ico)$/i.test(filePath))
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    },
+  }));
   // Missing party assets must not reach the React app's HTML fallback.
   router.use((_req, res) => res.status(404).type("text").send("Not found"));
   app.use("/party", router);
