@@ -29,7 +29,9 @@ export function renderBonus(state,{element,button,action,actor}){
   wrap.onsubmit=event=>{
    event.preventDefault();
    if(!input.value.trim() || !input.checkValidity())return;
-   const value=numeric?Number(input.value):input.value.trim();
+   // Captions may be composed across lines; the server accepts single-line text.
+   const text=multiline?input.value.replace(/\r\n?|\n/g," "):input.value;
+   const value=numeric?Number(text):text.trim();
    action("respond",value);
   };
  }
