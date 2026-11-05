@@ -13,19 +13,27 @@ export function renderBonus(state,{element,button,action,actor}){
  const key="family-draft:"+state.matchId+":"+b.kind+":"+b.round+":"+state.phase;
  function typed(label,{maxLength=80,numeric=false,multiline=false}={}){
   if(!answerable)return;
-  const wrap=element("div");wrap.className="social-entry";
+  const wrap=element("form");wrap.className="social-entry";
   const lbl=element("label",label,wrap);
   const input=element(multiline?"textarea":"input",undefined,wrap);
   input.id="family-response";lbl.htmlFor=input.id;input.maxLength=maxLength;
+  input.required=true;
+  if(!multiline)input.setAttribute("enterkeyhint","send");
   if(multiline)input.rows=3;
   else input.type=numeric?"number":"text";
   if(numeric){input.min="0";input.max="100";input.step="1";input.inputMode="numeric";}
   try{input.value=sessionStorage.getItem(key)||"";}catch{}
   input.oninput=()=>{try{sessionStorage.setItem(key,input.value);}catch{}};
-  button(sharedES?"Confirmar respuesta":"Lock answer",()=>{
-   const value=numeric?(input.value===""?NaN:Number(input.value)):input.value.trim();
+  const submit=button(sharedES?"Confirmar respuesta":"Lock answer",()=>{},wrap);
+  submit.type="submit";
+  wrap.onsubmit=event=>{
+   event.preventDefault();
+   if(!input.value.trim() || !input.checkValidity())return;
+   // Captions may be composed across lines; the server accepts single-line text.
+   const text=multiline?input.value.replace(/\r\n?|\n/g," "):input.value;
+   const value=numeric?Number(text):text.trim();
    action("respond",value);
-  },wrap);
+  };
  }
  if(b.kind==="bracket"){
    element("h3","Choose one to advance.");
