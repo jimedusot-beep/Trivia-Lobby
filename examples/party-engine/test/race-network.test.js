@@ -5,8 +5,8 @@ import { setTimeout as wait } from "node:timers/promises";
 import { WebSocket } from "ws";
 import { createPartyServer } from "../server.js";
 
-async function server(t, options = {}) {
-  const app = createPartyServer({ partyOptions: { countdownMs: 10, raceMs: 8000, raceLaps: 99, ...options } });
+async function server(t, options = {}, checkpointStore) {
+  const app = createPartyServer({ checkpointStore, partyOptions: { countdownMs: 10, raceMs: 8000, raceLaps: 99, ...options } });
   await new Promise(resolve => app.server.listen(0, "127.0.0.1", resolve));
   const origin = `http://127.0.0.1:${app.server.address().port}`, peers = [];
   t.after(async () => { for (const peer of peers) peer.ws.terminate(); await app.close(); });
@@ -47,10 +47,32 @@ async function server(t, options = {}) {
   }
   return { app, connect, room, action };
 }
-for (const size of [10, 20]) test(`${size} phone controllers sustain 20 Hz inputs, bounded projections and host/player reconnect`, { timeout: 20000 }, async t => {
-  const f = await server(t), r = await f.room(size);
+for (const [size, storageDelay] of [[10, 0], [20, 0], [20, 150]]) test(`${size} controllers with ${storageDelay} ms checkpoint delay sustain bounded traffic and reconnect`, { timeout: 30000 }, async t => {
+  const saved = new Map();
+  let delay = 0, activeWrites = 0, maxWrites = 0, commits = 0;
+  const checkpointStore = storageDelay ? {
+    async load(_kind, code) { return saved.get(code); },
+    async save(_kind, code, state, _expiresAt, version) {
+      activeWrites++; maxWrites = Math.max(maxWrites, activeWrites);
+      try {
+        if (delay) await wait(delay);
+        const next = (version ?? 0) + 1;
+        saved.set(code, { state: structuredClone(state), version: next, savedAt: Date.now() });
+        commits++;
+        return next;
+      } finally { activeWrites--; }
+    },
+    async delete(_kind, code) { saved.delete(code); },
+    async prune() {},
+  } : undefined;
+  const f = await server(t, {}, checkpointStore), r = await f.room(size);
   await f.action(r.host, r.party, "start", "race");
   await r.host.until(m => m.type === "state" && m.state.phase === "playing");
+  delay = storageDelay;
+  const frameArrivals = [];
+  r.host.ws.on("message", raw => {
+    if (JSON.parse(raw).type === "race_frame") frameArrivals.push(performance.now());
+  });
   let host = r.host;
   const credentials = r.players.map(p => p.credential);
   const start = performance.now();
@@ -88,7 +110,18 @@ for (const size of [10, 20]) test(`${size} phone controllers sustain 20 Hz input
   await f.action(host, r.party, "lobby");
   assert.equal(r.party.players.size, size);
   assert.equal(r.party.phase, "lobby");
-  t.diagnostic(`${size} controllers: ${size * 60} bounded input frames over ${Math.round(performance.now() - start)} ms; same-room host/player recovery passed`);
+  if (storageDelay) {
+    assert.equal(maxWrites, 1, "slow storage must not overlap writes within a room");
+    assert.ok(commits > size, "live simulation must have committed checkpoints");
+  }
+  const gaps = frameArrivals.slice(1).map((time, i) => time - frameArrivals[i]).sort((a, b) => a - b);
+  t.diagnostic(JSON.stringify({
+    controllers: size, inputFrames: size * 60, checkpointDelayMs: storageDelay,
+    elapsedMs: Math.round(performance.now() - start), maxConcurrentWrites: maxWrites,
+    observedHostFrames: frameArrivals.length,
+    frameGapP95Ms: gaps.length ? Math.round(gaps[Math.ceil(gaps.length * 0.95) - 1]) : null,
+    note: "Loopback sockets and injected memory-store latency; not production database or Wi-Fi measurements."
+  }));
 });
 
 test("race-room admission is bounded and releases its slot when the host ends a match", async t => {
