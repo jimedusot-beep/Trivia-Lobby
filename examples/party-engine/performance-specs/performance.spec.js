@@ -80,8 +80,9 @@ async function readFrames(page) {
     return { mode, intervalsMs, rendered3dFrames: mode === "3d" ? after - before : null, sceneDrawCalls: calls, renderContext, threeDBundle };
   });
 }
-test("measure real Grand Prix 3D, 2D and 3D browser frame cadence", async ({ browser }) => {
-  const f = await lobby(browser, 2);
+for (const players of [2, 10, 20]) test(`measure Grand Prix 3D and 2D with ${players} browser players`, async ({ browser }) => {
+  test.setTimeout(180000);
+  const f = await lobby(browser, players);
   try {
     await f.start();
     await f.host.bringToFront();
@@ -113,8 +114,10 @@ test("measure real Grand Prix 3D, 2D and 3D browser frame cadence", async ({ bro
       });
     }
     expect(f.errors).toEqual([]);
-    await record("grand-prix-rendering.json", {
-      method: "Playwright Chromium / headless Ubuntu / real local Grand Prix with 2 browser players",
+    await record(`grand-prix-rendering-${players}-players.json`, {
+      method: `Playwright Chromium / headless Ubuntu / real local Grand Prix with ${players} browser players`,
+      players,
+      storage: "Local test server without production checkpoint storage",
       readings,
       warning: "rAF cadence is not GPU execution time. Renderer/vendor and buffer dimensions are diagnostic context; masked renderer strings may not identify hardware. 2D has no independent draw count; real Windows hardware may differ."
     });
