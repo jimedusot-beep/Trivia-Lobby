@@ -81,9 +81,14 @@ async function readFrames(page) {
   });
 }
 for (const players of [2, 10, 20]) test(`measure Grand Prix 3D and 2D with ${players} browser players`, async ({ browser }) => {
-  test.setTimeout(180000);
+  // The 20-player case runs 21 independent browser contexts and measures
+  // three 120-frame samples on headless software rendering. Preserve all
+  // assertions while allowing this heavyweight acceptance case more time.
+  test.setTimeout(players === 20 ? 360000 : 180000);
+  console.log(`performance: ${players} players, creating independent controllers`);
   const f = await lobby(browser, players);
   try {
+    console.log(`performance: ${players} players connected; starting race`);
     await f.start();
     await f.host.bringToFront();
     await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", "3d", { timeout: 15000 });
@@ -94,6 +99,7 @@ for (const players of [2, 10, 20]) test(`measure Grand Prix 3D and 2D with ${pla
         await f.host.getByRole("button", { name: label, exact: true }).click();
         await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", mode, { timeout: 15000 });
       }
+      console.log(`performance: ${players} players; measuring ${mode} frames`);
       const result = await readFrames(f.host);
       expect(result.mode).toBe(mode);
       expect(result.intervalsMs).toHaveLength(120);
