@@ -33,7 +33,8 @@ export function assertPartyAsset(path, response) {
   ensure(response.status === 200, path + " must exist in the production bundle");
   const type = response.headers.get("content-type") ?? "";
   ensure(type.includes("javascript"), path + " must be JavaScript, not a SPA HTML fallback");
-  ensure((response.headers.get("cache-control") ?? "").includes("no-store"),
+  const directives = (response.headers.get("cache-control") ?? "").toLowerCase().split(",").map(x => x.trim());
+  ensure(directives.includes("no-store") || (directives.includes("no-cache") && response.headers.get("etag")),
     path + " must not serve stale game controller code");
 }
 

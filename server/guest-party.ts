@@ -1,3 +1,4 @@
+import { releaseAssets } from "../examples/party-engine/release-assets.js";
 import express, { type Express } from "express";
 import type { Server } from "node:http";
 import path from "node:path";
@@ -23,7 +24,7 @@ export function attachGuestParty(server: Server, app: Express, checkpointStore?:
     res.set("Content-Security-Policy", `default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors ${sameOriginTestFrame ? "'self'" : "'none'"}`);
     next();
   });
-  router.use(express.static(assets));
+  router.use(releaseAssets(assets));
   // Missing party assets must not reach the React app's HTML fallback.
   router.use((_req, res) => res.status(404).type("text").send("Not found"));
   app.use("/party", router);

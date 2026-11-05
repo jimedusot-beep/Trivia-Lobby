@@ -1,3 +1,4 @@
+import { releaseAssets } from "./release-assets.js";
 import express from "express";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
@@ -18,7 +19,7 @@ export function createPartyServer(options = {}) {
     res.set("Content-Security-Policy", `default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors ${sameOriginTestFrame ? "'self'" : "'none'"}`);
     next();
   });
-  app.use(express.static(fileURLToPath(new URL("./public", import.meta.url))));
+  app.use(releaseAssets(fileURLToPath(new URL("./public", import.meta.url))));
   app.get("/health", (_req, res) => res.json({ ok: true }));
   const party = attachPartySocket(server, options);
   return {

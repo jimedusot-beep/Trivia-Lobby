@@ -398,3 +398,41 @@ test(
     );
   },
 );
+
+test("static assets revalidate with 304 while HTML and health stay no-store", async t => {
+  const app = createPartyServer();
+  await new Promise(resolve => app.server.listen(0, "127.0.0.1", resolve));
+  t.after(() => app.close());
+  const { get } = await import("node:http");
+  const base = `http://127.0.0.1:${app.server.address().port}`;
+  const request = (path, headers = {}) => new Promise((resolve, reject) => {
+    get(base + path, { headers }, res => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", chunk => { body += chunk; });
+      res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body }));
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+  for (const path of ["/", "/index.html", "/solo-test.html", "/health"]) {
+    const response = await request(path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers["cache-control"], "no-store");
+  }
+  for (const path of ["/app.js", "/style.css", "/lobby-spark.svg"]) {
+    const asset = await request(path);
+    assert.equal(asset.status, 200);
+    assert.equal(asset.headers["cache-control"], "no-cache");
+    assert.ok(asset.headers.etag);
+    const unchanged = await request(path, { "If-None-Match": asset.headers.etag });
+    assert.equal(unchanged.status, 304);
+    assert.equal(unchanged.body, "");
+    const changed = await request(path, { "If-None-Match": '"older-deployment"' });
+    assert.equal(changed.status, 200);
+    assert.ok(changed.body.length);
+    assert.equal(changed.headers["x-content-type-options"], "nosniff");
+  }
+  const missing = await request("/missing-asset.js");
+  assert.equal(missing.status, 404);
+  assert.equal(missing.headers["cache-control"], "no-store");
+});

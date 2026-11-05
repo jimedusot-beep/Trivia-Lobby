@@ -80,9 +80,15 @@ async function readFrames(page) {
     return { mode, intervalsMs, rendered3dFrames: mode === "3d" ? after - before : null, sceneDrawCalls: calls, renderContext, threeDBundle };
   });
 }
-test("measure real Grand Prix 3D, 2D and 3D browser frame cadence", async ({ browser }) => {
-  const f = await lobby(browser, 2);
+for (const players of [2, 10, 20]) test(`measure Grand Prix 3D and 2D with ${players} browser players`, async ({ browser }) => {
+  // The 20-player case runs 21 independent browser contexts and measures
+  // three 120-frame samples on headless software rendering. Preserve all
+  // assertions while allowing this heavyweight acceptance case more time.
+  test.setTimeout(players === 20 ? 360000 : 180000);
+  console.log(`performance: ${players} players, creating independent controllers`);
+  const f = await lobby(browser, players);
   try {
+    console.log(`performance: ${players} players connected; starting race`);
     await f.start();
     await f.host.bringToFront();
     await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", "3d", { timeout: 15000 });
@@ -93,6 +99,7 @@ test("measure real Grand Prix 3D, 2D and 3D browser frame cadence", async ({ bro
         await f.host.getByRole("button", { name: label, exact: true }).click();
         await expect(f.host.locator("#race-track")).toHaveAttribute("data-renderer", mode, { timeout: 15000 });
       }
+      console.log(`performance: ${players} players; measuring ${mode} frames`);
       const result = await readFrames(f.host);
       expect(result.mode).toBe(mode);
       expect(result.intervalsMs).toHaveLength(120);
@@ -113,8 +120,10 @@ test("measure real Grand Prix 3D, 2D and 3D browser frame cadence", async ({ bro
       });
     }
     expect(f.errors).toEqual([]);
-    await record("grand-prix-rendering.json", {
-      method: "Playwright Chromium / headless Ubuntu / real local Grand Prix with 2 browser players",
+    await record(`grand-prix-rendering-${players}-players.json`, {
+      method: `Playwright Chromium / headless Ubuntu / real local Grand Prix with ${players} browser players`,
+      players,
+      storage: "Local test server without production checkpoint storage",
       readings,
       warning: "rAF cadence is not GPU execution time. Renderer/vendor and buffer dimensions are diagnostic context; masked renderer strings may not identify hardware. 2D has no independent draw count; real Windows hardware may differ."
     });
