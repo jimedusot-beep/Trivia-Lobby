@@ -100,3 +100,7 @@ Original project software and its accompanying software documentation are licens
 Existing credits remain in [open-source attribution](docs/OPEN_SOURCE_ATTRIBUTION.md), [dependency licenses](docs/DEPENDENCY_LICENSES.json), [font provenance](docs/FONT_PROVENANCE.md), and `examples/party-engine/open-pack/licenses/`.
 
 CAD files, models, datasets, images, audio, fonts and other non-software assets are not granted a new license by this software notice. Use their existing asset-specific terms. Where provenance or permission is unresolved, this notice does not supply redistribution permission; record the source, author, exact license and modifications before redistributing that material.
+
+## Related repos
+
+Trivia Lobby runs independently. [Toad Sage](https://github.com/jimedusot-beep/Toadsagemode) is a separate local knowledge and development tool from the same account.
