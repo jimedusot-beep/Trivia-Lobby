@@ -1,6 +1,6 @@
 # Gameplay completion audit — 31-game baseline
 
-Audit baseline: PR #119 updated with main at 9811221 (Sorry Ish). This file is a **test-plan and evidence ledger**, not a certification that 31 complete matches have been watched. Every mode has an existing rule implementation and at least some catalog/engine coverage. The standardized real-server host/controller full-match browser tests now cover **Four in a Row** and **five-round Trivia Quiz**, both included in merged PR #119 and successful on its head at [run 41313021016](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41313021016). The remaining **29 modes** still require an explicit full lifecycle proof in this specific suite; engine/unit coverage remains wider. These headless results are not evidence of physical-device acceptance.
+Audit baseline: PR #119 updated with main at 9811221 (Sorry Ish). This file is a **test-plan and evidence ledger**, not a certification that 31 complete matches have been watched. Every mode has an existing rule implementation and at least some catalog/engine coverage. The standardized real-server host/controller full-match browser tests now cover **Four in a Row** and **five-round Trivia Quiz**, both included in merged PR #119 and successful on its head at [run 41313021016](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41313021016). PR #130 subsequently added three more full-match tests: Majority Rules, Who's Most Likely?, and Closest Wins, and its Chromium, Firefox and WebKit guest suites passed on head `2335fdff2b59279805e24751e010883b975fa04c` ([guest-browser run 41516411410](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41516411410)). PR #141 added a verified five-round Survey Showdown single-tab completion with English/Spanish alias parity, score and same-party return: its Chromium, Firefox and WebKit guest jobs passed on head `84d8454a22dca91aeb37c81dab2fef8d68a82aaa` ([guest-browser run 41892750051](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41892750051)). Together, **6/31 modes have demonstrated full-match browser coverage on their verified PR heads; 25 remain**. This does not claim fresh post-merge `main`, live deployment, or physical-device certification. Engine/unit coverage remains wider. These headless results are not evidence of physical-device acceptance.
 
 ## Uniform acceptance gate
 
@@ -13,10 +13,10 @@ For each game, capture: room created and minimum seats connected; private player
 | Social | Trivia Quiz (quiz) | Browser full-match test passed on merged PR #119 head | Five questions, scoring, natural finish, return to original room; repeat on post-merge main |
 | Social | Prompt Duel (duel) | Pending | Writing/vote sequence, authorship privacy, final |
 | Social | Charades (charades) | Pending | Each actor turn, correct/pass, final |
-| Social | Majority Rules (majority) | Pending | Five rounds, tie scoring |
-| Social | Who's Most Likely? (likely) | Pending | Nominations, tie outcome, final |
-| Social | Closest Wins (closest) | Pending | Guess bounds, close/tied winner, final |
-| Social | Survey Showdown (survey) | Pending | Matching, five boards, result |
+| Social | Majority Rules (majority) | Browser full-match passed on merged PR #130 head | Five rounds, 3 real votes, scored majority, same-room return; tie-case coverage remains |
+| Social | Who's Most Likely? (likely) | Browser full-match passed on merged PR #130 head | Five rounds, valid non-self nominations, final scores, same-room return; tie-case coverage remains |
+| Social | Closest Wins (closest) | Browser full-match passed on merged PR #130 head | Five private guesses, server-scored closest answer, final, same-room return; tied-winner coverage remains |
+| Social | Survey Showdown (survey) | Browser full-match passed on merged PR #141 head | Five server-scored EN/ES answers, privacy, result, same-party return; physical-device proof remains |
 | Social | Secret Impostor (impostor) | Pending | Clue/vote privacy and all reveals |
 | Social | Guess the Percentage (percentage) | Pending | Two-stage input, computed scores, final |
 | Social | Category Clash (category) | Pending | Unique/duplicate answers, acceptance |
@@ -41,6 +41,13 @@ For each game, capture: room created and minimum seats connected; private player
 | Board | Mancala Match (mancala) | Pending | Stone conservation, end stores, score |
 | Tabletop | Card & Dice Table (table) | Pending | Guided Poker full five hands; Whist intentionally manual |
 | Tabletop | Backgammon Table (backgammon) | Pending | Manual dice flow, bearing off and finish |
+
+## Certification evidence and remaining gap
+
+- **Verified on merged PR heads: 6/31.** Four in a Row and Trivia Quiz: PR #119; Majority Rules, Who's Most Likely?, and Closest Wins: [PR #130](https://github.com/jimedusot-beep/Trivia-Lobby/pull/130), head `2335fdff2b59279805e24751e010883b975fa04c`, [guest-browser run 41516411410](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41516411410) (Chromium/Firefox/WebKit successful).
+- **Survey Showdown:** [PR #141](https://github.com/jimedusot-beep/Trivia-Lobby/pull/141), head `84d8454a22dca91aeb37c81dab2fef8d68a82aaa`, [guest-browser run 41892750051](https://github.com/jimedusot-beep/Trivia-Lobby/actions/runs/41892750051) (all three passed); five ordinary rounds with answer privacy and same-party return.
+- **Remaining: 25/31** require full-match evidence in this suite. Smoke checks and standalone engine tests do not add to this count.
+- **Separate gates:** repeat/reconcile on current `main`, physical phone + TV/Wi-Fi acceptance, and backup/release approval before production deployment.
 
 ## Existing evidence is not discarded
 
