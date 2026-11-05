@@ -92,3 +92,11 @@ Read the [integrated runbook](docs/INTEGRATED_PLATFORM.md), [protocol](docs/PHAS
 ## Open game pack
 
 The [open game pack](docs/OPEN_GAME_PACK.md) adapts selected formats and licensed rules from six [pinned upstream sources](docs/OPEN_GAME_SOURCES.json) into the shared guest runtime. These are playable adaptations, not six complete application forks. Pair boards support up to ten simultaneous two-player tables. Color cards and manual tables advertise their smaller active-seat limits and allow spectators. The showdown has an account-free local question editor; single-answer Razzia quiz files import with timers and scoring. New game code and copied component licenses are documented in the in-app Credits & Source page, which offers the exact guest source used by each build.
+
+## License and third-party content
+
+Original project software and its accompanying software documentation are licensed under **MIT**; see [LICENSE](LICENSE). Copyright 2026 jimedusot-beep. This notice covers only material the project authors have authority to license. Existing file-specific notices, third-party terms and prior license grants remain in effect.
+
+Existing credits remain in [open-source attribution](docs/OPEN_SOURCE_ATTRIBUTION.md), [dependency licenses](docs/DEPENDENCY_LICENSES.json), [font provenance](docs/FONT_PROVENANCE.md), and `examples/party-engine/open-pack/licenses/`.
+
+CAD files, models, datasets, images, audio, fonts and other non-software assets are not granted a new license by this software notice. Use their existing asset-specific terms. Where provenance or permission is unresolved, this notice does not supply redistribution permission; record the source, author, exact license and modifications before redistributing that material.
