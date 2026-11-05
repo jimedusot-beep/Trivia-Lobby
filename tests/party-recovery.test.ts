@@ -380,3 +380,47 @@ for (const [mode, settings] of [
     assert(replayed.players.every((player: any) => player.score === 0));
   });
 }
+
+test("deployed party router revalidates assets without caching HTML or falling through", async t => {
+  const { default: express } = await import("express");
+  const { attachGuestParty } = await import("../server/guest-party");
+  const { get } = await import("node:http");
+  const app = express(), server = createServer(app);
+  const transport = attachGuestParty(server, app);
+  app.use((_req, res) => res.type("html").send("SPA fallback"));
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => {
+    await transport.close();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+  const address = server.address(); assert(address && typeof address !== "string");
+  const request = (path: string, headers: Record<string, string> = {}) =>
+    new Promise<{ status: number | undefined; headers: import("node:http").IncomingHttpHeaders; body: string }>((resolve, reject) => {
+      get(`http://127.0.0.1:${address.port}` + path, { headers }, res => {
+        let body = ""; res.setEncoding("utf8");
+        res.on("data", chunk => { body += chunk; });
+        res.on("end", () => resolve({ status: res.statusCode, headers: res.headers, body }));
+        res.on("error", reject);
+      }).on("error", reject);
+    });
+  for (const path of ["/party/", "/party/index.html", "/party/solo-test.html"]) {
+    const response = await request(path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers["cache-control"], "no-store");
+  }
+  const asset = await request("/party/app.js");
+  assert.equal(asset.status, 200);
+  assert.equal(asset.headers["cache-control"], "public, max-age=0, must-revalidate");
+  assert.ok(asset.headers.etag);
+  const unchanged = await request("/party/app.js", { "If-None-Match": asset.headers.etag });
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.body, "");
+  assert.equal(unchanged.headers["x-content-type-options"], "nosniff");
+  const changed = await request("/party/app.js", { "If-None-Match": '"older-deployment"' });
+  assert.equal(changed.status, 200);
+  assert.ok(changed.body.length);
+  const missing = await request("/party/missing-file.js");
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body, "Not found");
+  assert.equal(missing.headers["cache-control"], "no-store");
+});
