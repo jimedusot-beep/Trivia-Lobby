@@ -51,11 +51,23 @@ for(const mode of ["bracket","timeline","caption","category","percentage","bingo
          await p.getByRole("button",{name:"Submit order"}).click();
        }
        if(mode==="category"){
-         await p.getByLabel("Your valid category answer").fill("Peach");
-         await p.getByRole("button",{name:"Lock answer"}).click();
+         const answer=p.getByLabel("Your valid category answer");
+         await expect(answer).toHaveAttribute("enterkeyhint","send");
+         await answer.fill("   ");
+         await answer.press("Enter");
+         await expect(answer).toBeVisible();
+         await expect(p.locator("#content")).not.toContainText("Your response is locked");
+         await answer.fill("Peach");
+         if(i===0)await answer.press("Enter");
+         else await p.getByRole("button",{name:"Lock answer"}).click();
        }
        if(mode==="caption"){
-         await p.getByLabel("Your caption (80 characters maximum)").fill("Caption "+i);
+         const caption=p.getByLabel("Your caption (80 characters maximum)");
+         await caption.fill("Draft");
+         await caption.press("Enter");
+         await expect(caption).toHaveValue("Draft\n");
+         await expect(p.locator("#heading")).toContainText("writing");
+         await caption.fill("Caption "+i);
          await p.getByRole("button",{name:"Lock answer"}).click();
        }
        if(mode==="percentage")await p.getByRole("button",{name:"Yes",exact:true}).click();
@@ -66,8 +78,14 @@ for(const mode of ["bracket","timeline","caption","category","percentage","bingo
          const p=players[i];
          if(mode==="caption")await p.getByRole("button",{name:"Caption "+((i+1)%3)}).click();
          else {
-           await p.getByLabel("Your guess, 0–100%").fill("100");
-           await p.getByRole("button",{name:"Lock answer"}).click();
+           const guess=p.getByLabel("Your guess, 0–100%");
+           await guess.fill("101");
+           await guess.press("Enter");
+           await expect(guess).toBeVisible();
+           await expect(p.locator("#content")).not.toContainText("Your response is locked");
+           await guess.fill("100");
+           if(i===0)await guess.press("Enter");
+           else await p.getByRole("button",{name:"Lock answer"}).click();
          }
        }
      }
