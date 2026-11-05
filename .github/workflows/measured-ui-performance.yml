@@ -12,6 +12,7 @@ on:
       - "examples/party-engine/render/**"
       - "examples/party-engine/public/race-ui.js"
       - "examples/party-engine/server.js"
+      - "server/guest-party.ts"
       - "examples/party-engine/transport.js"
       - "examples/party-engine/browser-specs/helpers/race-lobby.js"
       - "examples/party-engine/public/race-track.js"
