@@ -133,15 +133,24 @@ jobs:
       - run: npm run test:integration
       - run: npm run build
       - run: npm audit --audit-level=moderate
-      - name: Match PostgreSQL client tools to PostgreSQL 16 service
+      - name: Match PostgreSQL 16 client tools using the existing service image
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client-16
-          test -x /usr/lib/postgresql/16/bin/pg_dump
-          test -x /usr/lib/postgresql/16/bin/pg_restore
-          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
-          /usr/lib/postgresql/16/bin/pg_dump --version
-          /usr/lib/postgresql/16/bin/pg_restore --version
+          # ubuntu-latest may only offer newer client packages. Use the same
+          # PostgreSQL major version as the service for dump and restore.
+          mkdir -p /tmp/trivia-backups /tmp/trivia-pg16-bin
+          for tool in pg_dump pg_restore; do
+            cat > "/tmp/trivia-pg16-bin/$tool" <<EOF
+          #!/usr/bin/env bash
+          exec docker run --rm --network host \
+            --user "\$(id -u):\$(id -g)" \
+            --volume /tmp/trivia-backups:/tmp/trivia-backups \
+            --entrypoint $tool postgres:16 "\$@"
+          EOF
+            chmod +x "/tmp/trivia-pg16-bin/$tool"
+          done
+          echo "/tmp/trivia-pg16-bin" >> "$GITHUB_PATH"
+          /tmp/trivia-pg16-bin/pg_dump --version
+          /tmp/trivia-pg16-bin/pg_restore --version
       - name: Database backup and empty-database restore rehearsal
         run: |
           npm run backup:db
