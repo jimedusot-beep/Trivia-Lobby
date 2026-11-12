@@ -3,6 +3,19 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Safety mode: dry-run never accesses production'
+        required: true
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - production
+      confirmation:
+        description: 'Production only: type AUTHORIZE_PRODUCTION_BACKUP (still blocked by PR A)'
+        required: false
+        type: string
   schedule:
     - cron: '13 7 * * *'
 permissions:
@@ -44,10 +57,41 @@ jobs:
         run: npm run backup:drill
       - name: Prove skipped backups cannot signal external monitoring
         run: node --test tests/backup-schedule-monitor.test.mjs tests/backup-heartbeat.test.mjs
-  backup:
+      - name: Verify backup execution policy with offline tests
+        run: node --test tests/backup-preflight.test.mjs tests/backup-workflow-policy.test.mjs
+  backup-policy-gate:
+    # No secrets in this job. Even a manually selected production mode fails
+    # closed while PR A's nonbillable provider guarantees remain unverified.
     needs: recovery-postgres18
+    if: ${{ always() && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    env:
+      BACKUP_REQUEST_MODE: ${{ github.event_name == 'schedule' && 'production' || inputs.mode }}
+      BACKUP_MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
+      RECOVERY_JOB_RESULT: ${{ needs.recovery-postgres18.result }}
+      BACKUPS_ENABLED: ${{ vars.BACKUPS_ENABLED }}
+      BACKUP_PRODUCTION_APPROVED: ${{ vars.BACKUP_PRODUCTION_APPROVED }}
+      BACKUP_DESTINATION_APPROVED: ${{ vars.BACKUP_DESTINATION_APPROVED }}
+      BACKUP_LIFECYCLE_VERIFIED: ${{ vars.BACKUP_LIFECYCLE_VERIFIED }}
+      BACKUP_NO_CHARGE_VERIFIED: ${{ vars.BACKUP_NO_CHARGE_VERIFIED }}
+      BACKUP_ARCHIVE_MAX_BYTES: ${{ vars.BACKUP_ARCHIVE_MAX_BYTES }}
+      BACKUP_ACCOUNT_USED_BYTES: ${{ vars.BACKUP_ACCOUNT_USED_BYTES }}
+      BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS }}
+      BACKUP_EXPIRY_BUFFER_DAYS: ${{ vars.BACKUP_EXPIRY_BUFFER_DAYS }}
+      BACKUP_STORAGE_BUDGET_BYTES: ${{ vars.BACKUP_STORAGE_BUDGET_BYTES }}
+      BACKUP_MONTHLY_DOWNLOAD_BYTES: ${{ vars.BACKUP_MONTHLY_DOWNLOAD_BYTES }}
+      BACKUP_DOWNLOAD_BUDGET_BYTES: ${{ vars.BACKUP_DOWNLOAD_BUDGET_BYTES }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Evaluate offline backup policy
+        run: node script/backup-preflight.mjs
+  backup:
+    needs: [recovery-postgres18, backup-policy-gate]
     # Manual bootstrap proves recovery before the operator enables the schedule.
-    if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || vars.BACKUPS_ENABLED == 'true')
+    if: ${{ github.event_name != 'pull_request' && needs.recovery-postgres18.result == 'success' && needs.backup-policy-gate.result == 'success' && (github.event_name == 'schedule' || inputs.mode == 'production') }}
     runs-on: ubuntu-latest
     # The live Neon source is PostgreSQL 18. Older pg_dump refuses newer servers.
     container: postgres:18-bookworm
