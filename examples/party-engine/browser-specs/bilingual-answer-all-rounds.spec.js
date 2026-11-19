@@ -106,3 +106,30 @@ test("Category Clash: all five bilingual rounds share duplicates and keep distin
     await expect(room.host.locator("#heading")).toContainText("finished");
   } finally {await room.close();}
 });
+
+test("Survey Showdown: Next survives a guest disconnect during a pointer click", async ({browser}) => {
+  const room=await mixedLanguageRoom(browser,"survey");
+  try {
+    const [es,en,other]=room.players;
+    for (const [page,value,label] of [[es,"pasaporte","Confirmar respuesta"],[en,"passport","Lock answer"],[other,"pasaporte falso","Lock answer"]]) {
+      await page.locator("#social-response").fill(value);
+      await page.getByRole("button",{name:label,exact:true}).click();
+    }
+    await expect(room.host.locator("#heading")).toContainText("reveal");
+    await expect(room.host.locator("#roster")).toContainText("English: 100 points");
+    const next=room.host.getByRole("button",{name:"Next",exact:true});
+    await expect(next).toBeEnabled();
+    await next.scrollIntoViewIfNeeded();
+    await expect(next).toBeInViewport();
+    await next.hover();
+    await room.host.mouse.down();
+    await other.close();
+    await expect(room.host.locator("#roster")).toContainText("disconnected",{timeout:10000});
+    await expect(room.host.locator("#heading")).toContainText("reveal");
+    await room.host.mouse.up();
+    await expect(room.host.locator("#heading")).toContainText("question",{timeout:5000});
+  } finally {
+    await room.host.mouse.up().catch(()=>{});
+    await room.close();
+  }
+});
