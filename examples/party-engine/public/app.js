@@ -289,6 +289,39 @@ function button(text, fn, parent, disabled = false) {
   b.onclick = fn;
   return b;
 }
+let hostNextContainer, hostNextButton, hostNextKey;
+function renderHostNext() {
+  // Keep the native click target above content/roster layout changes. Retain it
+  // only within this exact reveal; replacing it on a new phase/round cancels
+  // an unfinished pointer or keyboard activation instead of advancing twice.
+  const key = state.role === "host" && state.phase === "reveal"
+    ? JSON.stringify([state.code, state.matchId, state.mode, state.index]) : null;
+  if (key !== hostNextKey) {
+    hostNextButton?.remove();
+    hostNextButton = null;
+    hostNextKey = key;
+  }
+  if (!key) {
+    if (hostNextContainer) hostNextContainer.hidden = true;
+    return;
+  }
+  if (!hostNextContainer) {
+    hostNextContainer = document.createElement("div");
+    hostNextContainer.id = "host-next-controls";
+    $("content").before(hostNextContainer);
+  }
+  hostNextContainer.hidden = false;
+  if (!hostNextButton) {
+    hostNextButton = button(t("Next"), () => {
+      if (hostNextKey === key) action("next");
+    }, hostNextContainer);
+    hostNextButton.type = "button";
+  }
+  const label = t("Next");
+  const disabled = !!pending || !roomReady || ws?.readyState !== 1;
+  if (hostNextButton.textContent !== label) hostNextButton.textContent = label;
+  if (hostNextButton.disabled !== disabled) hostNextButton.disabled = disabled;
+}
 function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
   if (updateRaceState(state)) return;
@@ -313,6 +346,7 @@ function render() {
   $("game").hidden = false;
   $("content").replaceChildren();
   const host = state.role === "host";
+  renderHostNext();
   const displayState = localizeState(state);
   $("tv-host-tools").hidden = !host;
   const invitation = $("party-invitation");
@@ -553,7 +587,6 @@ function render() {
         element("li", `${mark.text} — ${mark.result}`, list);
     }
   }
-  if (state.phase === "reveal" && host) button(t("Next"), () => action("next"));
   if (state.phase === "finished") {
     if (previousPhase !== phaseKey && !state.interrupted && !state.endedByHost) celebrate();
     element(
