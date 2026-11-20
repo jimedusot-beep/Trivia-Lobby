@@ -2,12 +2,18 @@ import {
   MAX_QUESTIONS, listGuestDecks, getGuestDeck, saveGuestDeck, removeGuestDeck,
   validateLocalDeck, backupGuestDeck, csvGuestDeck, importGuestDeck,
 } from "./guest-decks.js";
+import { getLocale, loadLocale, subscribeLocale } from "./i18n.js";
+import { creatorText, creatorError } from "./creator-copy.js";
 
+loadLocale();
 const $ = id => document.getElementById(id);
+const copy = (key, values = {}) => creatorText(key, values, getLocale());
 const answerIds = ["answer-a", "answer-b", "answer-c", "answer-d"];
 let draft = { title: "", questions: [] };
 let editIndex = -1;
-const say = message => { $("status").textContent = message; };
+let latestStatus = { key: "Checking device storage…", values: {} };
+const renderStatus = () => { $("status").textContent = latestStatus.error ? creatorError(latestStatus.error.message, latestStatus.error.name, getLocale()) : copy(latestStatus.key, latestStatus.values); };
+const say = (key, values = {}) => { latestStatus = { key, values }; renderStatus(); };
 const element = (tag, content, parent) => {
   const e = document.createElement(tag);
   if (content !== undefined) e.textContent = content;
@@ -24,9 +30,13 @@ const action = (label, parent, callback, disabled = false) => {
 function resetEditor() {
   editIndex = -1;
   $("question-form").reset();
-  $("form-heading").textContent = "Add question";
-  $("add-question").textContent = "Add question";
+  for (const field of $("question-form").elements) if (field.setCustomValidity) field.setCustomValidity("");
+  renderEditorLabels();
   $("cancel-edit").hidden = true;
+}
+function renderEditorLabels() {
+  $("form-heading").textContent = editIndex < 0 ? copy("Add question") : copy("Edit question {number}", { number: editIndex + 1 });
+  $("add-question").textContent = copy(editIndex < 0 ? "Add question" : "Update question");
 }
 function renderQuestions() {
   const root = $("question-list");
@@ -36,14 +46,16 @@ function renderQuestions() {
     const q = draft.questions[index];
     const li = element("li", undefined, root);
     const summary = element("div", undefined, li);
-    element("strong", `${index + 1}. ${q.prompt}`, summary);
-    element("p", `Correct: ${String.fromCharCode(q.correct + 65)} · ${q.choices[q.correct]}`, summary);
+    element("strong", `${index + 1}. ${q.prompt}`, summary).lang = "";
+    const answer = element("p", undefined, summary);
+    element("span", copy("Correct: {letter} · ", { letter: String.fromCharCode(q.correct + 65) }), answer);
+    element("span", q.choices[q.correct], answer).lang = "";
     const controls = element("div", undefined, li);
     controls.className = "question-actions";
-    action(`Edit question ${index + 1}`, controls, () => editQuestion(index));
-    action(`Move question ${index + 1} up`, controls, () => moveQuestion(index, -1), index === 0);
-    action(`Move question ${index + 1} down`, controls, () => moveQuestion(index, 1), index === draft.questions.length - 1);
-    action(`Remove question ${index + 1}`, controls, () => {
+    action(copy("Edit question {number}", { number:index + 1 }), controls, () => editQuestion(index));
+    action(copy("Move question {number} up", { number:index + 1 }), controls, () => moveQuestion(index, -1), index === 0);
+    action(copy("Move question {number} down", { number:index + 1 }), controls, () => moveQuestion(index, 1), index === draft.questions.length - 1);
+    action(copy("Remove question {number}", { number:index + 1 }), controls, () => {
       draft.questions.splice(index, 1);
       resetEditor();
       renderQuestions();
@@ -58,8 +70,7 @@ function editQuestion(index) {
   answerIds.forEach((id, i) => { $(id).value = q.choices[i] || ""; });
   $("correct").value = String(q.correct);
   $("explanation").value = q.explanation || "";
-  $("form-heading").textContent = `Edit question ${index + 1}`;
-  $("add-question").textContent = "Update question";
+  renderEditorLabels();
   $("cancel-edit").hidden = false;
   $("prompt").focus();
 }
@@ -71,19 +82,26 @@ function moveQuestion(index, delta) {
   renderQuestions();
   say("Question reordered. Save quiz to preserve this change.");
 }
+let savedRender = 0;
 async function renderSaved() {
+  const token = ++savedRender;
   const root = $("saved-list");
-  root.replaceChildren();
   const records = await listGuestDecks();
-  if (!records.length) { element("p", "No saved quizzes yet. Make your first one below.", root); return; }
+  if (token !== savedRender) return;
+  root.replaceChildren();
+  if (!records.length) { element("p", copy("No saved quizzes yet. Make your first one below."), root); return; }
   const list = element("ul", undefined, root);
   for (const item of records) {
     const li = element("li", undefined, list);
-    action(`${item.title} · ${item.questions.length} questions · Edit`, li, () => {
+    const edit = action("", li, () => {
       load(item);
       $("edit-title").scrollIntoView({ behavior: "smooth" });
     });
-    const learn = element("a", `Learn ${item.title}`, li);
+    element("span", item.title, edit).lang = "";
+    element("span", copy(" · {count} questions · Edit", { count:item.questions.length }), edit);
+    const learn = element("a", undefined, li);
+    element("span", copy("Learn "), learn);
+    element("span", item.title, learn).lang = "";
     const url = new URL("./learn.html", location.href);
     url.searchParams.set("deck", item.id);
     learn.href = url.href;
@@ -94,7 +112,7 @@ function load(record) {
   $("quiz-title").value = draft.title;
   resetEditor();
   renderQuestions();
-  say(`Loaded ${draft.title}. Saved on this device.`);
+  say("Loaded {title}. Saved on this device.", { title:draft.title });
 }
 function readDraft() {
   draft.title = $("quiz-title").value.trim();
@@ -105,7 +123,7 @@ async function save() {
   const record = await saveGuestDeck({ ...valid, ...(draft.id ? { id: draft.id } : {}) });
   draft.id = record.id;
   await renderSaved();
-  say(`Saved "${valid.title}" on this device. Download a JSON backup to keep a separate copy.`);
+  say('Saved "{title}" on this device. Download a JSON backup to keep a separate copy.', { title:valid.title });
   return record;
 }
 function download(filename, mime, data) {
@@ -125,7 +143,8 @@ function filename(ext) {
 }
 function attempt(fn) {
   Promise.resolve().then(fn).catch(err => {
-    say(err instanceof Error ? err.message : "Something went wrong. Check browser storage.");
+    latestStatus = { error: { message: typeof err?.message === "string" ? err.message : "", name:err?.name } };
+    renderStatus();
   });
 }
 $("question-form").addEventListener("submit", event => {
@@ -161,7 +180,7 @@ $("quiz-title").addEventListener("input", () => {
   say("Unsaved title change. Select Save quiz when finished.");
 });
 $("new-quiz").addEventListener("click", () => {
-  if (draft.questions.length && !confirm("Start a new quiz? Export or save your current edits first.")) return;
+  if (draft.questions.length && !confirm(copy("Start a new quiz? Export or save your current edits first."))) return;
   draft = { title: "", questions: [] };
   $("quiz-title").value = "";
   resetEditor();
@@ -194,7 +213,7 @@ $("delete-quiz").addEventListener("click", () => attempt(async () => {
     say("This quiz hasn't been saved yet.");
     return;
   }
-  if (!confirm(`Delete "${draft.title}" from this device? Export first if you want a backup.`)) return;
+  if (!confirm(copy('Delete "{title}" from this device? Export first if you want a backup.', { title:draft.title }))) return;
   await removeGuestDeck(draft.id);
   draft = { title: "", questions: [] };
   $("quiz-title").value = "";
@@ -212,10 +231,20 @@ $("import-file").addEventListener("change", event => attempt(async () => {
   const record = await saveGuestDeck(data);
   load(record);
   await renderSaved();
-  say(`Imported ${record.questions.length} questions. Saved on this device. Download a JSON backup when ready.`);
+  say("Imported {count} questions. Saved on this device. Download a JSON backup when ready.", { count:record.questions.length });
   event.target.value = "";
 }));
-renderQuestions();
+$("question-form").addEventListener("invalid", event => {
+  event.target.setCustomValidity(copy("Complete this field."));
+  say("Complete all required fields before adding the question.");
+}, true);
+$("question-form").addEventListener("input", event => { if (event.target.setCustomValidity) event.target.setCustomValidity(""); });
+subscribeLocale(() => {
+  renderEditorLabels(); renderQuestions(); renderStatus();
+  for (const field of $("question-form").elements) if (field.validity?.customError) field.setCustomValidity(copy("Complete this field."));
+  attempt(renderSaved);
+});
+renderEditorLabels(); renderQuestions(); renderStatus();
 attempt(async () => {
   await renderSaved();
   const id = new URLSearchParams(location.search).get("edit");

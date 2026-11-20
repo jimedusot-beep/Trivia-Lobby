@@ -30,6 +30,10 @@ main { max-width: 1020px; }
 #saved-list button { text-align: left; border: 0; box-shadow: none; background: transparent; color: var(--lobby-ink); margin: 0; padding: 8px 0; }
 #saved-list button:hover { transform: none; color: var(--lobby-violet); }
 #saved-list a { color: var(--lobby-violet); display: inline-block; min-height: 44px; padding: 12px 0; flex: 0 0 auto; font-size: .8rem; }
+.public-create #saved-list button { min-width: 0; }
+.public-create #saved-list a { max-width: 100%; }
+.public-create #status, .public-create #saved-list button, .public-create #saved-list a,
+.public-create .question-list strong, .public-create .question-list p { overflow-wrap: anywhere; }
 #host-quiz { background: var(--lobby-coral); color: var(--lobby-ink); }
 #practice-quiz { background: var(--lobby-sky); color: var(--lobby-ink); }
 #learn-quiz { background: var(--lobby-gold); color: var(--lobby-ink); }
