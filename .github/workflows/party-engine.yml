@@ -78,3 +78,16 @@ jobs:
           name: party-engine-browser-failure-${{ matrix.browser }}
           path: examples/party-engine/test-results/
           retention-days: 7
+      # A failed attempt can be followed by a green retry. The red-job bundle
+      # above remains intact; retain only diagnostics/traces for green jobs.
+      - name: Preserve retry evidence from successful browser jobs
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: party-engine-retry-evidence-${{ matrix.browser }}
+          path: |
+            examples/party-engine/test-results/**/join-diagnostics.json
+            examples/party-engine/test-results/**/trace.zip
+            examples/party-engine/test-results/**/error-context.md
+          if-no-files-found: ignore
+          retention-days: 3

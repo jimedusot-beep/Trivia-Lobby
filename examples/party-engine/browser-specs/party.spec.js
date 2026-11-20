@@ -1,7 +1,8 @@
 import { test, expect } from "@playwright/test";
+import { withJoinEvidence } from "./helpers/join-evidence.js";
 async function lobby(browser) {
   const contexts = [];
-  const page = async (mobile) => {
+  const page = async (mobile, enter) => {
     const c = await browser.newContext({
       viewport: mobile
         ? { width: 390, height: 844 }
@@ -9,21 +10,25 @@ async function lobby(browser) {
     });
     contexts.push(c);
     const p = await c.newPage();
-    await p.goto("http://127.0.0.1:4317");
-    await expect(p.locator("#status")).toHaveText("Connected.");
+    await withJoinEvidence(p, test.info(), "http://127.0.0.1:4317", async () => {
+      await expect(p.locator("#status")).toHaveText("Connected.");
+      await enter(p);
+    });
     return p;
   };
-  const host = await page(false);
-  await host.getByRole("button", { name: "Create host screen" }).click();
-  await expect(host.locator("#heading")).toContainText("lobby");
+  const host = await page(false, async p => {
+    await p.getByRole("button", { name: "Create host screen" }).click();
+    await expect(p.locator("#heading")).toContainText("lobby");
+  });
   const code = (await host.locator("#heading").innerText()).split(" · ")[0],
     players = [];
   for (let i = 0; i < 3; i++) {
-    const p = await page(true);
-    await p.getByLabel("Party code").fill(code);
-    await p.getByLabel("Nickname").fill(`Guest ${i}`);
-    await p.getByRole("button", { name: "Join party", exact: true }).click();
-    await expect(p.locator("#heading")).toContainText("lobby");
+    const p = await page(true, async p => {
+      await p.getByLabel("Party code").fill(code);
+      await p.getByLabel("Nickname").fill(`Guest ${i}`);
+      await p.getByRole("button", { name: "Join party", exact: true }).click();
+      await expect(p.locator("#heading")).toContainText("lobby");
+    });
     players.push(p);
   }
   await expect(host.locator("#roster li")).toHaveCount(3);
