@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { withJoinEvidence } from "./helpers/join-evidence.js";
 import { WebSocket } from "ws";
 import { createPartyServer } from "../server.js";
 import { guestGames } from "../public/game-catalog.js";
@@ -88,10 +89,11 @@ async function controller(browser, mode, count = 4, viewport = { width: 320, hei
         return send.call(this, raw);
       };
     });
-    await page.goto(`http://127.0.0.1:${port}/?code=${code}`);
-    await page.getByLabel("Nickname").fill("Max Nickname WWWWWWWWWWW");
-    await page.getByRole("button", { name: "Join party", exact: true }).click();
-    await expect(page.locator("body")).toHaveClass(/phone-controller-active/);
+    await withJoinEvidence(page, test.info(), `http://127.0.0.1:${port}/?code=${code}`, async () => {
+      await page.getByLabel("Nickname").fill("Max Nickname WWWWWWWWWWW");
+      await page.getByRole("button", { name: "Join party", exact: true }).click();
+      await expect(page.locator("body")).toHaveClass(/phone-controller-active/);
+    });
     for (let i = 1; i < count; i++)
       await peer({ type: "join", code, name: `Guest ${i + 1}` });
     const party = app.rooms.get(code).party;
