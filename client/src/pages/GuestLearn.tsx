@@ -1,3 +1,5 @@
+import { useDisplayLanguage } from "@/lib/use-display-language";
+import { t } from "../../../examples/party-engine/public/i18n.js";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, BookOpen, CheckCircle2, RotateCcw, Star, Trophy } from "lucide-react";
@@ -34,6 +36,7 @@ function loadCompleted(): string[] {
   } catch { return []; }
 }
 export default function GuestLearn() {
+  const language = useDisplayLanguage();
   const [completed, setCompleted] = useState<string[]>(loadCompleted);
   const [lessonIndex, setLessonIndex] = useState(() => {
     const saved = loadCompleted();
@@ -78,13 +81,14 @@ export default function GuestLearn() {
   }
 
   return (
-    <main className="sample-learning sakura-learning min-h-screen bg-background p-4 sm:p-8">
+    <main lang="en" className="sample-learning sakura-learning min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <LobbyBrand />
           <Button asChild variant="ghost"><Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Link></Button>
           <div className="flex items-center gap-2 font-bold"><Star className="h-5 w-5 text-amber-500" aria-hidden="true" /> {xp} practice XP</div>
         </header>
+        {language === "es" && <p className="language-content-note" lang="es">{t("This page uses English content. Your language choice is saved.")}</p>}
         <div className="sample-heading"><div className="space-y-2">
           <span className="lobby-kicker">Small lessons. Big little wins.</span>
           <h1 className="text-3xl font-display font-bold">Learn something today</h1>

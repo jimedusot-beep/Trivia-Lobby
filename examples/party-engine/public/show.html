@@ -8,12 +8,13 @@
     <link rel="stylesheet" href="./create.css" />
     <link rel="stylesheet" href="./pack.css" />
     <script type="module" src="./show.js"></script>
+    <script type="module" src="./identity.js"></script>
   </head>
-  <body class="public-party">
+  <body data-language-coverage="partial" class="public-party">
     <main>
-      <nav class="page-nav">
-        <a href="./">← Pick a Game</a
-        ><a href="./create.html">Make a trivia quiz</a>
+      <nav class="page-nav" aria-label="Main navigation" data-i18n-aria-label="Main navigation">
+        <a class="lobby-brand" href="./"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a>
+        <div class="page-nav-links"><a href="./">← Pick a Game</a><a href="./create.html">Make a trivia quiz</a></div>
       </nav>
       <h1>Your family. Your showdown.</h1>
       <p>
