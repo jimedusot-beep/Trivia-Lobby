@@ -37,7 +37,7 @@ function renderIdentity() {
   }
   if (authored) {
     const main = document.querySelector("main"); if (main) main.lang = getLocale();
-    if (note) { note.lang = getLocale(); note.textContent = t("Your quiz content keeps its original wording. Only the editor controls change language."); }
+    if (note) { note.lang = getLocale(); note.textContent = t(document.body.dataset.languageNote || "Your quiz content keeps its original wording. Only the editor controls change language."); }
   }
   translateStatic(document);
 }

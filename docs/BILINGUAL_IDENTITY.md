@@ -96,6 +96,26 @@ Locale-triggered saved-list refreshes ignore stale asynchronous reads, and long
 unbroken authored titles wrap within phone layouts. This follow-up requires the
 two earlier local patches and remains separate for owner review/integration.
 
+## Local follow-up: solo practice
+
+The separate local solo-practice follow-up translates practice controls, progress,
+feedback, results, status and known load/storage failures. Language changes update
+the existing round's labels rather than recreating it: question index, selected
+answer, disabled choices, correct-answer count and completed/replay state remain
+intact. After an answer, status acknowledges it rather than still asking for a
+choice. Authored titles, questions, choices and explanations retain their original
+wording and unknown-language boundaries. The practice content note names practice
+controls explicitly rather than calling the page an editor.
+
+Practice still reads the existing local quiz and scores one correct answer per
+question; imported hosting timers/points/penalties are preserved in the saved quiz
+and do not become timed/scored hosting rules for self-paced practice. Answers are
+not uploaded or added to private learning history. This change does not introduce
+practice checkpoints: reloading still starts a fresh practice run. Existing
+question/next keyboard focus behavior is retained; changing language does not
+force focus back into the question. This follow-up depends on the three preceding
+local patches and requires its own review/integration.
+
 ## Remaining order for item 19
 
 1. Review and owner-integrate this identity foundation with exact-commit checks.
