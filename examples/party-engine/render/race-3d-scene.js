@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { TRACK, TRACK_POINTS, trackPose, ITEM_SPOTS, BOOST_SPOTS, RACE_COLORS } from '../public/race-track.js';
 import { clamp, lerp, wrapAngle } from '../public/race-math.js';
 import { getSplitLayout as computeSplitLayout, SPLIT_CAMERA_LIMIT } from './race-split-layout.js';
-import { createFollowCameraStates, updateFollowCameras, SPLIT_FOLLOW_CAMERA } from './race-follow-cameras.js';
+import { createFollowCameraStates, updateFollowCameras, SPLIT_FOLLOW_CAMERA, DRIVER_POV_CAMERA } from './race-follow-cameras.js';
 import { splitVisibleKartNumbers } from './race-kart-visibility.js';
 import { splitRenderScale } from './race-render-scale.js';
 import { renderSplitViewports } from './race-viewport-render.js';
@@ -17,6 +17,7 @@ const SCALE = 0.1;
 const MAX_KARTS = 20;
 const KART_LAYER_BASE = 1;
 const SPLIT_TRACK_LAYER = KART_LAYER_BASE + MAX_KARTS;
+const POV_LAYER_BASE = SPLIT_TRACK_LAYER + 1;
 const SPLIT_KARTS_PER_VIEW = 2;
 export function createRaceScene({ onContextLost }) {
   const canvas = document.createElement('canvas');
@@ -48,7 +49,8 @@ export function createRaceScene({ onContextLost }) {
   const desiredPosition = new THREE.Vector3(), desiredLook = new THREE.Vector3(), lookAt = new THREE.Vector3();
   let cameraMode = 'overview', directorReady = false, focusNumber = null, focusUntil = 0;
   let splitCount = 0, splitLayout = null, splitDrawCalls = 0, renderScale = 1;
-  let followStates = [], splitCameras = [], splitViews = [], splitNumbers = [];
+  let followStates = [], splitCameras = [], splitViews = [], splitNumbers = [], povCockpits = [];
+  let splitVisibilityBaseline = null;
 
   function resetViewport() {
     renderer.setScissorTest(false);
@@ -59,7 +61,10 @@ export function createRaceScene({ onContextLost }) {
     for (const state of followStates) { state.ready = false; state.visible = false; }
   }
   function setCamera(mode) {
-    const next = mode === 'director' ? 'director' : mode === 'split' ? 'split' : 'overview';
+    const next = mode === 'director' ? 'director' : mode === 'pov' ? 'pov' : mode === 'split' ? 'split' : 'overview';
+    const wasSplit = cameraMode === 'split' || cameraMode === 'pov';
+    const willSplit = next === 'split' || next === 'pov';
+    if (wasSplit !== willSplit) splitVisibilityBaseline = null;
     if (next !== cameraMode) resetSplitCameras();
     cameraMode = next;
     directorReady = false;
@@ -67,6 +72,7 @@ export function createRaceScene({ onContextLost }) {
     splitLayout = null;
     resetViewport();
   }
+  const isSplitMode = () => cameraMode === 'split' || cameraMode === 'pov';
   function setDisplay(mode) { setCamera(mode); }
   function setSplitPlayerCount(count) {
     const next = clamp(Math.floor(Number(count) || 0), 0, SPLIT_CAMERA_LIMIT);
@@ -74,6 +80,8 @@ export function createRaceScene({ onContextLost }) {
     splitCount = next;
     splitNumbers = Array.from({ length: next }, (_, index) => index + 1);
     followStates = createFollowCameraStates(splitNumbers);
+    for (const camera3d of splitCameras) scene.remove(camera3d);
+    povCockpits = [];
     splitCameras = splitNumbers.map(() => new THREE.PerspectiveCamera(55, 1, 0.1, 300));
     splitViews = splitCameras.map((camera, index) => ({ rect: null, camera, number: splitNumbers[index] }));
     splitLayout = null;
@@ -81,7 +89,7 @@ export function createRaceScene({ onContextLost }) {
     canvas.dataset.splitNumbers = splitNumbers.join(',');
   }
   function applyRenderScale(reducedMotion) {
-    const next = cameraMode === 'split' ? splitRenderScale(splitCount, reducedMotion) : 1;
+    const next = isSplitMode() ? splitRenderScale(splitCount, reducedMotion) : 1;
     if (next === renderScale) return;
     renderScale = next;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * renderScale);
@@ -104,18 +112,22 @@ export function createRaceScene({ onContextLost }) {
     director.updateProjectionMatrix();
   }
   function currentSplitLayout() { return splitLayout; }
-  function applySplitViewVisibility(frame) {
+  function applySplitViewVisibility(frame, options = {}) {
     const frameKarts = frame?.karts || [];
-    let firstView = [];
+    const visibleByView = [];
     for (let index = 0; index < splitCameras.length; index++) {
-      const visible = splitVisibleKartNumbers(frameKarts, splitNumbers[index], { limit: SPLIT_KARTS_PER_VIEW });
-      if (index === 0) firstView = visible;
+      const visible = splitVisibleKartNumbers(frameKarts, splitNumbers[index], {
+        limit: SPLIT_KARTS_PER_VIEW,
+        ...options,
+      });
+      visibleByView.push(visible);
       const camera3d = splitCameras[index];
       camera3d.layers.set(0);
       camera3d.layers.enable(SPLIT_TRACK_LAYER);
+      if (options.pov) camera3d.layers.enable(POV_LAYER_BASE + index);
       for (const number of visible) camera3d.layers.enable(KART_LAYER_BASE + ((number - 1) % MAX_KARTS));
     }
-    return firstView;
+    return visibleByView;
   }
   function findFrameKart(karts, number) {
     for (let index = 0; index < karts.length; index++) if (karts[index].number === number) return karts[index];
@@ -168,6 +180,48 @@ export function createRaceScene({ onContextLost }) {
     materials.set(`label:${number}`, m);
     const sprite = new THREE.Sprite(m); sprite.position.set(0, 3.3, 0); sprite.scale.set(3, 1.8, 1); parent.add(sprite);
     return sprite;
+  }
+
+  function ensurePovCockpits() {
+    for (let index = 0; index < splitCameras.length; index++) {
+      if (povCockpits[index]) continue;
+      const camera3d = splitCameras[index];
+      const layer = POV_LAYER_BASE + index;
+      const number = splitNumbers[index];
+      const accent = RACE_COLORS[(number - 1) % RACE_COLORS.length];
+      const group = new THREE.Group();
+      group.layers.set(layer);
+      camera3d.add(group);
+      if (!camera3d.parent) scene.add(camera3d);
+      mesh(geometry('pov-dash', () => new THREE.BoxGeometry(1.6, 0.2, 0.1)),
+        material('#24334d'), group, 0, -0.52, -1.05);
+      mesh(geometry('pov-strip', () => new THREE.BoxGeometry(1.25, 0.045, 0.06)),
+        material(accent), group, 0, -0.41, -1.03);
+      const wheel = mesh(geometry('pov-wheel', () => new THREE.TorusGeometry(0.2, 0.032, 6, 18)),
+        material(accent, { side: THREE.DoubleSide }), group, 0, -0.28, -1);
+      wheel.rotation.z = 0.12;
+      for (const side of [-1, 1]) {
+        const pillar = mesh(geometry('pov-pillar', () => new THREE.BoxGeometry(0.055, 0.95, 0.08)),
+          material(accent), group, side * 0.5, -0.05, -1.05);
+        pillar.rotation.z = -side * 0.1;
+      }
+      const gaugeGeometry = geometry('pov-gauge', () => new THREE.SphereGeometry(0.055, 8, 6));
+      mesh(gaugeGeometry, material('#8cddf2'), group, -0.32, -0.46, -1.01);
+      mesh(gaugeGeometry, material('#ffca60'), group, 0.32, -0.46, -1.01);
+      const texture = textTexture(128, 64, c => {
+        c.fillStyle = '#fff9ed'; c.beginPath(); c.roundRect(4, 4, 120, 56, 18); c.fill();
+        c.strokeStyle = '#20304b'; c.lineWidth = 6; c.stroke();
+        c.fillStyle = accent; c.fillRect(18, 46, 92, 7);
+        c.fillStyle = '#20304b'; c.font = '900 40px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(`P${number}`, 64, 30);
+      });
+      const plateMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
+      materials.set(`pov-plate:${number}`, plateMaterial);
+      const plate = new THREE.Sprite(plateMaterial);
+      plate.position.set(0, -0.64, -1); plate.scale.set(0.38, 0.19, 1); group.add(plate);
+      group.traverse(object => object.layers.set(layer));
+      povCockpits[index] = group;
+    }
   }
 
   // A single elevated island and inexpensive contact shadows replace GPU shadow maps.
@@ -493,10 +547,11 @@ export function createRaceScene({ onContextLost }) {
       h.visible = !!v;
       if (v) h.position.set((v.x - 600) * SCALE, 0.18, (v.y - 360) * SCALE);
     });
-    const visibilitySnapshot = splitVisibilitySnapshot();
+    if (isSplitMode() && !splitVisibilityBaseline) splitVisibilityBaseline = splitVisibilitySnapshot();
     try {
       let view = camera;
-      let splitActive = cameraMode === 'split' && !reducedMotion && splitCount > 0;
+      const pov = cameraMode === 'pov';
+      let splitActive = isSplitMode() && !reducedMotion && splitCount > 0;
       if (cameraMode !== 'director') { focusNumber = null; focusUntil = 0; }
       for (const object of splitHidden) object.visible = !splitActive;
       for (const model of karts.values()) {
@@ -514,20 +569,26 @@ export function createRaceScene({ onContextLost }) {
         else {
           for (const object of splitSurfaceOriginals) object.visible = false;
           if (splitSurfaceMesh) splitSurfaceMesh.visible = true;
-          updateFollowCameras(followStates, frame, previous, interpolation, SPLIT_FOLLOW_CAMERA);
+          updateFollowCameras(followStates, frame, previous, interpolation,
+            pov ? DRIVER_POV_CAMERA : SPLIT_FOLLOW_CAMERA);
           for (let index = 0; index < splitViews.length; index++) {
             const state = followStates[index], camera3d = splitCameras[index];
             camera3d.position.set(state.x, state.y, state.z);
             camera3d.lookAt(state.lookX, state.lookY, state.lookZ);
             splitViews[index].rect = splitLayout.cells[index];
           }
-          canvas.dataset.splitVisibleKarts = applySplitViewVisibility(frame).join(',');
+          if (pov) ensurePovCockpits();
+          const visibleByView = applySplitViewVisibility(frame, { excludeFocus: pov, pov });
+          canvas.dataset.splitVisibleKarts = (visibleByView[0] || []).join(',');
+          if (pov) canvas.dataset.driverPovVisibleKarts = JSON.stringify(visibleByView);
+          else delete canvas.dataset.driverPovVisibleKarts;
           splitDrawCalls = renderSplitViewports(renderer, scene, splitViews, lastWidth, lastHeight);
         }
       }
       if (!splitActive) {
         for (const object of splitSurfaceOriginals) object.visible = true;
         if (splitSurfaceMesh) splitSurfaceMesh.visible = false;
+        delete canvas.dataset.driverPovVisibleKarts;
       }
 
       if (!splitActive && cameraMode === 'director' && !reducedMotion && frame.karts?.length) {
@@ -555,7 +616,9 @@ export function createRaceScene({ onContextLost }) {
         model.numberLabel.scale.set(labelWidth, labelHeight, 1);
       }
       if (!splitActive) renderer.render(scene, view);
-      canvas.dataset.camera = splitActive ? 'split' : directorActive ? 'director' : 'overview';
+      canvas.dataset.camera = splitActive
+        ? (pov ? 'driver-pov' : 'split')
+        : directorActive ? 'director' : 'overview';
       canvas.dataset.focusNumber = String(directorActive ? focusNumber || '' : '');
       canvas.dataset.karts = String(karts.size);
       canvas.dataset.splitCameras = String(splitActive ? splitCount : 0);
@@ -567,7 +630,7 @@ export function createRaceScene({ onContextLost }) {
     } catch (error) {
       // Split rendering temporarily hides shared objects. Undo those changes
       // before the UI switches to the 2D fallback so the scene stays reusable.
-      restoreVisibility(visibilitySnapshot);
+      if (splitVisibilityBaseline) restoreVisibility(splitVisibilityBaseline);
       throw error;
     }
   }
@@ -580,7 +643,7 @@ export function createRaceScene({ onContextLost }) {
     for (const texture of textures) texture.dispose();
     scene.traverse(object => { if (object.isInstancedMesh) object.dispose(); });
     scene.clear(); karts.clear();
-    followStates = []; splitCameras = []; splitViews = []; splitNumbers = []; splitLayout = null;
+    followStates = []; splitCameras = []; splitViews = []; splitNumbers = []; povCockpits = []; splitLayout = null; splitVisibilityBaseline = null;
     splitHidden.length = 0; splitSurfaceOriginals.length = 0; splitSurfaceMesh = null; hazardSlots = [];
     renderer.dispose(); renderer.forceContextLoss();
   }
