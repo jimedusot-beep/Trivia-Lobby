@@ -87,6 +87,7 @@ jobs:
           name: party-engine-retry-evidence-${{ matrix.browser }}
           path: |
             examples/party-engine/test-results/**/join-diagnostics.json
+            examples/party-engine/test-results/**/interaction-diagnostics.json
             examples/party-engine/test-results/**/trace.zip
             examples/party-engine/test-results/**/error-context.md
           if-no-files-found: ignore
