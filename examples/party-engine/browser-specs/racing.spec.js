@@ -1,11 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { createInteractionEvidence, finishInteractionEvidence } from "./helpers/interaction-evidence.js";
+test.afterEach(async ({}, info) => { await finishInteractionEvidence(info); });
 
 for(const mode of ["turbo","wave"]){
  test(mode+": QR join, gas, boost, live host race, official finish and mobile layout",async({browser})=>{
    const contexts=[];
+   const evidence=mode==="wave"?createInteractionEvidence(test.info(),"wave-gas"):undefined;
    async function page(width){
      const ctx=await browser.newContext({viewport:{width,height:844}});
      contexts.push(ctx);const p=await ctx.newPage();
+     await evidence?.observe(p,contexts.length===1?"host":`guest-${contexts.length-1}`);
      await p.goto("http://127.0.0.1:4317");return p;
    }
    const host=await page(1200);
@@ -51,6 +55,6 @@ for(const mode of ["turbo","wave"]){
      await expect(p.locator(".arcade-race-results p")).toHaveCount(3);
      await host.getByRole("button",{name:"Next",exact:true}).click();
      await expect(host.locator("#heading")).toContainText("finished");
-   }finally{await Promise.all(contexts.map(c=>c.close()));}
+   }finally{try{await evidence?.stop();}finally{await Promise.all(contexts.map(c=>c.close()));}}
  });
 }
