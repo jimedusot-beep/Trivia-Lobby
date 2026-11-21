@@ -1,9 +1,9 @@
 # Bounded diagnostics for three intermittent browser failures
 
-This test-only candidate follows the repaired bilingual foundation (#162,
-head `3bae3bdc1a265d9bf1384e2cd97d8e1c77a817e0`, tree
-`e94a23dd4d9fd4f9fc7ac4b87eff3874fcb636fa`). It does not repair gameplay,
-certify a physical device or authorize publication/merge/deployment.
+This test-only infrastructure was introduced by #166. The numeric-geometry
+follow-up carries useful #161 evidence into the same bounded observer instead
+of adding a second recorder. It does not change application handlers or
+authorize deployment.
 
 ## Observed gaps
 
@@ -21,7 +21,7 @@ contain WebSocket frame events. This candidate adds evidence for those stages.
 
 ## Capture contract
 
-Only these three existing cases activate the helper. Instrumentation is attached
+Only the selected Family, Doodle and Wave cases activate the helper. Instrumentation is attached
 before navigation to the host and at most four anonymous guest seats. It follows
 the same pages across reloads and observes native capture/bubble events for Join,
 host Next and GAS, including Enter/Space activation. Per-document anonymous node
@@ -52,7 +52,7 @@ request IDs per page, 256 recent wire events and 128 recent DOM events per page.
 Rolling buffers preserve the tail rather than stopping at the first burst.
 Explicit dropped counters identify missing history/correlation. Browser binding
 calls are limited to32 concurrently pending events; final browser teardown is
-bounded to one second. Schema2 uses one shared attempt-relative clock for all
+bounded to one second. Schemas2 and3 use one shared attempt-relative clock for all
 seats and for both DOM/wire records, clipped at120seconds. Schema1 used a separate
 origin for each seat; do not compare those legacy times across seats. Node and
 request IDs still belong to their document/seat namespaces. Observed browser
@@ -96,5 +96,24 @@ state that was not rendered are different hypotheses. Missing/dropped capture
 must remain an uncertainty. Review that exact evidence before proposing a fix;
 do not hide failures by weakening assertions or increasing retries/timeouts.
 
-This is a separate local candidate. Keep the older #161 Family transition
-diagnostic draft separate; do not merge it or add this helper to runtime code.
+The older #161 helper is a historical prototype. Its useful numeric geometry
+and board context are reconciled above; do not install duplicate observers or
+add this helper to runtime code.
+
+
+## Schema3 numeric geometry reconciliation
+
+Schema3 adds optional Next bounding-box x/y/width/height and native pointer
+coordinates, rounded to0.001px and clipped to±100000. Nonfinite/non-numeric
+values are omitted. Pointer ordinals remain bounded integers. `timerVisible`
+is only a boolean; timer text is not retained. Structured received states can
+include their canonical zero-based board `round` (maximum10), avoiding parses
+of localized or authored DOM text. This preserves #161's useful button/point
+geometry and board context while retaining #166's shared clock, caps, privacy,
+reload namespaces, keyboard release and bounded cleanup. Older schema2 records
+remain valid historical evidence with the same clock basis.
+
+The full five-page/buffer-size unit case includes the added geometry and still
+requires the512KiB limit. Native browser controls verify Next press coordinates
+and a visible control rectangle; successful control JSON is inspected/deleted.
+Geometry reads can perturb timing and are diagnostic evidence, not a race fix.

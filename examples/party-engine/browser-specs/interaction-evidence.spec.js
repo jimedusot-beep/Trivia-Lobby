@@ -88,6 +88,11 @@ test("interaction evidence: real join, gas, Next, acknowledgments and reloads ar
     expect(next?.request).toBeGreaterThan(0);
     expect(h.wire.some(e => e.type === "ack" && e.request === next.request)).toBe(true);
     expect(h.dom.some(e => e.event === "click" && e.target === "host-next" && e.trusted)).toBe(true);
+    const press = h.dom.find(e => e.event === "pointerdown" && e.target === "host-next" && e.stage === "capture");
+    expect(press.nextWidth).toBeGreaterThan(0); expect(press.nextHeight).toBeGreaterThan(0);
+    expect(press.x).toBeGreaterThanOrEqual(press.nextX - 1); expect(press.x).toBeLessThanOrEqual(press.nextX + press.nextWidth + 1);
+    expect(Number.isFinite(press.y)).toBe(true); expect(typeof press.timerVisible).toBe("boolean");
+    expect(report.data.schemaVersion).toBe(3);
     expect(p.documents).toBe(2);
     expect(p.wire.some(e => e.event === "socket" && e.connection === 2)).toBe(true);
     for (const secret of ["PRIVATE-CAPTURE-POSITIVE", "PRIVATE-CAPTURE-OTHER", "PRIVATE-CAPTURE-THIRD", credential.code, credential.actor, credential.token]) expect(report.text.includes(secret)).toBe(false);
