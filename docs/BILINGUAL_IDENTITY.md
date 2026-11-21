@@ -73,6 +73,29 @@ the shared locale/identity foundation and needs its own reviewed diff, local
 results and owner-controlled publication/integration. Bilingual human editorial
 and actual-device acceptance remain open.
 
+## Local follow-up: public quiz creator
+
+The separate local creator follow-up translates the public quiz editor's static
+controls, placeholders, saved-list actions, editing/reorder controls, statuses,
+confirmations and known validation/import/storage errors. Required-field messages
+also follow the selected display language. Unknown native diagnostics receive a
+controlled Spanish fallback; their original message remains available when the
+display language is English. Native browser file-picker UI follows the browser.
+
+Language changes update labels without resetting form fields or the pending edit
+index. Authored titles/questions/answers/explanations keep their exact wording,
+even when they equal a first-party translation key. Authored display spans/inputs
+use an unknown-language boundary rather than claiming the interface language is
+their content language. A content note explains the distinction.
+
+The editor keeps existing IndexedDB operations, validators, filenames and export
+schemas. JSON retains imported Razzia timers, points and penalties; the unchanged
+CSV format carries its existing question/answer/correct/explanation columns and
+does not add timer/scoring fields. Technical CSV header names stay canonical.
+Locale-triggered saved-list refreshes ignore stale asynchronous reads, and long
+unbroken authored titles wrap within phone layouts. This follow-up requires the
+two earlier local patches and remains separate for owner review/integration.
+
 ## Remaining order for item 19
 
 1. Review and owner-integrate this identity foundation with exact-commit checks.

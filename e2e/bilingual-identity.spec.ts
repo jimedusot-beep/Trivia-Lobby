@@ -17,13 +17,13 @@ test("the clubhouse and party lobby share the device's English/Spanish identity"
   await expect(page.locator("#welcome-title")).toContainText("Juega en compañía.");
 });
 
-test("a language change preserves authored quiz text and marks English-only tool content", async ({ page }) => {
+test("a language change preserves authored quiz text and marks its original wording", async ({ page }) => {
   await page.goto("/party/?lang=es");
   await page.getByRole("link", { name: "Crear cuestionario", exact: true }).click();
   // A URL hint is not a new global room setting; explicitly choose this device's preference.
   await page.locator("#display-language").selectOption("es");
-  await expect(page.locator("main")).toHaveAttribute("lang", "en");
-  await expect(page.locator(".language-content-note")).toContainText("todavía está en inglés");
+  await expect(page.locator("main")).toHaveAttribute("lang", "es");
+  await expect(page.locator(".language-content-note")).toContainText("conserva su texto original");
   const authored = "Preguntas de mamá — keep my exact wording";
   await page.locator("#quiz-title").fill(authored);
   await page.locator("#display-language").selectOption("en");

@@ -1,5 +1,6 @@
 // Presentation-only English/Spanish text. Authoritative actions and content IDs stay unchanged.
 import { identitySpanish } from "./identity-copy.js";
+import { creatorSpanish } from "./creator-copy.js";
 export const supportedLanguages = Object.freeze(["en", "es"]);
 const storageKey = "party-display-language:v1";
 let language = "en";
@@ -31,6 +32,7 @@ export function subscribeLocale(listener) {
 }
 const spanishUI = Object.freeze({
   ...identitySpanish,
+  ...creatorSpanish,
   "🎮 Game library": "🎮 Biblioteca de juegos",
   "lobby": "sala",
   "countdown": "cuenta regresiva",
