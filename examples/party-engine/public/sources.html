@@ -6,10 +6,11 @@
     <title>Game credits &amp; source · Trivia Lobby</title>
     <link rel="stylesheet" href="./style.css" />
     <script type="module" src="./sources.js"></script>
+    <script type="module" src="./identity.js"></script>
   </head>
-  <body class="public-party">
+  <body data-language-coverage="partial" class="public-party">
     <main>
-      <nav><a href="./">← Pick a Game</a></nav>
+      <nav class="page-nav" aria-label="Main navigation" data-i18n-aria-label="Main navigation"><a class="lobby-brand" href="./"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./">← Pick a Game</a></div></nav>
       <h1>Made for your game night.</h1>
       <p>
         These games adapt open-source code and functional ideas into Trivia

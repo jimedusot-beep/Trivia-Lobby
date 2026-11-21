@@ -659,7 +659,7 @@ function render() {
 }
 // The public TV shelf opens on its featured kart game, matching the cover-first
 // home preview. This is presentation only: a game is not started until Host.
-const mountLibrary = () => mountGamePicker($("game-picker"), { selected: "race", onHost: game => { preferredMode = game; $("create").click(); } });
+const mountLibrary = () => mountGamePicker($("game-picker"), { selected: $("game-picker").querySelector(".pick-game-grid")?.dataset.activeGame || "race", onHost: game => { preferredMode = game; $("create").click(); } });
 const languageChooser = $("party-language");
 const tvLanguageChooser = $("tv-language");
 for (const select of [languageChooser, tvLanguageChooser]) {

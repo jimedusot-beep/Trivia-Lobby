@@ -1,4 +1,5 @@
 // Presentation-only English/Spanish text. Authoritative actions and content IDs stay unchanged.
+import { identitySpanish } from "./identity-copy.js";
 export const supportedLanguages = Object.freeze(["en", "es"]);
 const storageKey = "party-display-language:v1";
 let language = "en";
@@ -23,7 +24,13 @@ export function setLocale(next) {
   }
   return true;
 }
+export function subscribeLocale(listener) {
+  if (typeof document === "undefined") return () => {};
+  document.addEventListener("party-locale-change", listener);
+  return () => document.removeEventListener("party-locale-change", listener);
+}
 const spanishUI = Object.freeze({
+  ...identitySpanish,
   "🎮 Game library": "🎮 Biblioteca de juegos",
   "lobby": "sala",
   "countdown": "cuenta regresiva",
@@ -144,10 +151,13 @@ export function t(value) {
 export function translateStatic(root) {
   if (!root?.querySelectorAll) return;
   for (const node of root.querySelectorAll("[data-i18n]")) node.textContent = t(node.dataset.i18n);
+  for (const [attribute, key] of [["aria-label", "i18nAriaLabel"], ["placeholder", "i18nPlaceholder"], ["title", "i18nTitle"]]) {
+    for (const node of root.querySelectorAll(`[data-i18n-${attribute}]`)) node.setAttribute(attribute, t(node.dataset[key]));
+  }
 }
 export function localizeGame(game) {
   if (!game || language !== "es") return game;
-  return { ...game, name: t(game.name), rules: t(game.rules), rounds: t(game.rounds), tag: t(game.tag) };
+  return { ...game, name: t(game.name), players: t(game.players), rules: t(game.rules), rounds: t(game.rounds), tag: t(game.tag) };
 }
 // Other modes keep English game material until their answer validators can safely support Spanish.
 export const spanishContentModes = Object.freeze(["quiz", "charades", "majority", "likely", "closest", "percentage", "survey", "category"]);

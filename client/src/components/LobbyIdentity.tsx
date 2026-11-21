@@ -1,11 +1,13 @@
 import { Link } from "wouter";
 import { useEffect, useState } from "react";
+import { LobbyLanguage } from "./LobbyLanguage";
+import { t } from "../../../examples/party-engine/public/i18n.js";
 
 export function LobbyBrand() {
-  return <Link href="/" className="lobby-brand">
+  return <div className="lobby-identity"><Link href="/" className="lobby-brand">
     <img src="/party/lobby-spark.svg" alt="" width="46" height="46" />
-    <span className="lobby-wordmark">Trivia <span>Lobby</span></span>
-  </Link>;
+    <span className="lobby-wordmark">Trivia <span>Lobby</span><small className="lobby-language-signature" aria-hidden="true">English · Español</small></span>
+  </Link><LobbyLanguage /></div>;
 }
 
 export function LobbyCelebration() {
@@ -53,6 +55,6 @@ export function LobbyPartyScene() {
       <circle cx="303" cy="29" r="7" fill="#ff8a80" stroke="#20264b" strokeWidth="3" />
       <circle cx="77" cy="353" r="9" fill="#85d9f8" stroke="#20264b" strokeWidth="3" />
     </svg>
-    <span className="scene-sticker">✿ YOUR ARCADE. YOUR RULES.</span>
+    <span className="scene-sticker">{t("✿ YOUR ARCADE. YOUR RULES.")}</span>
   </div>;
 }

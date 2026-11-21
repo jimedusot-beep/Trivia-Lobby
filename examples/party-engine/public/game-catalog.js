@@ -38,7 +38,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const play = id => { if (asHost) onChoose?.(id); else onHost?.(id); };
 
   const spotlight = make("section", "pick-game-spotlight");
-  spotlight.setAttribute("aria-label", "Selected game preview");
+  spotlight.setAttribute("aria-label", t("Selected game preview"));
   spotlight.setAttribute("aria-live", "polite");
   const previewIcon = make("span", "pick-spotlight-icon"); previewIcon.setAttribute("aria-hidden", "true");
   const previewCopy = make("div", "pick-spotlight-copy");
@@ -71,7 +71,7 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
     previewMeta.textContent = game.players + (getLocale() === "es" ? " jugadores · " : " players · ") + game.rounds + " · " + game.tag;
     previewRules.textContent = game.rules;
     previewAction.textContent = t(asHost ? "Choose this game" : "Host this game");
-    languageNote.textContent = getLocale() !== "es" ? "" : spanishContentModes.includes(game.id) ? "Preguntas y pistas en español" : "Este juego puede contener texto en inglés";
+    languageNote.textContent = t(spanishContentModes.includes(game.id) ? "English + Spanish starter content; some later rounds may be in English." : "Game content may still be in English.");
     previewAction.setAttribute("aria-label", previewAction.textContent + ": " + game.name);
     previewAction.onclick = () => play(game.id);
     spotlight.dataset.tone = game.color;
@@ -110,29 +110,29 @@ export function mountGamePicker(container, { onHost, onChoose, selected = "quiz"
   const toolbar = make("div", "pick-game-toolbar");
   const searchLabel = make("label", "pick-game-search-label", "Find your next game");
   const search = make("input", "pick-game-search");
-  search.type = "search"; search.placeholder = "Find your next game";
+  search.type = "search"; search.placeholder = t("Find your next game");
   searchLabel.append(search);
   const filters = make("div", "pick-game-filters");
   filters.setAttribute("role", "group");
-  filters.setAttribute("aria-label", "Game categories");
+  filters.setAttribute("aria-label", t("Game categories"));
   const status = make("p", "pick-game-status");
   status.setAttribute("aria-live", "polite");
   // The selected game reads as a featured title above a horizontal console shelf.
   // Keep all original launch buttons, IDs, category filters and search results.
   const grid = make("div", "pick-game-grid");
   grid.setAttribute("role", "region");
-  grid.setAttribute("aria-label", "Horizontal game cover shelf");
+  grid.setAttribute("aria-label", t("Horizontal game cover shelf"));
   grid.tabIndex = 0;
   const shelf = make("section", "pick-game-shelf");
-  shelf.setAttribute("aria-label", "Choose a game from the cover shelf");
+  shelf.setAttribute("aria-label", t("Choose a game from the cover shelf"));
   const shelfNav = make("div", "pick-shelf-nav");
   const shelfHint = make("p", "pick-shelf-hint", "CHOOSE YOUR NEXT GAME  ·  ← → BROWSE");
   const shelfPosition = make("span", "pick-shelf-position");
   shelfPosition.setAttribute("aria-live", "polite");
   const previous = make("button", "pick-shelf-arrow pick-shelf-prev", "←");
-  previous.type = "button"; previous.setAttribute("aria-label", "Previous game");
+  previous.type = "button"; previous.setAttribute("aria-label", t("Previous game"));
   const next = make("button", "pick-shelf-arrow pick-shelf-next", "→");
-  next.type = "button"; next.setAttribute("aria-label", "Next game");
+  next.type = "button"; next.setAttribute("aria-label", t("Next game"));
   shelfNav.append(shelfHint, shelfPosition, previous, next);
   shelf.append(shelfNav, grid);
   // All event targets must exist before any listener is registered. In
