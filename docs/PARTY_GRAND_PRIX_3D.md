@@ -45,3 +45,9 @@ notices/source in the existing credits/download system. No CDN or extra service.
 - Run root typecheck/tests/build/license inventory, guest suite and relevant
   browser flows. Inspect host and phone screenshots. Report local/software-GPU
   measurements separately from a physical 20-phone or production performance test.
+
+## Follow-on split-screen and Driver POV
+
+See [Driver POV and split-screen: sources, design and limits](./DRIVER_POV_SOURCES_AND_DESIGN.md)
+for the two-player first-person view, its source references, lifecycle fixes,
+bilingual copy and verification boundaries.

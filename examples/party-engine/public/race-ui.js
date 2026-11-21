@@ -3,6 +3,7 @@
 import { TRACK, TRACK_POINTS, trackPose, ITEM_SPOTS, BOOST_SPOTS, RACE_COLORS, ITEM_LABELS } from "./race-track.js";
 import { createTiltSteering } from "./race-tilt.js";
 import { clamp, lerp, wrapAngle } from "./race-math.js";
+import { t, subscribeLocale } from "./i18n.js";
 let active;
 const node = (tag, text, parent, className) => {
   const n = document.createElement(tag);
@@ -173,11 +174,17 @@ function mountTV(a, root) {
     ["driver-pov", "Driver POV (2 players)"],
     ...Array.from({ length: 8 }, (_, index) => [`split-${index + 1}`, `${index + 1} player split`]),
   ];
+  const displayOptionNodes = new Map();
   for (const [value, name] of displayOptions) {
-    const option = node("option", name, displaySelect); option.value = value;
+    const option = node("option", t(name), displaySelect); option.value = value;
+    displayOptionNodes.set(value, option);
     if (value === "driver-pov" && rosterCount < 2) option.disabled = true;
     if (value.startsWith("split-") && (rosterCount > 8 || Number(value.slice(6)) > rosterCount)) option.disabled = true;
   }
+  const unsubscribeLocale = subscribeLocale(() => {
+    for (const [value, name] of displayOptions) displayOptionNodes.get(value).textContent = t(name);
+    if (scene3d) applyDisplay();
+  });
   const validDisplays = new Set(displayOptions.map(([value]) => value));
   let savedDisplay = "whole";
   try {
@@ -273,7 +280,7 @@ function mountTV(a, root) {
     return !scene3d ? "2D broadcast view"
       : reducedMotion.matches ? "Reduced motion · Whole Track"
       : a.state.pack.roster.length > 8 ? "Nine or more racers · Whole Track"
-      : display === "driver-pov" ? "Driver POV · players 1 and 2 · first-person"
+      : display === "driver-pov" ? t("Driver POV · players 1 and 2 · first-person")
       : count ? `Split screen · ${count} cameras · one shared track`
       : display === "director" ? "Race director · following the leader"
       : "3D broadcast · all racers on one screen";
@@ -320,7 +327,7 @@ function mountTV(a, root) {
       scene3d.render(frame, previous, 1, performance.now(), reducedMotion.matches);
       if (count) applySplitRects();
       scene3d.canvas.setAttribute("aria-label", display === "driver-pov"
-        ? "Live 3D first-person race for players 1 and 2. Each driver sees rivals ahead; rank, lap and effects are shown in each view."
+        ? t("Live 3D first-person race for players 1 and 2. Each driver sees nearby rivals; rank, lap and effects are shown in each view.")
         : count
           ? `Live 3D split-screen race, ${count}-player view. Player rank, lap and effects are shown in each view.`
           : display === "director"
@@ -434,6 +441,7 @@ function mountTV(a, root) {
   animation = requestAnimationFrame(draw);
   a.cleanup = () => {
     disposed = true; ++request; cancelAnimationFrame(animation);
+    unsubscribeLocale();
     reducedMotion.removeEventListener?.("change", onMotionChange);
     scene3d?.dispose(); scene3d = null; hideSplitUI();
   };

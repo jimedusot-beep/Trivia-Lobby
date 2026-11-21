@@ -125,6 +125,7 @@ test('two-player Driver POV renders real WebGL views, returns to Whole Track and
     const canvas = f.host.locator('#race-track');
     const select = f.host.getByLabel('Race display', { exact: true });
     await expect(canvas).toHaveAttribute('data-renderer', '3d', { timeout: 15000 });
+    await expect(canvas, 'Three.js records its engine on the shared canvas').toHaveAttribute('data-engine', /three\.js/);
 
     const option = select.locator('option[value="driver-pov"]');
     await expect(option, 'the display menu must expose two-player Driver POV').toHaveText(/Driver POV/);
@@ -157,6 +158,9 @@ test('two-player Driver POV renders real WebGL views, returns to Whole Track and
     await expect(canvas).toHaveAttribute('data-camera', 'overview');
     await expect(canvas).toHaveAttribute('data-split-cameras', '0');
     await expect(f.host.locator('.race-split-hud:visible')).toHaveCount(0);
+    for (const attribute of ['data-split-rects', 'data-split-visible-karts', 'data-driver-pov-visible-karts']) {
+      await expect(canvas, `${attribute} must not outlive split mode`).not.toHaveAttribute(attribute);
+    }
     const whole = await renderedPixels(f.host);
     expect(whole.meta.renderer).toBeTruthy();
     expect(halfStats(whole.png, 0, whole.png.width).colors).toBeGreaterThan(80);

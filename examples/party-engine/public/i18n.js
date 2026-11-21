@@ -144,6 +144,9 @@ const spanishUI = Object.freeze({
   "correct": "correcto",
   "pass": "pasar",
   "unanswered": "sin respuesta",
+  "Driver POV (2 players)": "Vista del conductor (2 jugadores)",
+  "Driver POV · players 1 and 2 · first-person": "Vista del conductor · jugadores 1 y 2 · en primera persona",
+  "Live 3D first-person race for players 1 and 2. Each driver sees nearby rivals; rank, lap and effects are shown in each view.": "Carrera 3D en primera persona para los jugadores 1 y 2. Cada conductor ve rivales cercanos; la posición, la vuelta y los efectos se muestran en cada vista.",
 });
 export function t(value) {
   return language === "es" && typeof value === "string" ? (spanishUI[value] ?? value) : value;

@@ -120,3 +120,14 @@ test("Survey and Category translations keep server scoring and player submission
   setLocale("en");
   assert.equal(localizeState(survey),survey);
 });
+
+test("Driver POV display copy has first-party Spanish equivalents", () => {
+  setLocale("es");
+  assert.equal(t("Driver POV (2 players)"), "Vista del conductor (2 jugadores)");
+  assert.equal(t("Driver POV · players 1 and 2 · first-person"),
+    "Vista del conductor · jugadores 1 y 2 · en primera persona");
+  assert.match(t("Live 3D first-person race for players 1 and 2. Each driver sees nearby rivals; rank, lap and effects are shown in each view."),
+    /rivales cercanos.*posición.*vuelta/);
+  setLocale("en");
+  assert.equal(t("Driver POV (2 players)"), "Driver POV (2 players)");
+});

@@ -78,6 +78,9 @@ export function createRaceScene({ onContextLost }) {
     const next = clamp(Math.floor(Number(count) || 0), 0, SPLIT_CAMERA_LIMIT);
     if (next === splitCount) return;
     splitCount = next;
+    // Karts can join between configuration changes. Re-baseline so an error in
+    // the new layout restores visibility for the current roster, not an old set.
+    splitVisibilityBaseline = null;
     splitNumbers = Array.from({ length: next }, (_, index) => index + 1);
     followStates = createFollowCameraStates(splitNumbers);
     for (const camera3d of splitCameras) scene.remove(camera3d);
@@ -208,15 +211,22 @@ export function createRaceScene({ onContextLost }) {
       const gaugeGeometry = geometry('pov-gauge', () => new THREE.SphereGeometry(0.055, 8, 6));
       mesh(gaugeGeometry, material('#8cddf2'), group, -0.32, -0.46, -1.01);
       mesh(gaugeGeometry, material('#ffca60'), group, 0.32, -0.46, -1.01);
-      const texture = textTexture(128, 64, c => {
-        c.fillStyle = '#fff9ed'; c.beginPath(); c.roundRect(4, 4, 120, 56, 18); c.fill();
-        c.strokeStyle = '#20304b'; c.lineWidth = 6; c.stroke();
-        c.fillStyle = accent; c.fillRect(18, 46, 92, 7);
-        c.fillStyle = '#20304b'; c.font = '900 40px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(`P${number}`, 64, 30);
-      });
-      const plateMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
-      materials.set(`pov-plate:${number}`, plateMaterial);
+      // Rebuilds happen whenever the split count changes. Cache the plate
+      // material/texture by driver number so repeated POV sessions do not leak
+      // GPU resources; dispose() still releases each cached entry once.
+      const plateKey = `pov-plate:${number}`;
+      let plateMaterial = materials.get(plateKey);
+      if (!plateMaterial) {
+        const texture = textTexture(128, 64, c => {
+          c.fillStyle = '#fff9ed'; c.beginPath(); c.roundRect(4, 4, 120, 56, 18); c.fill();
+          c.strokeStyle = '#20304b'; c.lineWidth = 6; c.stroke();
+          c.fillStyle = accent; c.fillRect(18, 46, 92, 7);
+          c.fillStyle = '#20304b'; c.font = '900 40px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+          c.fillText(`P${number}`, 64, 30);
+        });
+        plateMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false, depthWrite: false });
+        materials.set(plateKey, plateMaterial);
+      }
       const plate = new THREE.Sprite(plateMaterial);
       plate.position.set(0, -0.64, -1); plate.scale.set(0.38, 0.19, 1); group.add(plate);
       group.traverse(object => object.layers.set(layer));
@@ -589,6 +599,8 @@ export function createRaceScene({ onContextLost }) {
         for (const object of splitSurfaceOriginals) object.visible = true;
         if (splitSurfaceMesh) splitSurfaceMesh.visible = false;
         delete canvas.dataset.driverPovVisibleKarts;
+        delete canvas.dataset.splitVisibleKarts;
+        delete canvas.dataset.splitRects;
       }
 
       if (!splitActive && cameraMode === 'director' && !reducedMotion && frame.karts?.length) {
@@ -631,6 +643,9 @@ export function createRaceScene({ onContextLost }) {
       // Split rendering temporarily hides shared objects. Undo those changes
       // before the UI switches to the 2D fallback so the scene stays reusable.
       if (splitVisibilityBaseline) restoreVisibility(splitVisibilityBaseline);
+      // The next split frame must recapture the live roster after a failure.
+      splitVisibilityBaseline = null;
+      resetViewport();
       throw error;
     }
   }
