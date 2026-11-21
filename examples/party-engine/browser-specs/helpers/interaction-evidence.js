@@ -11,6 +11,7 @@ const events = new Set(["document", "dom", "pointerdown", "pointerup", "pointerc
 const targets = new Set(["join", "host-next", "gas"]);
 const statuses = new Set(["connecting", "connected", "joining", "ready", "accepted", "sending", "wait", "reconnecting"]);
 const integer = (value, max = 1000000) => Number.isFinite(value) ? Math.max(0, Math.min(max, Math.round(value))) : 0;
+const coordinate = value => Number.isFinite(value) ? Math.max(-100000, Math.min(100000, Math.round(value * 1000) / 1000)) : undefined;
 const note = info => { try { info.annotations.push({ type: "interaction-evidence-unavailable", description: "Some diagnostic evidence is unavailable; the original test result is unchanged." }); } catch {} };
 
 // Runs only in synthetic browser tests, before navigation. It does not replace
@@ -22,7 +23,7 @@ function observeDOM() {
   const identify = node => { if (node && !ids.has(node)) ids.set(node, ++sequence); return node ? ids.get(node) : 0; };
   const gasButton = () => [...document.querySelectorAll(".arcade-race-controls button")].find(b => /^GAS: (ON|OFF)/.test(b.textContent));
   const snapshot = () => {
-    const next = document.querySelector("#host-next-controls button"), gas = gasButton();
+    const next = document.querySelector("#host-next-controls button"), gas = gasButton(), rect = next?.getBoundingClientRect(), timer = document.querySelector("#timer");
     const text = document.querySelector("#status")?.textContent || "";
     const status = text === "Submission accepted." ? "accepted" : text === "Sending…" ? "sending"
       : text === "Wait for the connection or current submission." ? "wait" : /^(Party ready\.|Reconnected\.)$/.test(text) ? "ready"
@@ -32,7 +33,9 @@ function observeDOM() {
     const choosers = [...document.querySelectorAll("h2,h3")].filter(h => h.textContent === "Choose your secret word");
     return { phase: ["lobby", "countdown", "question", "playing", "racing", "reveal", "finished"].includes(phase) ? phase : "other", status,
       controllerActive: !!document.body?.classList.contains("phone-controller-active"), joinErrorVisible: !!document.querySelector("#join-error:not([hidden])"),
-      nextNode: identify(next), nextDisabled: next ? next.disabled : null, gasNode: identify(gas), gas: gas ? /^GAS: ON/.test(gas.textContent) : null,
+      nextNode: identify(next), nextDisabled: next ? next.disabled : null,
+      ...(rect ? { nextX: rect.x, nextY: rect.y, nextWidth: rect.width, nextHeight: rect.height } : {}),
+      timerVisible: !!timer?.textContent && !timer.hidden && timer.getClientRects().length > 0, gasNode: identify(gas), gas: gas ? /^GAS: ON/.test(gas.textContent) : null,
       wordChooserPresent: choosers.length > 0, wordChooserVisible: choosers.some(h => h.getClientRects().length > 0) };
   };
   const send = item => {
@@ -64,7 +67,7 @@ function observeDOM() {
     }
     if (event.type === "pointerdown" && stage === "capture") tracking = kind !== "other";
     if (kind !== "other" || tracking || (keyboard && (heldKeys.has(event.key) || keyReleases.has(event)))) record(event.type, { stage, target: kind, targetNode: identify(node), trusted: event.isTrusted,
-      prevented: event.defaultPrevented, ...(event.type.startsWith("key") ? { key: event.key === "Enter" ? "enter" : "space" } : {}) });
+      prevented: event.defaultPrevented, ...(!keyboard ? { x: event.clientX, y: event.clientY, pointerId: event.pointerId } : {}), ...(event.type.startsWith("key") ? { key: event.key === "Enter" ? "enter" : "space" } : {}) });
     if (["click", "pointercancel"].includes(event.type) && stage === "bubble") tracking = false;
   };
   const capture = listener("capture"), bubble = listener("bubble");
@@ -117,7 +120,9 @@ export function createInteractionEvidence(info, scope) {
       if (item?.target !== undefined) safe.target = targets.has(item.target) ? item.target : "other";
       if (item?.key !== undefined) safe.key = ["enter", "space"].includes(item.key) ? item.key : "other";
       for (const key of ["targetNode", "nextNode", "gasNode"]) if (item?.[key] !== undefined) safe[key] = integer(item[key]);
-      for (const key of ["trusted", "prevented", "controllerActive", "joinErrorVisible", "nextDisabled", "gas", "wordChooserPresent", "wordChooserVisible"]) if (typeof item?.[key] === "boolean") safe[key] = item[key];
+      for (const key of ["nextX", "nextY", "nextWidth", "nextHeight", "x", "y"]) { const value = coordinate(item?.[key]); if (value !== undefined) safe[key] = value; }
+      if (Number.isFinite(item?.pointerId)) safe.pointerId = integer(item.pointerId);
+      for (const key of ["timerVisible", "trusted", "prevented", "controllerActive", "joinErrorVisible", "nextDisabled", "gas", "wordChooserPresent", "wordChooserVisible"]) if (typeof item?.[key] === "boolean") safe[key] = item[key];
       const loss = integer(item?.browserDropped);
       if (loss > documentBrowserLoss) {
         entry.dropped.browser = integer(entry.dropped.browser + loss - documentBrowserLoss);
@@ -152,6 +157,7 @@ export function createInteractionEvidence(info, scope) {
           item.phase = phases.has(message.state?.phase) ? message.state.phase : "other";
           item.stage = stages.has(message.state?.pack?.stage) ? message.state.pack.stage : "other";
           item.revision = integer(message.state?.revision); item.index = integer(message.state?.index);
+          if (Number.isInteger(message.state?.pack?.round)) item.round = integer(message.state.pack.round, 10);
           if (message.state?.pack) item.wordChoicesAvailable = Array.isArray(message.state.pack.choices) && message.state.pack.choices.length > 0;
           if (typeof message.state?.race?.me?.gas === "boolean") item.gas = message.state.race.me.gas;
         }
@@ -187,7 +193,7 @@ export async function finishInteractionEvidence(info) {
   attempts.delete(info); await state.api.stop();
   if (!["failed", "timedOut"].includes(info.status)) return;
   try {
-    const output = { schemaVersion: 2, timeBasis: "attempt-relative", scope: state.scope, retry: integer(info.retry, 100), limits: LIMIT, droppedPages: state.droppedPages, pages: state.pages };
+    const output = { schemaVersion: 3, timeBasis: "attempt-relative", scope: state.scope, retry: integer(info.retry, 100), limits: LIMIT, droppedPages: state.droppedPages, pages: state.pages };
     const text = JSON.stringify(output) + "\n";
     if (Buffer.byteLength(text) > 524288) throw new Error("Diagnostic size bound");
     const file = info.outputPath("interaction-diagnostics.json");
