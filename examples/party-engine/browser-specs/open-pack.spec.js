@@ -3,13 +3,17 @@ import { PNG } from "pngjs";
 import jsQR from "jsqr";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { createInteractionEvidence, finishInteractionEvidence } from "./helpers/interaction-evidence.js";
+test.afterEach(async ({}, info) => { await finishInteractionEvidence(info); });
 const base = "http://127.0.0.1:4317";
-async function lobby(browser, mode, count = 2) {
+async function lobby(browser, mode, count = 2, evidence) {
   const contexts = [];
   async function page(width = 390) {
     const c = await browser.newContext({ viewport: { width, height: 844 } });
     contexts.push(c);
-    return c.newPage();
+    const p = await c.newPage();
+    await evidence?.observe(p, contexts.length === 1 ? "host" : `guest-${contexts.length - 1}`);
+    return p;
   }
   const host = await page(1280);
   await host.goto(base);
@@ -40,7 +44,10 @@ async function lobby(browser, mode, count = 2) {
     host,
     players,
     start,
-    close: () => Promise.all(contexts.map((c) => c.close())),
+    close: async () => {
+      try { await evidence?.stop(); }
+      finally { await Promise.all(contexts.map((c) => c.close())); }
+    },
   };
 }
 async function noOverflow(page) {
@@ -114,7 +121,7 @@ test("Family Showdown: visible phone buzzer, private review, typed answers, thre
 });
 
 test("Family Showdown: full phone match, retained duplicate draft, private final review and scoring", async ({browser})=>{
-  const f=await lobby(browser,"feud",4);
+  const f=await lobby(browser,"feud",4,createInteractionEvidence(test.info(),"family-join"));
   try {
     await f.start();const first=f.players[0],second=f.players[2];
     const rounds=[["Sandwiches","Blanket","Water","Fruit","Napkins"],["Flowers","Trees","Birds","Vegetables","Butterflies"],["Board games","Movies","Reading","Baking","Puzzles"]];
@@ -497,7 +504,7 @@ test("Drawing waits for a slow submission instead of showing a stroke that was n
 
 
 test("Doodle Dash streams while drawing, preserves tools, groups undo/redo and explains a correct guess", async ({ browser }) => {
-  const f=await lobby(browser,"draw",3);
+  const f=await lobby(browser,"draw",3,createInteractionEvidence(test.info(),"doodle-next"));
   try {
     await f.start();
     const [artist,guesser,last]=f.players;
