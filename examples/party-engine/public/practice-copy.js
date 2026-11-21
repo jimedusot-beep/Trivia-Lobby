@@ -1,0 +1,27 @@
+// First-party practice UI only; authored quiz content stays unchanged.
+export const practiceSpanish = Object.freeze({
+  "Answer recorded. Continue when you are ready.": "Respuesta registrada. Continúa cuando quieras.",
+  "Practice navigation": "Navegación de práctica",
+  "Practice my quiz · Trivia Lobby": "Practica tu cuestionario · Trivia Lobby",
+  "Practice my quiz": "Practica tu cuestionario",
+  "You’ve got this.": "Tú puedes.",
+  "No account required. This is self-paced practice on your current device.": "No necesitas una cuenta. Practica a tu ritmo en este dispositivo.",
+  "Loading quiz from this device…": "Cargando el cuestionario de este dispositivo…",
+  "Practice questions": "Preguntas de práctica",
+  "Practice results": "Resultados de práctica",
+  "Practice complete": "Práctica completada",
+  "Show results": "Ver resultados",
+  "Good try!": "¡Buen intento!",
+  "{answer} is correct.": "La respuesta correcta es {answer}.",
+  "You got {correct} of {total} right. Your answers are not uploaded or added to private learning history.": "Has acertado {correct} de {total} {questionWord}. Tus respuestas no se envían ni se añaden al historial privado de aprendizaje.",
+  "questions": "preguntas",
+  "Quiz complete.": "Cuestionario terminado.",
+  "Practicing again.": "Practicando de nuevo.",
+  "Quiz not found on this device. Open My quizzes to find or import it.": "No se ha encontrado el cuestionario en este dispositivo. Abre Mis cuestionarios para buscarlo o importarlo.",
+  "Ready to practice. Choose an answer.": "Todo listo para practicar. Elige una respuesta.",
+  "Device storage unavailable.": "El almacenamiento del dispositivo no está disponible.",
+  "Edit this quiz": "Editar este cuestionario",
+  "Learn as a course": "Aprender como curso",
+  "Host a guest party": "Crear una partida para invitados",
+  "Your quiz content keeps its original wording. Only the practice controls change language.": "El contenido de tu cuestionario conserva su texto original. Solo los controles de práctica cambian de idioma."
+});
