@@ -1,11 +1,12 @@
 import {test,expect} from "@playwright/test";
 
-async function mixedLanguageRoom(browser, mode, observeHostFrame) {
+async function mixedLanguageRoom(browser, mode, observeHostFrame, prepareHost) {
   const contexts=[];
   async function open(mobile=false) {
     const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1280,height:800}});
     contexts.push(context);
     const page=await context.newPage();
+    if (!mobile && prepareHost) await prepareHost(page);
     if (!mobile && observeHostFrame) page.on("websocket", socket =>
       socket.on("framesent", frame => observeHostFrame(JSON.parse(frame.payload))));
     await page.goto("/");
@@ -190,4 +191,34 @@ test("Survey Showdown: phase change cancels a held Next pointer",async({browser}
     await expect(room.players[1].locator("#phone-prompt")).toContainText("movie theater");
     expect(frames.filter(frame=>frame.type==="next")).toHaveLength(1);
   } finally { await room.host.mouse.up().catch(()=>{}); await room.close(); }
+});
+
+
+test("Survey Showdown: clearing the question clock cannot move a held Next target", async ({browser}, info) => {
+  const room=await mixedLanguageRoom(browser,"survey",undefined,async page=>{ const now=Date.now(); await page.clock.install({time:now}); await page.clock.pauseAt(now+1000); });
+  try {
+    await room.host.clock.runFor(200);
+    await expect(room.host.locator("#timer")).not.toHaveText("");
+    const [es,en,other]=room.players;
+    for (const [page,value,label] of [[es,"pasaporte","Confirmar respuesta"],[en,"passport","Lock answer"],[other,"pasaporte falso","Lock answer"]]) {
+      await page.locator("#social-response").fill(value);
+      await page.getByRole("button",{name:label,exact:true}).click();
+    }
+    await expect(room.host.locator("#heading")).toContainText("reveal");
+    const next=room.host.getByRole("button",{name:"Next",exact:true});
+    await next.scrollIntoViewIfNeeded();
+    await next.hover();
+    const before=await next.boundingBox();
+    await room.host.mouse.down();
+    await other.close();
+    await expect(room.host.locator("#roster")).toContainText("disconnected",{timeout:10000});
+    await room.host.clock.runFor(200);
+    const after=await next.boundingBox();
+    await info.attach("held-next-clock-layout",{body:Buffer.from(JSON.stringify({before,after})),contentType:"application/json"});
+    await room.host.mouse.up();
+    await expect(room.host.locator("#heading")).toContainText("question",{timeout:5000});
+  } finally {
+    await room.host.mouse.up().catch(()=>{});
+    await room.close();
+  }
 });
