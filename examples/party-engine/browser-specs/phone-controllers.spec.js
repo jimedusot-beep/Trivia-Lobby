@@ -438,7 +438,10 @@ test("short-landscape prompt remains a full-size touch target", async ({ browser
     const p = f.page;
     await p.setViewportSize({ width: 568, height: 320 });
     await expect(p.locator("#game")).toHaveCSS("height", "320px");
-    expect((await p.locator(".phone-prompt").boundingBox()).height).toBeGreaterThanOrEqual(44);
+    const promptHeight=(await p.locator(".phone-prompt").boundingBox()).height;
+    // Firefox can report a 44px box as 43.999996px. Normalize subpixel noise
+    // while retaining the 44px requirement at 0.001px measurement precision.
+    expect(Math.round(promptHeight*1000)/1000).toBeGreaterThanOrEqual(44);
     await fits(p);
     await preview(p, "prompt-after.png");
     await p.locator(".phone-prompt").click();
