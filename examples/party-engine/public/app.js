@@ -340,7 +340,11 @@ function render() {
   document.body.classList.add("party-playing");
   document.body.classList.remove("party-invited");
   document.body.dataset.partyPhase = state.phase;
-  $("timer").hidden = state.pack?.kind === "homeward";
+  const timer = $("timer");
+  timer.hidden = state.pack?.kind === "homeward";
+  // Clear ended clocks before laying out Next; interval cleanup must not
+  // shift a button while the host is holding it.
+  if (!state.deadline && timer.textContent) timer.textContent = "";
   $("entry").hidden = true;
   $("pick-games").hidden = true;
   $("game").hidden = false;
