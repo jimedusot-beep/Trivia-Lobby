@@ -6,12 +6,13 @@ import path from "node:path";
 import { createInteractionEvidence, finishInteractionEvidence } from "./helpers/interaction-evidence.js";
 test.afterEach(async ({}, info) => { await finishInteractionEvidence(info); });
 const base = "http://127.0.0.1:4317";
-async function lobby(browser, mode, count = 2, evidence) {
+async function lobby(browser, mode, count = 2, evidence, prepareHost) {
   const contexts = [];
   async function page(width = 390) {
     const c = await browser.newContext({ viewport: { width, height: 844 } });
     contexts.push(c);
     const p = await c.newPage();
+    if (contexts.length === 1 && prepareHost) await prepareHost(p);
     await evidence?.observe(p, contexts.length === 1 ? "host" : `guest-${contexts.length - 1}`);
     return p;
   }
@@ -548,4 +549,39 @@ test("Doodle Dash streams while drawing, preserves tools, groups undo/redo and e
     await f.host.getByRole("button",{name:"Next",exact:true}).click();
     await expect(guesser.getByRole("heading",{name:"Choose your secret word",exact:true})).toBeVisible();
   } finally { await f.close(); }
+});
+
+
+test("Family Showdown: board countdown cleanup cannot move a held Next target", async ({browser},info)=>{
+  const f=await lobby(browser,"feud",4,undefined,async page=>{
+    const now=Date.now();await page.clock.install({time:now});await page.clock.pauseAt(now+1000);
+  });
+  try{
+    await f.start();
+    const first=f.players[0];
+    const rounds=[["Sandwiches","Blanket","Water","Fruit","Napkins"],["Flowers","Trees","Birds","Vegetables","Butterflies"]];
+    for(const [board,answers] of rounds.entries()){
+      await f.host.clock.runFor(200);
+      await expect(f.host.locator("#timer")).not.toHaveText("");
+      await first.getByRole("button",{name:"BUZZ!",exact:true}).click();
+      for(const text of answers){
+        await first.getByLabel("Your team's answer",{exact:true}).fill(text);
+        await first.getByRole("button",{name:"Send answer",exact:true}).click();
+        await expect(first.locator(".feud-decision")).toContainText(`${text} revealed`);
+      }
+      await expect(f.host.locator("#heading")).toContainText("reveal");
+      if(board===0){await f.host.clock.runFor(200);await f.host.getByRole("button",{name:"Next",exact:true}).click();}
+      else{
+        const next=f.host.getByRole("button",{name:"Next",exact:true});
+        await next.scrollIntoViewIfNeeded();await next.hover();
+        const before=await next.boundingBox();
+        await f.host.mouse.down();await f.host.clock.runFor(200);
+        const after=await next.boundingBox();
+        await info.attach("held-family-next-clock-layout",{body:Buffer.from(JSON.stringify({before,after})),contentType:"application/json"});
+        await f.host.mouse.up();
+      }
+      await expect(f.host.locator("#heading")).toContainText("playing",{timeout:5000});
+    }
+    await expect(first.getByRole("button",{name:"BUZZ!",exact:true})).toBeVisible();
+  }finally{await f.host.mouse.up().catch(()=>{});await f.close();}
 });
