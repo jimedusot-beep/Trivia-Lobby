@@ -11,40 +11,40 @@
   <script src="./learn.js" type="module"></script>
   <script type="module" src="./identity.js"></script>
 </head>
-<body data-language-coverage="partial" class="public-learn">
+<body data-language-coverage="authored" data-language-note="Your quiz content keeps its original wording. Only the learning controls change language." class="public-learn">
 <main>
   <header>
-    <nav class="page-nav" aria-label="Learning navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./create.html">My quizzes</a><a href="./">Party games</a></div></nav>
-    <div class="learning-hero"><div><span class="lobby-kicker">Your next small win</span><h1>A little progress,<br /><span>every day.</span></h1><p>Turn your quizzes into a little adventure. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.</p></div><img class="lobby-hello" src="./lobby-spark.svg" alt="" width="155" height="155" /></div>
+    <nav class="page-nav" aria-label="Learning navigation" data-i18n-aria-label="Learning navigation"><a class="lobby-brand" href="/"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a><div class="page-nav-links"><a href="./create.html" data-i18n="My quizzes">My quizzes</a><a href="./" data-i18n="Party games">Party games</a></div></nav>
+    <div class="learning-hero"><div><span class="lobby-kicker" data-i18n="Your next small win">Your next small win</span><h1><span data-i18n="A little progress,">A little progress,</span><br /><span data-i18n="every day.">every day.</span></h1><p data-i18n="Turn your quizzes into a little adventure. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.">Turn your quizzes into a little adventure. Pick a lesson, learn from your mistakes, and come back when you’re ready. No account needed.</p></div><img class="lobby-hello" src="./lobby-spark.svg" alt="" width="155" height="155" /></div>
   </header>
 
-  <section class="stats" aria-label="My learning progress">
-    <div><span id="level">Level 1</span><strong id="xp">0 practice XP</strong><progress id="level-progress" aria-label="XP toward next level" max="100" value="0"></progress><small id="next-level">100 XP to level 2</small></div>
-    <div><span>Daily rhythm</span><strong id="streak">0-day streak</strong><small id="best-streak">Best: 0 days</small></div>
-    <div><span>Lessons finished</span><strong id="lesson-count">0</strong><small id="daily-goal">Today’s goal: one lesson</small></div>
+  <section class="stats" aria-label="My learning progress" data-i18n-aria-label="My learning progress">
+    <div><span id="level">Level 1</span><strong id="xp">0 practice XP</strong><progress id="level-progress" aria-label="XP toward next level" data-i18n-aria-label="XP toward next level" max="100" value="0"></progress><small id="next-level">100 XP to level 2</small></div>
+    <div><span data-i18n="Daily rhythm">Daily rhythm</span><strong id="streak">0-day streak</strong><small id="best-streak">Best: 0 days</small></div>
+    <div><span data-i18n="Lessons finished">Lessons finished</span><strong id="lesson-count">0</strong><small id="daily-goal">Today’s goal: one lesson</small></div>
   </section>
   <p id="status" role="status" aria-live="polite">Loading your quizzes…</p>
   <p id="storage-note" class="storage-note">Your quizzes and progress stay in this browser. Export a backup before clearing site data or moving to another device.</p>
 
   <section aria-labelledby="courses-title">
-    <div class="section-heading"><h2 id="courses-title">Your courses</h2><a href="./create.html">+ Make a quiz</a></div>
-    <p>Each saved quiz becomes a course, with up to five questions per lesson.</p>
+    <div class="section-heading"><h2 id="courses-title" data-i18n="Your courses">Your courses</h2><a href="./create.html" data-i18n="+ Make a quiz">+ Make a quiz</a></div>
+    <p data-i18n="Each saved quiz becomes a course, with up to five questions per lesson.">Each saved quiz becomes a course, with up to five questions per lesson.</p>
     <div id="course-list" class="course-grid"></div>
-    <div id="empty" class="empty" hidden><h3>Your first course starts with a quiz.</h3><p>Create or import questions, then choose Save &amp; learn.</p><a class="primary-link" href="./create.html">Make my first quiz</a><p><a href="/learn-demo">Or try three sample lessons</a></p></div>
+    <div id="empty" class="empty" hidden><h3 data-i18n="Your first course starts with a quiz.">Your first course starts with a quiz.</h3><p data-i18n="Create or import questions, then choose Save &amp; learn.">Create or import questions, then choose Save &amp; learn.</p><a class="primary-link" href="./create.html" data-i18n="Make my first quiz">Make my first quiz</a><p><a href="/learn-demo" data-i18n="Or try three sample lessons">Or try three sample lessons</a></p></div>
   </section>
 
   <section id="course-panel" aria-labelledby="course-title" hidden>
     <div class="section-heading"><h2 id="course-title"></h2><span id="course-progress"></span></div>
     <p id="version-note" class="storage-note" hidden></p>
-    <article class="daily-card"><div><span class="eyebrow">ONE LESSON IS ENOUGH</span><h3 id="daily-title">Your daily lesson</h3><p id="daily-detail"></p></div><button id="daily" type="button">Start today’s lesson</button></article>
-    <ol id="path" class="path" aria-label="Course lessons"></ol>
+    <article class="daily-card"><div><span class="eyebrow" data-i18n="ONE LESSON IS ENOUGH">ONE LESSON IS ENOUGH</span><h3 id="daily-title">Your daily lesson</h3><p id="daily-detail"></p></div><button id="daily" type="button">Start today’s lesson</button></article>
+    <ol id="path" class="path" aria-label="Course lessons" data-i18n-aria-label="Course lessons"></ol>
     <button id="resume" type="button" hidden>Resume saved lesson</button>
   </section>
 
   <section id="lesson-panel" class="runner" aria-labelledby="lesson-heading" hidden>
-    <button id="back-path" class="quiet" type="button">Back to course</button>
+    <button id="back-path" class="quiet" type="button" data-i18n="Back to course">Back to course</button>
     <p id="lesson-position" class="eyebrow"></p>
-    <progress id="lesson-progress" aria-label="Lesson progress" max="100" value="0"></progress>
+    <progress id="lesson-progress" aria-label="Lesson progress" data-i18n-aria-label="Lesson progress" max="100" value="0"></progress>
     <h2 id="lesson-heading" tabindex="-1"></h2>
     <p id="question-position"></p>
     <div id="choices" class="choices"></div>
@@ -53,14 +53,14 @@
 
   <section id="summary" class="runner summary" aria-labelledby="summary-heading" hidden>
     <img class="celebration lobby-hello" src="./lobby-spark.svg" width="95" height="95" alt="" />
-    <h2 id="summary-heading" tabindex="-1">Lesson complete!</h2>
+    <h2 id="summary-heading" tabindex="-1" data-i18n="Lesson complete!">Lesson complete!</h2>
     <p id="score"></p><p id="retry-score"></p><p id="earned-xp"></p><p id="milestones"></p>
-    <div class="summary-actions"><button id="next-lesson" type="button">Continue to next lesson</button><button id="replay" class="quiet" type="button">Replay this lesson</button><button id="summary-path" class="quiet" type="button">Back to course</button></div>
+    <div class="summary-actions"><button id="next-lesson" type="button" data-i18n="Continue to next lesson">Continue to next lesson</button><button id="replay" class="quiet" type="button" data-i18n="Replay this lesson">Replay this lesson</button><button id="summary-path" class="quiet" type="button" data-i18n="Back to course">Back to course</button></div>
   </section>
 
-  <section aria-labelledby="achievements-title"><h2 id="achievements-title">Your achievements</h2><p>Small milestones for showing up. Practice XP measures participation.</p><ul id="achievements" class="achievements"></ul></section>
-  <details class="backup"><summary>Keep a backup · move to another device</summary><p>A learning backup includes all quizzes on this device, their answers, and your learning progress as plain JSON. Keep it somewhere you trust. Restore it in another browser to continue there.</p><button id="export" type="button">Download learning backup</button><label for="restore">Restore learning backup (JSON, up to 2 MB)</label><input id="restore" type="file" accept=".json,application/json" /><p>Restoring adds quizzes and merges achievements. It never replaces a different existing quiz. Quiz-maker backups can still be imported in My quizzes.</p></details>
-  <footer><a href="./create.html">My quizzes</a> · <a href="/learn-demo">Sample lessons</a> · <a href="/">Home</a><p>No email, password, hearts limit, or paid continuation. Progress is device-local and does not sync automatically.</p></footer>
+  <section aria-labelledby="achievements-title"><h2 id="achievements-title" data-i18n="Your achievements">Your achievements</h2><p data-i18n="Small milestones for showing up. Practice XP measures participation.">Small milestones for showing up. Practice XP measures participation.</p><ul id="achievements" class="achievements"></ul></section>
+  <details class="backup"><summary data-i18n="Keep a backup · move to another device">Keep a backup · move to another device</summary><p data-i18n="A learning backup includes all quizzes on this device, their answers, and your learning progress as plain JSON. Keep it somewhere you trust. Restore it in another browser to continue there.">A learning backup includes all quizzes on this device, their answers, and your learning progress as plain JSON. Keep it somewhere you trust. Restore it in another browser to continue there.</p><button id="export" type="button" data-i18n="Download learning backup">Download learning backup</button><label for="restore" data-i18n="Restore learning backup (JSON, up to 2 MB)">Restore learning backup (JSON, up to 2 MB)</label><input id="restore" type="file" accept=".json,application/json" /><p data-i18n="Restoring adds quizzes and merges achievements. It never replaces a different existing quiz. Quiz-maker backups can still be imported in My quizzes.">Restoring adds quizzes and merges achievements. It never replaces a different existing quiz. Quiz-maker backups can still be imported in My quizzes.</p></details>
+  <footer><a href="./create.html" data-i18n="My quizzes">My quizzes</a> · <a href="/learn-demo" data-i18n="Sample lessons">Sample lessons</a> · <a href="/" data-i18n="Home">Home</a><p data-i18n="No email, password, hearts limit, or paid continuation. Progress is device-local and does not sync automatically.">No email, password, hearts limit, or paid continuation. Progress is device-local and does not sync automatically.</p></footer>
 </main>
 </body>
 </html>

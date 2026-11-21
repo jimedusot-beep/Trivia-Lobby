@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { defaultShow, validateShow, importShow } from "./show-format.js";
-const $ = (id) => document.getElementById(id),
-  say = (text) => ($("show-status").textContent = text),
-  key = "trivia-lobby-show-v1";
+import { loadLocale, getLocale, subscribeLocale, t, formatText, translateStatic } from "./i18n.js";
+import { showdownEditorError } from "./show-copy.js";
+loadLocale();
+const $ = (id) => document.getElementById(id), key = "trivia-lobby-show-v1";
+let status = { key:"Ready. Edit your boards and lightning questions, then Save & host." };
+function renderStatus() {
+  $("show-status").textContent = status.error
+    ? showdownEditorError(status.error.message,status.error.name,getLocale(),status.fallback) : t(status.key);
+}
+function say(key) { status = { key }; renderStatus(); }
+function sayError(error, fallback = "Could not save this show.") { status = {error,fallback}; renderStatus(); }
 let show = structuredClone(defaultShow);
 try {
   const stored = localStorage.getItem(key);
@@ -17,10 +25,10 @@ const e = (tag, text, parent) => {
   return n;
 };
 function field(parent, label, value, id, multiline = false) {
-  const caption = e("label", label, parent),
+  const caption = e("label", t(label), parent),
     input = e(multiline ? "textarea" : "input", undefined, parent);
   input.id = id;
-  caption.htmlFor = id;
+  caption.htmlFor = id; caption.dataset.i18n = label; input.lang = "";
   input.value = value;
   if (multiline) {
     input.rows = 5;
@@ -39,7 +47,9 @@ function render() {
     questions.forEach((q, index) => {
       const box = e("article", undefined, root);
       box.className = "board-table";
-      e("h3", `${final ? "Lightning question" : "Board"} ${index + 1}`, box);
+      const heading = e("h3", undefined, box);
+      heading.dataset.showHeading = final ? "Lightning question {number}" : "Board {number}";
+      heading.dataset.showNumber = String(index + 1);
       field(box, "Question", q.question, `${target}-question-${index}`);
       field(
         box,
@@ -49,16 +59,17 @@ function render() {
         true,
       );
       if (!final) {
-        const label = e("label", "Round multiplier", box),
+        const label = e("label", t("Round multiplier"), box),
           select = e("select", undefined, box);
         select.id = `show-multiplier-${index}`;
-        label.htmlFor = select.id;
+        label.htmlFor = select.id; label.dataset.i18n = "Round multiplier";
         for (const n of [1, 2, 3]) {
           const o = e("option", `×${n}`, select);
           o.value = String(n);
         }
         select.value = String(q.multiplier ?? 1);
-        const remove = e("button", "Remove this board", box);
+        const remove = e("button", t("Remove this board"), box);
+        remove.dataset.i18n = "Remove this board";
         remove.type = "button";
         remove.disabled = questions.length <= 1;
         remove.onclick = () =>
@@ -72,7 +83,16 @@ function render() {
     });
   }
   $("add-board").disabled = show.rounds.length >= 8;
+  renderLabels();
 }
+function renderLabels() {
+  translateStatic(document);
+  for (const heading of document.querySelectorAll("[data-show-heading]")) {
+    heading.textContent = formatText(heading.dataset.showHeading,{number:heading.dataset.showNumber});
+  }
+}
+// Re-render copy only: never parse, save or rebuild an unfinished field on locale changes.
+subscribeLocale(() => { renderLabels(); renderStatus(); });
 function read() {
   const parsed = { title: $("show-title").value, rounds: [], final: [] };
   for (const [target, list, final] of [
@@ -111,7 +131,7 @@ function attempt(fn) {
   try {
     fn();
   } catch (error) {
-    say(error.message || "Could not save this show.");
+    sayError(error);
   }
 }
 function save() {
@@ -142,9 +162,9 @@ $("host-show").onclick = () =>
   });
 $("sample-show").onclick = () => {
   if (
-    confirm(
+    confirm(t(
       "Replace the current editor with the sample show? Save or export your edits first.",
-    )
+    ))
   ) {
     show = structuredClone(defaultShow);
     render();
@@ -181,10 +201,10 @@ $("import-show").onchange = async (event) => {
     render();
     say("Show imported. Save on this device, then host when ready.");
   } catch (error) {
-    say(error.message || "Could not import the show.");
+    sayError(error,"Could not import the show.");
   } finally {
     event.target.value = "";
   }
 };
 render();
-say("Ready. Edit your boards and lightning questions, then Save & host.");
+renderStatus();

@@ -2,7 +2,7 @@ main { max-width: 1080px; }
 .learning-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .learning-hero > div { min-width: 0; }
 .learning-hero h1 { margin-top: 19px; }
-.learning-hero h1 > span { color: var(--lobby-violet); }
+.learning-hero h1 > span:last-child { color: var(--lobby-violet); }
 .learning-hero > img { width: 155px; height: 155px; transform: rotate(9deg); flex: 0 0 155px; }
 .learning-hero p { color: var(--lobby-muted); max-width: 660px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }

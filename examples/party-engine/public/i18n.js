@@ -2,6 +2,8 @@
 import { identitySpanish } from "./identity-copy.js";
 import { creatorSpanish } from "./creator-copy.js";
 import { practiceSpanish } from "./practice-copy.js";
+import { learningSpanish } from "./learning-copy.js";
+import { showdownSpanish } from "./show-copy.js";
 export const supportedLanguages = Object.freeze(["en", "es"]);
 const storageKey = "party-display-language:v1";
 let language = "en";
@@ -35,6 +37,8 @@ const spanishUI = Object.freeze({
   ...identitySpanish,
   ...creatorSpanish,
   ...practiceSpanish,
+  ...learningSpanish,
+  ...showdownSpanish,
   "🎮 Game library": "🎮 Biblioteca de juegos",
   "lobby": "sala",
   "countdown": "cuenta regresiva",
