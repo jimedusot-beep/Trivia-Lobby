@@ -6,6 +6,22 @@ joining, play, learning, creation, recovery and results. The public signature is
 Una fiesta.** Keep Trivia Lobby and Sakura Arcade as proper names. Translate the
 invitation, instructions and accessible names around them.
 
+## Current integration draft
+
+The merged identity foundation is retained. The integration draft combines the
+sample, creator and practice stack with the compatible saved-course and Family
+Showdown editor follow-ups. Current verification and held work are recorded in
+[the November 21 integration record](INTEGRATION_VERIFICATION_2026_11_21.md).
+The sections below retain the boundaries of the original delivery slices; their
+historical wording does not claim that later slices are deployed or accepted.
+
+| Surface | Included scope | Remaining boundary |
+| --- | --- | --- |
+| Sample lessons | Three first-party English/Spanish lessons and honest session-only save feedback | Browser-local progress; no automatic cross-device sync |
+| Quiz creator and practice | Localized controls, feedback and known errors | Authored quiz text and export schemas stay literal |
+| Saved courses | Lesson navigation, retries, progress, achievements and backup/error copy | Existing storage and XP rules; no translated authored questions |
+| Family Showdown editor | Editor, validation, import/save/export and host-handoff copy | English sample remains labeled; playable answer adjudication is separate |
+
 ## Product contract
 
 - English and Spanish use equally visible native language choices, without flags.
@@ -161,3 +177,36 @@ failures, repairs, retries and skips in the accompanying validation report.
 Item 19 stays open until the included end-to-end scope, editorial/device
 acceptance and owner integration are complete. This document and local patch do
 not authorize publication, merge, deployment or settings changes.
+
+## Saved courses in the integration draft
+
+The saved-quiz learning path translates its first-party controls, daily goal,
+progress, retries, achievements, backup and known error copy. Language changes
+update labels without advancing or saving a session, changing answers, awarding
+XP or moving focus away from the language selector. Authored course titles,
+questions, answers and explanations stay literal with unknown-language boundaries.
+
+Course/version hashes, IDs, timezone, unlocks, scoring, retry scheduling, storage
+modules and JSON backup formats are unchanged. Refresh uses existing session
+recovery; unavailable learning storage stays visibly session-only. A language
+change during the final asynchronous save retains the completed summary. Learning
+backups remain plain JSON containing quiz answers and progress, rather than
+encrypted recovery archives.
+
+## Family Showdown editor in the integration draft
+
+The editor translates first-party labels, board/lightning numbering, status,
+confirmations and known validation, storage and import errors. Locale changes
+update copy without rebuilding or reading unfinished inputs. Authored titles,
+questions and answer/points lines remain literal. The existing sample is labeled
+as English and its curated points are not described as survey measurements.
+
+Saved JSON, the Friendly Feud adapter, multipliers, point limits, session handoff
+and server gameplay retain their existing contracts. An unreadable saved show
+keeps its fallback warning through startup instead of replacing it with Ready;
+original stored bytes are preserved until an explicit save. Failed saves keep the
+draft exportable and prevent a false host handoff.
+
+This slice does not implement bilingual playable boards or answer adjudication,
+completed-match rotation, private-account localization, human editorial approval
+or physical-device certification. It adds no dependency or translation service.
