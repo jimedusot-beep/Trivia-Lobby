@@ -35,9 +35,13 @@ function loadCompleted(): string[] {
     return Array.isArray(data) ? lessons.map(l => l.id).filter(id => data.includes(id)) : [];
   } catch { return []; }
 }
+function lessonCopy(text: string, values: Record<string, number>) {
+  return t(text).replace(/\{(\w+)\}/g, (placeholder, key: string) => String(values[key] ?? placeholder));
+}
 export default function GuestLearn() {
   const language = useDisplayLanguage();
   const [completed, setCompleted] = useState<string[]>(loadCompleted);
+  const [progressSaved, setProgressSaved] = useState(true);
   const [lessonIndex, setLessonIndex] = useState(() => {
     const saved = loadCompleted();
     const next = lessons.findIndex(l => !saved.includes(l.id));
@@ -53,9 +57,14 @@ export default function GuestLearn() {
   const xp = completed.length * 30;
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(completed)); }
-    catch { /* Browser storage may be unavailable; current session still works. */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(completed)); setProgressSaved(true); }
+    catch { setProgressSaved(false); }
   }, [completed]);
+  useEffect(() => {
+    const originalTitle = document.title;
+    document.title = t("Sample lessons · Trivia Lobby");
+    return () => { document.title = originalTitle; };
+  }, [language]);
 
   function choose(choice: number) {
     if (selected !== null) return;
@@ -81,23 +90,23 @@ export default function GuestLearn() {
   }
 
   return (
-    <main lang="en" className="sample-learning sakura-learning min-h-screen bg-background p-4 sm:p-8">
+    <main lang={language} className="sample-learning sakura-learning min-h-screen bg-background p-4 sm:p-8">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <LobbyBrand />
-          <Button asChild variant="ghost"><Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Home</Link></Button>
-          <div className="flex items-center gap-2 font-bold"><Star className="h-5 w-5 text-amber-500" aria-hidden="true" /> {xp} practice XP</div>
+          <Button asChild variant="ghost"><Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> {t("Home")}</Link></Button>
+          <div className="flex items-center gap-2 font-bold"><Star className="h-5 w-5 text-amber-500" aria-hidden="true" /> {xp} {t("practice XP")}</div>
         </header>
-        {language === "es" && <p className="language-content-note" lang="es">{t("This page uses English content. Your language choice is saved.")}</p>}
+        {!progressSaved && <p className="language-content-note" role="status">{t("Progress is available for this session, but this browser couldn't save it.")}</p>}
         <div className="sample-heading"><div className="space-y-2">
-          <span className="lobby-kicker">Small lessons. Big little wins.</span>
-          <h1 className="text-3xl font-display font-bold">Learn something today</h1>
-          <p className="text-muted-foreground">Three bite-sized sample lessons. No email or password required.</p>
-          <p className="text-sm text-muted-foreground">Completed lessons are saved on this browser only. Clearing site data removes this progress; it does not synchronize between devices.</p>
-          <Button asChild variant="outline" className="whitespace-normal h-auto text-left"><a href="/party/learn.html">Learn from my quizzes: courses, levels and daily lessons</a></Button>
+          <span className="lobby-kicker">{t("Small lessons. Big little wins.")}</span>
+          <h1 className="text-3xl font-display font-bold">{t("Learn something today")}</h1>
+          <p className="text-muted-foreground">{t("Three bite-sized sample lessons. No email or password required.")}</p>
+          <p className="text-sm text-muted-foreground">{t(progressSaved ? "Completed lessons are saved on this browser only. Clearing site data removes this progress; it does not synchronize between devices." : "Unsaved progress is lost when the page reloads.")}</p>
+          <Button asChild variant="outline" className="whitespace-normal h-auto text-left"><a href="/party/learn.html">{t("Learn from my quizzes: courses, levels and daily lessons")}</a></Button>
         </div><img className="lobby-hello" src="/party/lobby-spark.svg" alt="" /></div>
 
-        <section aria-label="Learning path" className="sample-path grid sm:grid-cols-3 gap-3">
+        <section aria-label={t("Learning path")} className="sample-path grid sm:grid-cols-3 gap-3">
           {lessons.map((item, i) => (
             <Button
               key={item.id} variant={lessonIndex === i ? "default" : "outline"}
@@ -105,8 +114,8 @@ export default function GuestLearn() {
               aria-current={lessonIndex === i ? "step" : undefined}
               onClick={() => openLesson(i)}
             >
-              <span className="flex items-center gap-1">{completed.includes(item.id) && <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}{i + 1}. {item.title}</span>
-              <span className="text-xs font-normal">{completed.includes(item.id) ? "Completed" : item.subject}</span>
+              <span className="flex items-center gap-1">{completed.includes(item.id) && <CheckCircle2 className="h-4 w-4" aria-hidden="true" />}{i + 1}. {t(item.title)}</span>
+              <span className="text-xs font-normal">{t(completed.includes(item.id) ? "Completed" : item.subject)}</span>
             </Button>
           ))}
         </section>
@@ -116,23 +125,23 @@ export default function GuestLearn() {
             <CardContent className="p-8 text-center space-y-5">
               <LobbyCelebration />
               <Trophy className="mx-auto h-12 w-12 text-amber-500" aria-hidden="true" />
-              <h2 className="text-3xl font-bold">Lesson complete!</h2>
-              <p className="text-lg">You answered {sessionCorrect} of {lesson.questions.length} correctly.</p>
-              <p className="text-muted-foreground">{lessonCompleted ? "This lesson is saved as completed on this device." : "Your practice was recorded on this device."} Replays do not earn extra XP.</p>
+              <h2 className="text-3xl font-bold">{t("Lesson complete!")}</h2>
+              <p className="text-lg">{lessonCopy("You answered {correct} of {total} correctly.", { correct: sessionCorrect, total: lesson.questions.length })}</p>
+              <p className="text-muted-foreground">{t(!progressSaved ? "This progress lasts for the current session." : lessonCompleted ? "This lesson is saved as completed on this device." : "Your practice was recorded on this device.")} {t("Replays do not earn extra XP.")}</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={() => openLesson((lessonIndex + 1) % lessons.length)}>
-                  {lessonIndex + 1 === lessons.length ? "Back to first lesson" : "Continue to next lesson"}
+                  {t(lessonIndex + 1 === lessons.length ? "Back to first lesson" : "Continue to next lesson")}
                 </Button>
-                <Button variant="outline" onClick={() => openLesson(lessonIndex)}><RotateCcw className="mr-2 h-4 w-4" /> Try again</Button>
+                <Button variant="outline" onClick={() => openLesson(lessonIndex)}><RotateCcw className="mr-2 h-4 w-4" /> {t("Try again")}</Button>
               </div>
             </CardContent>
           </Card>
         ) : (
           <Card className="rounded-2xl">
             <CardHeader className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><BookOpen className="h-4 w-4" aria-hidden="true" /> {lesson.subject} · Question {questionIndex + 1} of {lesson.questions.length}</div>
-              <Progress aria-label="Lesson progress" value={100 * questionIndex / lesson.questions.length} />
-              <CardTitle className="text-2xl leading-relaxed">{question.prompt}</CardTitle>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><BookOpen className="h-4 w-4" aria-hidden="true" /> {t(lesson.subject)} · {lessonCopy("Question {current} of {total}", { current: questionIndex + 1, total: lesson.questions.length })}</div>
+              <Progress aria-label={t("Lesson progress")} value={100 * questionIndex / lesson.questions.length} />
+              <CardTitle className="text-2xl leading-relaxed">{t(question.prompt)}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="sample-answers grid gap-3">
@@ -141,21 +150,21 @@ export default function GuestLearn() {
                     data-correct={selected !== null && index === question.correct}
                     className="justify-start text-left whitespace-normal min-h-14 h-auto py-3 text-base"
                     disabled={selected !== null} onClick={() => choose(index)}>
-                    <span className="font-bold mr-3">{String.fromCharCode(65 + index)}.</span>{choice}
+                    <span className="font-bold mr-3">{String.fromCharCode(65 + index)}.</span>{t(choice)}
                   </Button>
                 ))}
               </div>
               {selected !== null && (
                 <section role="status" aria-live="polite" className="sample-feedback rounded-xl p-4 space-y-3">
-                  <p className="font-bold">{selected === question.correct ? "Correct!" : "Good try! Here's the answer."}</p>
-                  <p>{question.explanation}</p>
-                  <Button onClick={advance}>{questionIndex + 1 === lesson.questions.length ? "Finish lesson" : "Next question"}</Button>
+                  <p className="font-bold">{t(selected === question.correct ? "Correct!" : "Good try! Here's the answer.")}</p>
+                  <p>{t(question.explanation)}</p>
+                  <Button onClick={advance}>{t(questionIndex + 1 === lesson.questions.length ? "Finish lesson" : "Next question")}</Button>
                 </section>
               )}
             </CardContent>
           </Card>
         )}
-        <p className="text-center text-sm text-muted-foreground">Sample content, not private study data. <Link href="/decks" className="underline">Private study library</Link> is optional and separate.</p>
+        <p className="text-center text-sm text-muted-foreground">{t("Sample content, not private study data.")} <Link href="/decks" className="underline">{t("Private study library")}</Link> {t("is optional and separate.")}</p>
       </div>
     </main>
   );

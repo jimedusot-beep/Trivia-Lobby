@@ -44,13 +44,34 @@ language. Canonical catalog entries and engine data remain unchanged.
 The public creator, courses, practice, Family Showdown editor, Solo Test, credits
 and Open Party Lab receive the shared navigation/language identity. Their forms,
 lessons and game content remain partly or wholly English; a Spanish notice makes
-that visible. The React sample lesson also retains its English content boundary.
+that visible. The foundation alone retains an English sample-lesson boundary;
+the separate local follow-up below translates that first-party sample flow.
 Private library/study/account pages are not localized by this first change.
 
 The existing eight-mode starter-content marker is retained, with a clearer
 warning that later rounds can still be English. This is not all-round content
 certification. No authored deck is translated, no answer alias is added, and no
 gameplay rules or room payloads change in this slice.
+
+## Local follow-up: public sample lessons
+
+The separate sample-learning candidate translates all three first-party lessons
+(nine questions), answer choices, explanations, controls, progress, results and
+page title. Switching language during feedback preserves the selected answer and
+correct-answer count. The English lesson data, correct indices, three lesson IDs,
+existing saved-progress key/format and 30-XP-per-completed-lesson policy stay intact.
+Replaying a lesson does not add XP. Saved progress remains browser-local.
+
+If browser storage rejects a write, the page now states that progress is available
+only in the current session and must not call it saved. Reloading can discard
+unsaved progress; lessons remain usable during the current session. Both languages
+receive that explanation. This follow-up does not translate user-authored quizzes,
+private data, public tool forms or remaining game content.
+
+Keep this follow-up distinct from the original foundation patch. It depends on
+the shared locale/identity foundation and needs its own reviewed diff, local
+results and owner-controlled publication/integration. Bilingual human editorial
+and actual-device acceptance remain open.
 
 ## Remaining order for item 19
 
