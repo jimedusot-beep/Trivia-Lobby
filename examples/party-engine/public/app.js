@@ -26,7 +26,7 @@ let preferredMode = gameById(launchGame) ? launchGame : "quiz";
 let preferredCategory = "actions";
 let preferredSettings = {};
 
-let connection, roomReady = false, pendingEntry, entryTimer;
+let connection, roomReady = false, sessionEnded = false, pendingEntry, entryTimer;
 let ws,
   state,
   credential,
@@ -106,6 +106,7 @@ function save() {
   }
 }
 function connect() {
+  sessionEnded = false;
   clearTimeout(retryTimer);
   clearTimeout(entryTimer);
   connection?.stop();
@@ -134,7 +135,11 @@ function connect() {
     },
     onStatus(next) {
       roomReady = next === "connected";
-      if (!roomReady) { releaseRaceControls(); disposeTap(); disposeTrails(); }
+      if (next === "closed") sessionEnded = true;
+      if (!roomReady) {
+        if (sessionEnded) disposeRace();
+        releaseRaceControls(); disposeTap(); disposeTrails();
+      }
       if (!roomReady && state) render();
     },
     onMessage(e, socket) {
@@ -189,7 +194,8 @@ function connect() {
     onClose(event, retrying) {
       clearTimeout(retryTimer);
       clearTimeout(entryTimer);
-      if (!retrying) pendingEntry = null;
+      sessionEnded = !retrying;
+      if (!retrying) { pendingEntry = null; disposeRace(); }
       releaseRaceControls(); disposeTap(); disposeTrails();
       status(retrying ? "Disconnected. Reconnecting…" : event.reason || "This party session ended. Join again to continue.");
       if (!retrying) { pending = null; if (!state) entry.showError(event.reason || "This session ended. Join again."); }
@@ -324,7 +330,8 @@ function renderHostNext() {
 }
 function render() {
   if (drawingBusy() && state.phase === "playing" && state.pack?.kind === "draw" && state.pack.canDraw) return;
-  if (updateRaceState(state)) return;
+  if (sessionEnded) { disposeRace(); disposeTap(); disposeTrails(); }
+  else if (updateRaceState(state)) return;
   if (updateTapState(state)) return;
   if (updateTrailsState(state)) return;
   disposeRace();
@@ -490,9 +497,9 @@ function render() {
   if (state.social) renderSocial(displayState,{element,button,action,actor:()=>credential?.actor});
   if (state.bonus) renderBonus(displayState,{element,button,action,actor:()=>credential?.actor});
   if (state.race) renderArcadeRace(state,{element,button,action,actor:()=>credential?.actor});
-  if (state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
-  else if (state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
-  else if (state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  if (!sessionEnded && state.pack?.kind === "race") renderRace(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (!sessionEnded && state.pack?.kind === "tap") renderTap(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
+  else if (!sessionEnded && state.pack?.kind === "trails") renderTrails(state, { sendInput: frame => { if (roomReady && ws?.readyState === 1) ws.send(JSON.stringify(frame)); } });
   else if (state.pack) renderPack(state,{element,button,action,actor:()=>credential?.actor,refresh:render,getPack:()=>state.pack,canAct:()=>!pending && roomReady && ws?.readyState === 1});
   if (state.pack && host && state.phase === "playing") button("End this match", () => {
     if (confirm("End this match now? Current points will stay on the results screen.")) action("play", { action: "end-match" });

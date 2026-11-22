@@ -1,0 +1,78 @@
+{
+  "method": "Playwright Chromium / headless Ubuntu / real local Grand Prix with 2 browser players",
+  "readings": [
+    {
+      "mode": "3d",
+      "rafP50Ms": 16.7,
+      "rafP95Ms": 33.4,
+      "worstRafMs": 50,
+      "rendered3dFrames": 61,
+      "sceneDrawCalls": 76,
+      "renderContext": {
+        "cssWidth": 938,
+        "cssHeight": 563,
+        "backingWidth": 938,
+        "backingHeight": 563,
+        "devicePixelRatio": 1,
+        "webglVendor": "Google Inc. (Google)",
+        "webglRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      },
+      "threeDBundle": [
+        {
+          "durationMs": 11.099999997764826,
+          "transferSize": 519994,
+          "decodedBodySize": 519694
+        }
+      ]
+    },
+    {
+      "mode": "2d",
+      "rafP50Ms": 16.7,
+      "rafP95Ms": 16.7,
+      "worstRafMs": 16.8,
+      "rendered3dFrames": null,
+      "sceneDrawCalls": null,
+      "renderContext": {
+        "cssWidth": 938,
+        "cssHeight": 563,
+        "backingWidth": 1200,
+        "backingHeight": 720,
+        "devicePixelRatio": 1,
+        "webglVendor": null,
+        "webglRenderer": null
+      },
+      "threeDBundle": [
+        {
+          "durationMs": 11.099999997764826,
+          "transferSize": 519994,
+          "decodedBodySize": 519694
+        }
+      ]
+    },
+    {
+      "mode": "3d",
+      "rafP50Ms": 16.7,
+      "rafP95Ms": 33.4,
+      "worstRafMs": 33.4,
+      "rendered3dFrames": 62,
+      "sceneDrawCalls": 74,
+      "renderContext": {
+        "cssWidth": 938,
+        "cssHeight": 563,
+        "backingWidth": 938,
+        "backingHeight": 563,
+        "devicePixelRatio": 1,
+        "webglVendor": "Google Inc. (Google)",
+        "webglRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+      },
+      "threeDBundle": [
+        {
+          "durationMs": 11.099999997764826,
+          "transferSize": 519994,
+          "decodedBodySize": 519694
+        }
+      ]
+    }
+  ],
+  "warning": "rAF cadence is not GPU execution time. Renderer/vendor and buffer dimensions are diagnostic context; masked renderer strings may not identify hardware. 2D has no independent draw count; real Windows hardware may differ."
+}

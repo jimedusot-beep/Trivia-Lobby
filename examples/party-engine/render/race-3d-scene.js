@@ -6,8 +6,18 @@
 import * as THREE from 'three';
 import { TRACK, TRACK_POINTS, trackPose, ITEM_SPOTS, BOOST_SPOTS, RACE_COLORS } from '../public/race-track.js';
 import { clamp, lerp, wrapAngle } from '../public/race-math.js';
+import { getSplitLayout as computeSplitLayout, SPLIT_CAMERA_LIMIT } from './race-split-layout.js';
+import { createFollowCameraStates, updateFollowCameras, SPLIT_FOLLOW_CAMERA } from './race-follow-cameras.js';
+import { splitVisibleKartNumbers } from './race-kart-visibility.js';
+import { splitRenderScale } from './race-render-scale.js';
+import { renderSplitViewports } from './race-viewport-render.js';
+import { assignHazardSlots } from './race-hazard-slots.js';
 
 const SCALE = 0.1;
+const MAX_KARTS = 20;
+const KART_LAYER_BASE = 1;
+const SPLIT_TRACK_LAYER = KART_LAYER_BASE + MAX_KARTS;
+const SPLIT_KARTS_PER_VIEW = 2;
 export function createRaceScene({ onContextLost }) {
   const canvas = document.createElement('canvas');
   let renderer;
@@ -20,6 +30,9 @@ export function createRaceScene({ onContextLost }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setSize(TRACK.width, TRACK.height, false);
   canvas.dataset.renderer = '3d';
+  // Any failure after WebGLRenderer construction must release the context; the
+  // 2D fallback cannot see a half-built scene object to dispose itself.
+  try {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#c5e6ec');
   const camera = new THREE.OrthographicCamera(-58, 58, 34.8, -34.8, 1, 300);
@@ -28,11 +41,99 @@ export function createRaceScene({ onContextLost }) {
   const sun = new THREE.DirectionalLight('#ffdfb0', 2.0);
   sun.position.set(-40, 90, 20); scene.add(sun);
   const director = new THREE.PerspectiveCamera(50, 5 / 3, 0.1, 300);
+  for (let layer = KART_LAYER_BASE; layer < KART_LAYER_BASE + MAX_KARTS; layer++) {
+    camera.layers.enable(layer);
+    director.layers.enable(layer);
+  }
   const desiredPosition = new THREE.Vector3(), desiredLook = new THREE.Vector3(), lookAt = new THREE.Vector3();
   let cameraMode = 'overview', directorReady = false, focusNumber = null, focusUntil = 0;
-  function setCamera(mode) { cameraMode = mode === 'director' ? 'director' : 'overview'; directorReady = false; }
+  let splitCount = 0, splitLayout = null, splitDrawCalls = 0, renderScale = 1;
+  let followStates = [], splitCameras = [], splitViews = [], splitNumbers = [];
+
+  function resetViewport() {
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, lastWidth, lastHeight);
+    renderer.setScissor(0, 0, lastWidth, lastHeight);
+  }
+  function resetSplitCameras() {
+    for (const state of followStates) { state.ready = false; state.visible = false; }
+  }
+  function setCamera(mode) {
+    const next = mode === 'director' ? 'director' : mode === 'split' ? 'split' : 'overview';
+    if (next !== cameraMode) resetSplitCameras();
+    cameraMode = next;
+    directorReady = false;
+    focusNumber = null;
+    splitLayout = null;
+    resetViewport();
+  }
+  function setDisplay(mode) { setCamera(mode); }
+  function setSplitPlayerCount(count) {
+    const next = clamp(Math.floor(Number(count) || 0), 0, SPLIT_CAMERA_LIMIT);
+    if (next === splitCount) return;
+    splitCount = next;
+    splitNumbers = Array.from({ length: next }, (_, index) => index + 1);
+    followStates = createFollowCameraStates(splitNumbers);
+    splitCameras = splitNumbers.map(() => new THREE.PerspectiveCamera(55, 1, 0.1, 300));
+    splitViews = splitCameras.map((camera, index) => ({ rect: null, camera, number: splitNumbers[index] }));
+    splitLayout = null;
+    splitDrawCalls = 0;
+    canvas.dataset.splitNumbers = splitNumbers.join(',');
+  }
+  function applyRenderScale(reducedMotion) {
+    const next = cameraMode === 'split' ? splitRenderScale(splitCount, reducedMotion) : 1;
+    if (next === renderScale) return;
+    renderScale = next;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5) * renderScale);
+    renderer.setSize(lastWidth, lastHeight, false);
+    canvas.dataset.splitRenderScale = String(renderScale);
+    splitLayout = null;
+    resetViewport();
+  }
+  function resize(width, height) {
+    const nextWidth = Math.round(clamp(Number(width) || TRACK.width, 320, 1440));
+    const nextHeight = Math.round(Number(height) || nextWidth * 0.6);
+    if (nextWidth === lastWidth && nextHeight === lastHeight) return;
+    renderer.setSize(nextWidth, nextHeight, false);
+    lastWidth = nextWidth;
+    lastHeight = nextHeight;
+    canvas.dataset.splitCanvasWidth = String(nextWidth);
+    canvas.dataset.splitCanvasHeight = String(nextHeight);
+    splitLayout = null;
+    director.aspect = nextWidth / nextHeight;
+    director.updateProjectionMatrix();
+  }
+  function currentSplitLayout() { return splitLayout; }
+  function applySplitViewVisibility(frame) {
+    const frameKarts = frame?.karts || [];
+    let firstView = [];
+    for (let index = 0; index < splitCameras.length; index++) {
+      const visible = splitVisibleKartNumbers(frameKarts, splitNumbers[index], { limit: SPLIT_KARTS_PER_VIEW });
+      if (index === 0) firstView = visible;
+      const camera3d = splitCameras[index];
+      camera3d.layers.set(0);
+      camera3d.layers.enable(SPLIT_TRACK_LAYER);
+      for (const number of visible) camera3d.layers.enable(KART_LAYER_BASE + ((number - 1) % MAX_KARTS));
+    }
+    return firstView;
+  }
+  function findFrameKart(karts, number) {
+    for (let index = 0; index < karts.length; index++) if (karts[index].number === number) return karts[index];
+    return null;
+  }
+  function leadingKart(karts) {
+    let best = null;
+    for (const kart of karts) {
+      if (!best || Number(kart.finished) - Number(best.finished) < 0 ||
+          (kart.finished === best.finished && kart.rank < best.rank)) best = kart;
+    }
+    return best;
+  }
 
   const geometries = new Map(), materials = new Map(), textures = new Set();
+  const splitHidden = [], splitSurfaceOriginals = [];
+  let splitSurfaceMesh = null;
+  const hideInSplit = object => { object.userData.splitHidden = true; return object; };
   const geometry = (key, factory) => {
     if (!geometries.has(key)) geometries.set(key, factory());
     return geometries.get(key);
@@ -70,7 +171,7 @@ export function createRaceScene({ onContextLost }) {
   }
 
   // A single elevated island and inexpensive contact shadows replace GPU shadow maps.
-  const water = mesh(geometry('water', () => new THREE.PlaneGeometry(220, 180)), material('#a8dfe4'));
+  const water = hideInSplit(mesh(geometry('water', () => new THREE.PlaneGeometry(220, 180)), material('#a8dfe4')));
   water.rotation.x = -Math.PI / 2; water.position.y = -2.2;
   const island = box(131, 1.8, 82, '#64af84', scene, 0, -0.7, 0);
   island.position.y = -1.1;
@@ -103,26 +204,26 @@ export function createRaceScene({ onContextLost }) {
     const p = trackPose(i / 80); transform.position.set((p.x - 600) * SCALE, 0.17, (p.y - 360) * SCALE);
     transform.rotation.y = -p.angle; transform.updateMatrix(); dashes.setMatrixAt(i, transform.matrix);
   }
-  scene.add(dashes);
+  scene.add(hideInSplit(dashes));
 
   for (const t of BOOST_SPOTS) {
     const p = trackPose(t), pad = new THREE.Group(); scene.add(pad);
     pad.position.set((p.x - 600) * SCALE, 0.19, (p.y - 360) * SCALE); pad.rotation.y = -p.angle;
     box(3.1, 0.08, road * 1.85, '#ffca60', pad, 0, 0, 0);
     for (const x of [-0.7, 0.5]) for (const side of [-1, 1]) {
-      const arrow = box(1, 0.1, 0.28, '#fff4c5', pad, x, 0.08, side * 0.34); arrow.rotation.y = side * 0.65;
+      const arrow = hideInSplit(box(1, 0.1, 0.28, '#fff4c5', pad, x, 0.08, side * 0.34)); arrow.rotation.y = side * 0.65;
     }
   }
   const start = trackPose(0), arch = new THREE.Group(); scene.add(arch);
   arch.position.set((start.x - 600) * SCALE, 0.2, (start.y - 360) * SCALE); arch.rotation.y = -start.angle;
   for (const z of [-5.45, 5.45]) {
-    box(0.65, 5.1, 0.65, '#fff6e1', arch, 0, 2.55, z);
-    box(1, 0.55, 1, '#f57575', arch, 0, 0.3, z);
+    hideInSplit(box(0.65, 5.1, 0.65, '#fff6e1', arch, 0, 2.55, z));
+    hideInSplit(box(1, 0.55, 1, '#f57575', arch, 0, 0.3, z));
   }
-  box(0.9, 1.1, 11.7, '#22314e', arch, 0, 5.25, 0);
-  for (let i = 0; i < 12; i++) box(0.96, 0.55, 0.48, i % 2 ? '#fff6e1' : '#f7bd55', arch, 0, 5.25, -5.25 + i * 0.95);
+  hideInSplit(box(0.9, 1.1, 11.7, '#22314e', arch, 0, 5.25, 0));
+  for (let i = 0; i < 12; i++) hideInSplit(box(0.96, 0.55, 0.48, i % 2 ? '#fff6e1' : '#f7bd55', arch, 0, 5.25, -5.25 + i * 0.95));
   for (let x = 0; x < 4; x++) for (let z = 0; z < 12; z++)
-    box(0.55, 0.02, 0.78, (x + z) % 2 ? '#fff8e9' : '#23314b', arch, x * 0.55 - 0.8, 0.02, z * 0.78 - 4.3);
+    hideInSplit(box(0.55, 0.02, 0.78, (x + z) % 2 ? '#fff8e9' : '#23314b', arch, x * 0.55 - 0.8, 0.02, z * 0.78 - 4.3));
 
   // Low-poly scenery stays outside the physical roadway.
   const trunkGeometry = geometry('trunk', () => new THREE.CylinderGeometry(0.18, 0.26, 2, 5));
@@ -136,7 +237,7 @@ export function createRaceScene({ onContextLost }) {
     transform.position.set(x, 1, z); transform.rotation.set(0, i, 0); transform.scale.setScalar(0.8 + (i % 3) * 0.15); transform.updateMatrix(); trunks.setMatrixAt(i, transform.matrix);
     transform.position.y = 3; transform.updateMatrix(); crowns.setMatrixAt(i, transform.matrix);
   }
-  transform.scale.setScalar(1); scene.add(trunks, crowns);
+  transform.scale.setScalar(1); scene.add(hideInSplit(trunks), hideInSplit(crowns));
 
   // A small set of instanced festival pennants adds depth without a separate
   // draw call for each decoration. Keep the roadway and boost cues unobstructed.
@@ -160,15 +261,15 @@ export function createRaceScene({ onContextLost }) {
     transform.updateMatrix();
     pennants[i % 3].setMatrixAt(Math.floor(i / 3), transform.matrix);
   }
-  scene.add(poles, ...pennants);
+  scene.add(hideInSplit(poles), ...pennants.map(hideInSplit));
   for (const [x, z, color] of [[-49, -28, '#f8b96f'], [47, -29, '#8ab9b0'], [-51, 29, '#d7a37d']]) {
-    const hill = mesh(geometry('hill', () => new THREE.ConeGeometry(7, 10, 6)), material(color), scene, x, 3, z); hill.rotation.y = 0.4;
+    const hill = hideInSplit(mesh(geometry('hill', () => new THREE.ConeGeometry(7, 10, 6)), material(color), scene, x, 3, z)); hill.rotation.y = 0.4;
   }
   for (const [x, z] of [[-20, -31], [18, 31]]) {
     const stand = new THREE.Group(); scene.add(stand); stand.position.set(x, 0.4, z);
     for (let row = 0; row < 3; row++) {
-      box(16, 0.6 + row * 0.5, 1.6, '#fff0d5', stand, 0, row * 0.4, row * 1.5);
-      for (let seat = 0; seat < 10; seat++) ball(0.32, ['#f57575', '#ffcb5d', '#7da7e8'][seat % 3], stand, seat * 1.4 - 6.3, 1 + row * 0.8, row * 1.5);
+      hideInSplit(box(16, 0.6 + row * 0.5, 1.6, '#fff0d5', stand, 0, row * 0.4, row * 1.5));
+      for (let seat = 0; seat < 10; seat++) hideInSplit(ball(0.32, ['#f57575', '#ffcb5d', '#7da7e8'][seat % 3], stand, seat * 1.4 - 6.3, 1 + row * 0.8, row * 1.5));
     }
   }
   const titleTexture = textTexture(1024, 256, c => {
@@ -178,7 +279,7 @@ export function createRaceScene({ onContextLost }) {
     c.font = '700 27px sans-serif'; c.fillText('YOUR PHONES. YOUR STARTING GRID.', 512, 224);
   });
   const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true, depthWrite: false }); materials.set('title', titleMaterial);
-  mesh(geometry('title', () => new THREE.PlaneGeometry(56, 14)), titleMaterial, scene, 0, 0.08, 0).rotation.x = -Math.PI / 2;
+  hideInSplit(mesh(geometry('title', () => new THREE.PlaneGeometry(56, 14)), titleMaterial, scene, 0, 0.08, 0)).rotation.x = -Math.PI / 2;
 
   // Batch repeated *static* track geometry. The original per-object meshes
   // are decorative only; kart bodies, pickups and hazards are created below
@@ -192,13 +293,15 @@ export function createRaceScene({ onContextLost }) {
       if (!object.isMesh || object.isInstancedMesh || !object.geometry ||
           !object.material || Array.isArray(object.material) ||
           object.material.transparent) return;
-      const key = `${object.geometry.uuid}:${object.material.uuid}`;
+      const splitTag = object.userData.splitHidden ? 1 : 0;
+      const key = `${object.geometry.uuid}:${object.material.uuid}:${splitTag}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(object);
     });
     for (const objects of groups.values()) {
       if (objects.length < 2) continue;
       const instanced = new THREE.InstancedMesh(objects[0].geometry, objects[0].material, objects.length);
+      if (objects[0].userData.splitHidden) instanced.userData.splitHidden = true;
       objects.forEach((object, index) => {
         instanced.setMatrixAt(index, object.matrixWorld);
         object.removeFromParent();
@@ -209,37 +312,102 @@ export function createRaceScene({ onContextLost }) {
     }
   }
   batchStaticTrackMeshes();
+  // Split cameras repeat the same static road eight times. Give them one
+  // vertex-coloured surface mesh while Whole Track and Race Director keep the
+  // original meshes and materials. This stays on its own camera layer so the
+  // shared overview never renders a duplicate track.
+  function batchSplitTrackSurface() {
+    scene.updateMatrixWorld(true);
+    const surfaces = [];
+    scene.traverse(object => {
+      if (!object.isMesh || !object.geometry || !object.material ||
+          Array.isArray(object.material) || object.material.transparent ||
+          object.material.map || object.userData.splitHidden) return;
+      surfaces.push(object);
+    });
+    if (!surfaces.length) return;
+    const positions = [], normals = [], colors = [];
+    const instanceMatrix = new THREE.Matrix4(), worldMatrix = new THREE.Matrix4();
+    const append = (source, matrix, color) => {
+      const geometryCopy = source.index ? source.toNonIndexed() : source.clone();
+      geometryCopy.applyMatrix4(matrix);
+      const position = geometryCopy.getAttribute('position'), normal = geometryCopy.getAttribute('normal');
+      if (!position) { geometryCopy.dispose(); return; }
+      for (let index = 0; index < position.count; index++) {
+        positions.push(position.getX(index), position.getY(index), position.getZ(index));
+        normals.push(normal ? normal.getX(index) : 0, normal ? normal.getY(index) : 1, normal ? normal.getZ(index) : 0);
+        colors.push(color.r, color.g, color.b);
+      }
+      geometryCopy.dispose();
+    };
+    for (const object of surfaces) {
+      const color = object.material.color || new THREE.Color(0xffffff);
+      if (object.isInstancedMesh) {
+        for (let index = 0; index < object.count; index++) {
+          object.getMatrixAt(index, instanceMatrix);
+          worldMatrix.multiplyMatrices(object.matrixWorld, instanceMatrix);
+          append(object.geometry, worldMatrix, color);
+        }
+      } else append(object.geometry, object.matrixWorld, color);
+    }
+    if (!positions.length) return;
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    merged.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    merged.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    merged.computeBoundingSphere();
+    geometries.set('split-track-surface', merged);
+    const mergedMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.78, side: THREE.DoubleSide });
+    materials.set('split-track-surface', mergedMaterial);
+    splitSurfaceMesh = new THREE.Mesh(merged, mergedMaterial);
+    splitSurfaceMesh.layers.set(SPLIT_TRACK_LAYER);
+    splitSurfaceMesh.visible = false;
+    scene.add(splitSurfaceMesh);
+    for (const object of surfaces) {
+      object.userData.splitSurfaceOriginal = true;
+      splitSurfaceOriginals.push(object);
+    }
+  }
+  batchSplitTrackSurface();
+  scene.traverse(object => { if (object.userData.splitHidden) splitHidden.push(object); });
 
+  const pickupLayer = new THREE.Group(); scene.add(pickupLayer); splitHidden.push(pickupLayer);
   const boxes = ITEM_SPOTS.map(t => {
-    const p = trackPose(t), g = new THREE.Group(); scene.add(g); g.position.set((p.x - 600) * SCALE, 1.5, (p.y - 360) * SCALE);
+    const p = trackPose(t), g = new THREE.Group(); pickupLayer.add(g); g.position.set((p.x - 600) * SCALE, 1.5, (p.y - 360) * SCALE);
     const cube = box(1.7, 1.7, 1.7, '#b09afa', g, 0, 0, 0); cube.rotation.z = 0.3;
     const tex = textTexture(64, 64, c => { c.fillStyle = '#fff9e8'; c.font = '900 58px sans-serif'; c.textAlign = 'center'; c.fillText('?', 32, 54); });
     const m = new THREE.SpriteMaterial({ map: tex }); materials.set(`box-label:${t}`, m);
     const s = new THREE.Sprite(m); s.scale.setScalar(1.2); s.position.y = 0.1; g.add(s); return g;
   });
+  const hazardLayer = new THREE.Group(); scene.add(hazardLayer); splitHidden.push(hazardLayer);
   const hazards = Array.from({ length: 24 }, () => {
-    const o = mesh(geometry('puddle', () => new THREE.CircleGeometry(2.3, 14)), material('#a580c5'), scene, 0, 0.18, 0);
+    const o = mesh(geometry('puddle', () => new THREE.CircleGeometry(2.3, 14)), material('#a580c5'), hazardLayer, 0, 0.18, 0);
     o.rotation.x = -Math.PI / 2; o.scale.y = 0.65; o.visible = false; return o;
   });
+  let hazardSlots = hazards.map(() => null);
   const karts = new Map();
   function kart(number) {
     if (karts.has(number)) return karts.get(number);
-    if (karts.size >= 20) return null;
+    if (karts.size >= MAX_KARTS) return null;
     const color = RACE_COLORS[(number - 1) % RACE_COLORS.length];
     const root = new THREE.Group(), body = new THREE.Group(); scene.add(root); root.add(body);
+    // Split views hide fine trim and transient effects; the HUD still reports
+    // boost, shield and drift. Whole Track and Race Director keep every detail.
+    const bodyDetail = new THREE.Group(); body.add(bodyDetail);
+    const effects = new THREE.Group(); root.add(effects);
     const shadow = mesh(geometry('shadow', () => new THREE.CircleGeometry(1.6, 12)), material('#23314b', { transparent: true, opacity: 0.18, depthWrite: false }), root, 0, 0.16, 0);
     shadow.rotation.x = -Math.PI / 2; shadow.scale.y = 0.68;
     // Layered nose, side pods and a contrasting seat make each racer legible
     // from the overview camera without importing unverified character artwork.
     box(2.85, 0.5, 1.65, color, body, 0, 0.65, 0);
     box(0.9, 0.25, 1.42, color, body, 1.17, 0.78, 0);
-    box(0.22, 0.22, 1.45, '#fff6df', body, 1.44, 0.93, 0);
+    box(0.22, 0.22, 1.45, '#fff6df', bodyDetail, 1.44, 0.93, 0);
     box(0.63, 0.7, 1, '#24334d', body, -0.27, 1.07, 0);
     for (const side of [-1, 1]) {
-      box(1.22, 0.28, 0.43, color, body, -0.12, 0.61, side * 0.86);
-      box(0.24, 0.12, 0.42, '#ffe8a0', body, 1.68, 0.71, side * 0.58);
+      box(1.22, 0.28, 0.43, color, bodyDetail, -0.12, 0.61, side * 0.86);
+      box(0.24, 0.12, 0.42, '#ffe8a0', bodyDetail, 1.68, 0.71, side * 0.58);
     }
-    box(0.54, 0.16, 2.16, color, body, -1.36, 1.3, 0);
+    box(0.54, 0.16, 2.16, color, bodyDetail, -1.36, 1.3, 0);
     const wheels = [], frontAxles = [];
     for (const x of [-0.96, 0.97]) for (const z of [-0.94, 0.94]) {
       const axle = new THREE.Group();
@@ -249,32 +417,40 @@ export function createRaceScene({ onContextLost }) {
       w.rotation.x = Math.PI / 2; wheels.push(w);
     }
     const helmet = ball(0.54, color, body, -0.1, 1.82, 0);
-    const visor = box(0.3, 0.27, 0.88, '#294a68', body, 0.32, 1.82, 0);
-    const shield = mesh(geometry('shield', () => new THREE.SphereGeometry(1.75, 12, 8)), material('#8cddf2', { transparent: true, opacity: 0.3, depthWrite: false }), root, 0, 1.25, 0);
-    const flame = new THREE.Group(); root.add(flame); flame.position.set(-1.82, 0.68, 0);
+    const visor = box(0.3, 0.27, 0.88, '#294a68', bodyDetail, 0.32, 1.82, 0);
+    const shield = mesh(geometry('shield', () => new THREE.SphereGeometry(1.75, 12, 8)), material('#8cddf2', { transparent: true, opacity: 0.3, depthWrite: false }), effects, 0, 1.25, 0);
+    const flame = new THREE.Group(); effects.add(flame); flame.position.set(-1.82, 0.68, 0);
     for (const side of [-1, 1]) {
       const plume = mesh(geometry('flame', () => new THREE.ConeGeometry(0.28, 1.15, 7)),
         material('#ffd46a', { emissive: '#ff8d36', emissiveIntensity: 1 }), flame, -0.55, 0, side * 0.45);
       plume.rotation.z = Math.PI / 2;
     }
-    const sparks = [-1, 1].map(side => ball(0.22, '#55c7ff', root, -1.28, 0.4, side * 1));
+    const sparks = [-1, 1].map(side => ball(0.22, '#55c7ff', effects, -1.28, 0.4, side * 1));
     const numberLabel = label(number, root, color);
-    const model = { root, body, frontAxles, wheels, helmet, visor, shield, flame, sparks, numberLabel };
+    const layer = KART_LAYER_BASE + (number - 1);
+    root.traverse(object => object.layers.set(layer));
+    const model = { root, body, bodyDetail, effects, frontAxles, wheels, helmet, visor, shield, flame, sparks, numberLabel, layer };
     karts.set(number, model); return model;
   }
 
-  let disposed = false, lastPaint = -Infinity, lastWidth = TRACK.width, paintedFrames = 0;
+  let disposed = false, lastPaint = -Infinity, lastWidth = TRACK.width, lastHeight = TRACK.height, paintedFrames = 0;
+  let renderMsEma = 0;
+  canvas.dataset.splitCanvasWidth = String(lastWidth);
+  canvas.dataset.splitCanvasHeight = String(lastHeight);
+  canvas.dataset.splitRenderScale = String(renderScale);
   const lost = event => { event.preventDefault(); onContextLost(); };
   canvas.addEventListener('webglcontextlost', lost);
   function render(frame, previous, interpolation, now, reducedMotion) {
     if (disposed || document.hidden || now - lastPaint < 1000 / 30) return;
+    const frameStart = performance.now();
     const elapsed = Math.min(0.1, (now - lastPaint) / 1000); lastPaint = now;
+    applyRenderScale(reducedMotion);
     const width = Math.min(1440, Math.max(320, canvas.clientWidth || TRACK.width));
-    if (width !== lastWidth) { renderer.setSize(width, Math.round(width * 0.6), false); lastWidth = width; }
-    const previousKarts = new Map((previous.karts || []).map(k => [k.number, k]));
+    resize(width, canvas.clientHeight || Math.round(width * 0.6));
+    const previousKarts = previous?.karts || [];
     for (const k of frame.karts || []) {
       const model = kart(k.number); if (!model) continue;
-      const before = previousKarts.get(k.number), t = interpolation;
+      const before = findFrameKart(previousKarts, k.number), t = interpolation;
       const x = before ? lerp(before.x, k.x, t) : k.x, y = before ? lerp(before.y, k.y, t) : k.y;
       const angle = before ? before.angle + wrapAngle(k.angle - before.angle) * t : k.angle;
       model.root.position.set((x - 600) * SCALE, 0, (y - 360) * SCALE); model.root.rotation.y = -angle;
@@ -293,12 +469,55 @@ export function createRaceScene({ onContextLost }) {
       }
     }
     boxes.forEach((b, i) => { b.visible = !!frame.boxes?.[i]; if (!reducedMotion) { b.rotation.y = now / 700; b.position.y = 1.5 + Math.sin(now / 300 + i) * 0.16; } });
-    hazards.forEach((h, i) => { const v = frame.hazards?.[i]; h.visible = !!v; if (v) h.position.set((v.x - 600) * SCALE, 0.18, (v.y - 360) * SCALE); });
+    // The wire format carries only live hazards. Keep each surviving puddle in
+    // its previous mesh slot instead of shifting every visual when one expires.
+    hazardSlots = assignHazardSlots(frame.hazards, hazardSlots, hazards.length);
+    const hazardsByKey = new Map((frame.hazards || []).map(v => [`${v.x},${v.y}`, v]));
+    hazards.forEach((h, i) => {
+      const v = hazardsByKey.get(hazardSlots[i]);
+      h.visible = !!v;
+      if (v) h.position.set((v.x - 600) * SCALE, 0.18, (v.y - 360) * SCALE);
+    });
     let view = camera;
-    if (cameraMode === 'director' && !reducedMotion && frame.karts?.length) {
-      if (!focusNumber || now > focusUntil || !frame.karts.some(k => k.number === focusNumber && !k.finished)) {
-        focusNumber = [...frame.karts].sort((a, b) => Number(a.finished) - Number(b.finished) || a.rank - b.rank)[0].number;
-        focusUntil = now + 6000;
+    let splitActive = cameraMode === 'split' && !reducedMotion && splitCount > 0;
+    if (cameraMode !== 'director') { focusNumber = null; focusUntil = 0; }
+    for (const object of splitHidden) object.visible = !splitActive;
+    for (const model of karts.values()) {
+      model.bodyDetail.visible = !splitActive;
+      model.effects.visible = !splitActive;
+      for (const wheel of model.wheels) wheel.visible = !splitActive;
+    }
+
+    if (splitActive) {
+      if (!splitLayout) {
+        splitLayout = computeSplitLayout(splitCount, lastWidth, lastHeight);
+        canvas.dataset.splitRects = splitLayout ? JSON.stringify(splitLayout.all.map(cell => cell.css)) : '';
+      }
+      if (!splitLayout) splitActive = false;
+      else {
+        for (const object of splitSurfaceOriginals) object.visible = false;
+        if (splitSurfaceMesh) splitSurfaceMesh.visible = true;
+        updateFollowCameras(followStates, frame, previous, interpolation, SPLIT_FOLLOW_CAMERA);
+        for (let index = 0; index < splitViews.length; index++) {
+          const state = followStates[index], camera3d = splitCameras[index];
+          camera3d.position.set(state.x, state.y, state.z);
+          camera3d.lookAt(state.lookX, state.lookY, state.lookZ);
+          splitViews[index].rect = splitLayout.cells[index];
+        }
+        canvas.dataset.splitVisibleKarts = applySplitViewVisibility(frame).join(',');
+        splitDrawCalls = renderSplitViewports(renderer, scene, splitViews, lastWidth, lastHeight);
+      }
+    }
+    if (!splitActive) {
+      for (const object of splitSurfaceOriginals) object.visible = true;
+      if (splitSurfaceMesh) splitSurfaceMesh.visible = false;
+    }
+
+    if (!splitActive && cameraMode === 'director' && !reducedMotion && frame.karts?.length) {
+      const focused = focusNumber ? findFrameKart(frame.karts, focusNumber) : null;
+      if (!focused || focused.finished || now > focusUntil) {
+        const leader = leadingKart(frame.karts);
+        if (leader) { focusNumber = leader.number; focusUntil = now + 6000; }
       }
       const focus = karts.get(focusNumber)?.root;
       if (focus) {
@@ -310,25 +529,43 @@ export function createRaceScene({ onContextLost }) {
         director.lookAt(lookAt); view = director;
       }
     }
+
+    const directorActive = view === director;
+    const labelWidth = directorActive ? 1.2 : splitActive ? 2.1 : 3;
+    const labelHeight = directorActive ? 0.72 : splitActive ? 1.26 : 1.8;
     for (const [number, model] of karts) {
-      model.numberLabel.visible = view !== director || number !== focusNumber;
-      model.numberLabel.scale.set(view === director ? 1.2 : 3, view === director ? 0.72 : 1.8, 1);
+      model.numberLabel.visible = !directorActive || number !== focusNumber;
+      model.numberLabel.scale.set(labelWidth, labelHeight, 1);
     }
-    renderer.render(scene, view);
-    canvas.dataset.camera = view === director ? 'director' : 'overview';
-    canvas.dataset.focusNumber = String(focusNumber || '');
+    if (!splitActive) renderer.render(scene, view);
+    canvas.dataset.camera = splitActive ? 'split' : directorActive ? 'director' : 'overview';
+    canvas.dataset.focusNumber = String(directorActive ? focusNumber || '' : '');
     canvas.dataset.karts = String(karts.size);
-    canvas.dataset.drawCalls = String(renderer.info.render.calls);
+    canvas.dataset.splitCameras = String(splitActive ? splitCount : 0);
+    canvas.dataset.drawCalls = String(splitActive ? splitDrawCalls : renderer.info.render.calls);
+    const renderMs = performance.now() - frameStart;
+    renderMsEma = renderMsEma ? renderMsEma * 0.85 + renderMs * 0.15 : renderMs;
+    canvas.dataset.renderMs = renderMsEma.toFixed(2);
     canvas.dataset.renderFrame = String(++paintedFrames);
   }
   function dispose() {
     if (disposed) return; disposed = true;
     canvas.removeEventListener('webglcontextlost', lost);
+    resetViewport();
     for (const g of geometries.values()) g.dispose();
     for (const m of materials.values()) m.dispose();
     for (const texture of textures) texture.dispose();
     scene.traverse(object => { if (object.isInstancedMesh) object.dispose(); });
-    scene.clear(); karts.clear(); renderer.dispose(); renderer.forceContextLoss();
+    scene.clear(); karts.clear();
+    followStates = []; splitCameras = []; splitViews = []; splitNumbers = []; splitLayout = null;
+    splitHidden.length = 0; splitSurfaceOriginals.length = 0; splitSurfaceMesh = null; hazardSlots = [];
+    renderer.dispose(); renderer.forceContextLoss();
   }
-  return { canvas, render, dispose, setCamera };
+  return { canvas, render, dispose, setCamera, setDisplay, setSplitPlayerCount, resize, getSplitLayout: currentSplitLayout };
+  } catch (error) {
+    renderer.dispose();
+    renderer.forceContextLoss();
+    canvas.remove();
+    throw error;
+  }
 }

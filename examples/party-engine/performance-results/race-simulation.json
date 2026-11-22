@@ -1,0 +1,10 @@
+{
+  "method": "Local Node.js authoritative Party tick with eight concurrent kart inputs",
+  "racers": 8,
+  "ticks": 1800,
+  "p50Ms": 0.0443,
+  "p95Ms": 0.0953,
+  "worstMs": 7.9406,
+  "frames": 1800,
+  "warning": "Local loopback timing is not a real TV or iPhone measurement and does not replace device testing."
+}

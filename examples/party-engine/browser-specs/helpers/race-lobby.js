@@ -7,7 +7,7 @@ export async function lobby(browser, count = 2, viewport = { width: 390, height:
   const contexts = [], errors = [], sent = [], requests = [], snapshots = new Map();
   async function page(size) {
     const context = await browser.newContext({ viewport: size });
-    if (!contexts.length && setup) await context.addInitScript(setup);
+    if (setup) await context.addInitScript(setup);
     contexts.push(context);
     const page = await context.newPage(); page.on("pageerror", e => errors.push(e.message));
     page.on("websocket", ws => ws.on("framereceived", event => {
@@ -40,13 +40,16 @@ export async function lobby(browser, count = 2, viewport = { width: 390, height:
       await expect(host.locator("#race-track")).toBeVisible({ timeout: 12000 });
       for (const p of players) await expect(p.getByRole("group", { name: "Racing controls" })).toBeVisible();
     },
-    async close() {
+    async close({ endMatch = true } = {}) {
       const acceptEnd = dialog => dialog.accept();
       host.once("dialog", acceptEnd);
       try {
         // Fixture housekeeping, not a user-click assertion: find and activate in
         // one DOM task so a heat transition cannot strand a locator click.
         // Keep ending active matches so later tests do not hit the race limit.
+        // A terminal-disconnect test leaves the host unable to send the end
+        // action, so it opts out of this step.
+        if (!endMatch) return false;
         const ending = await host.evaluate(() => {
           const end = [...document.querySelectorAll("button")]
             .find(button => button.textContent === "End this match");
