@@ -8,6 +8,12 @@ const GRIDS = {
 const SCALES = { 1: '1', 2: '1', 3: '0.9', 4: '0.9', 5: '0.8', 6: '0.8', 7: '0.8', 8: '0.8' };
 const near = (actual, expected) => expect(Math.abs(actual - expected)).toBeLessThan(3);
 
+// Firefox CI runs without WebGL, so split-screen falls back to the shared 2D view.
+// Real split rendering stays covered in Chromium and WebKit.
+test.beforeEach(({browserName}) => {
+  test.skip(browserName === 'firefox', 'Split-screen 3D rendering requires WebGL.');
+});
+
 test('one through eight local cameras use the required grid, HUD and standings', async ({browser}) => {
   // Nine live WebGL pages render eight successive split layouts. This takes ~31s
   // locally and exceeds the shared 60s limit on slower cross-browser CI runners.

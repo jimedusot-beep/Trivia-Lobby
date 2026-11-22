@@ -163,7 +163,8 @@ test('a late 3D module cannot resurrect a scene after the host ends the heat', a
   } finally {release?.();await f.close();}
 });
 
-test('a terminal disconnect stops the race loop and controller input', async ({browser}) => {
+test('a terminal disconnect stops the race loop and controller input', async ({browser,browserName}) => {
+  test.skip(browserName === 'firefox', 'Firefox CI runs without WebGL, so the 3D race loop is unavailable.');
   const f = await lobby(browser, 2, undefined, () => {
     window.__raceSockets = [];
     const Native = window.WebSocket;
@@ -192,7 +193,8 @@ test('a terminal disconnect stops the race loop and controller input', async ({b
   } finally {await f.close({ endMatch: false });}
 });
 
-test('a renderer setup failure releases the WebGL context and keeps 2D racing', async ({browser}) => {
+test('a renderer setup failure releases the WebGL context and keeps 2D racing', async ({browser,browserName}) => {
+  test.skip(browserName === 'firefox', 'Firefox CI has no WebGL context to release; verified in Chromium/WebKit.');
   const f = await lobby(browser, 2, undefined, () => {
     window.__raceLoseCalls = 0;
     const fillText = CanvasRenderingContext2D.prototype.fillText;
