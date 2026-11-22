@@ -1,5 +1,5 @@
 import { matchContent } from "./content-rotation.js";
-import { randomInt, randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { quiz as demoQuiz, prompts } from "./content.js";
 import { validateAction } from "./protocol.js";
 import { makeTurn, markClue, finishTurn } from "./charades.js";
@@ -197,7 +197,8 @@ export class Party {
   handle(actor, msg) {
     validateAction(msg);
     const key = `${actor}:${msg.requestId}`,
-      fingerprint = JSON.stringify(msg);
+      // Retain a fixed-size digest, never the attacker-sized raw action.
+      fingerprint = createHash('sha256').update(JSON.stringify(msg)).digest('hex');
     const previous = this.requests.get(key);
     if (previous) {
       if (previous.fingerprint !== fingerprint) fail("Request ID conflict.");

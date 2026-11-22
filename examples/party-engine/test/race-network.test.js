@@ -119,5 +119,28 @@ test("continuous input cannot bypass ordinary game action limits; racing spam cl
   const closed = once(peer.ws, "close");
   for (let i = 0; i < 50; i++) peer.send({ v: 1, type: "race_input", matchId: r.party.matchId, heat: 0, seq: i,
     steer: 0, drift: false, item: false, assist: true });
-  assert.equal((await closed)[0], 1008);
+  assert.equal((await closed)[0], 1013);
+});
+
+test("invalid race actions do not amplify into full-room state broadcasts", async t => {
+  const f = await server(t), r = await f.room(2), control = await f.room(2);
+  for (const room of [r, control]) {
+    await f.action(room.host, room.party, "start", "race");
+    await room.host.until(m => m.type === "state" && m.state.phase === "playing");
+    await room.players[0].until(m => m.type === "state" && m.state.phase === "playing");
+  }
+  const count = (peer, cursor = 0) => peer.messages.slice(cursor).filter(m => m.type === "state").length;
+  const hostStates = count(r.host), controlHostStates = count(control.host);
+  const playerCursor = r.players[0].messages.length;
+  const controlPlayerCursor = control.players[0].messages.length;
+  for (let i = 0; i < 20; i++) {
+    r.players[0].send({ v: 1, type: "play", requestId: `invalid-race-play-${i}`,
+      matchId: r.party.matchId, revision: r.party.revision, value: { action: "not-a-race-move" } });
+  }
+  await r.players[0].until(m => m.type === "error", playerCursor);
+  await wait(300);
+  // Both rooms keep ticking. A rejected action must not add states beyond the
+  // control room's ordinary race cadence (allow one tick for scheduling drift).
+  assert.ok(count(r.host, hostStates) - count(control.host, controlHostStates) <= 1);
+  assert.ok(count(r.players[0], playerCursor) - count(control.players[0], controlPlayerCursor) <= 1);
 });
