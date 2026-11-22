@@ -43,6 +43,10 @@ jobs:
       - run: npm run test:browser -- --project=${{ matrix.browser }}
         env:
           RACE_SCREENSHOT_DIR: test-results/grand-prix-preview
+      # Split layout sampling needs a heat that cannot end mid-run on slower CI.
+      - run: npm run test:split -- --project=${{ matrix.browser }}
+        env:
+          RACE_SCREENSHOT_DIR: test-results/grand-prix-preview
       # Save the actual responsive game-cover screenshots even when the
       # browser suite passes; visual review is a separate release gate.
       - uses: actions/upload-artifact@v4
