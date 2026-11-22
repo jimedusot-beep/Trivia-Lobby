@@ -9,6 +9,9 @@ const SCALES = { 1: '1', 2: '1', 3: '0.9', 4: '0.9', 5: '0.8', 6: '0.8', 7: '0.8
 const near = (actual, expected) => expect(Math.abs(actual - expected)).toBeLessThan(3);
 
 test('one through eight local cameras use the required grid, HUD and standings', async ({browser}) => {
+  // Nine live WebGL pages render eight successive split layouts. This takes ~31s
+  // locally and exceeds the shared 60s limit on slower cross-browser CI runners.
+  test.setTimeout(180000);
   const f = await lobby(browser, 8);
   try {
     await f.start();
