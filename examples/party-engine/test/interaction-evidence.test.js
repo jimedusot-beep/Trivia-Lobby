@@ -116,7 +116,7 @@ test("five full page buffers still produce a bounded diagnostic instead of losin
     const p = n ? new Page() : page; await evidence.observe(p, n ? `guest-${n}` : "host"); p.emit("websocket", p.socket);
     for (let i = 0; i < 400; i++) {
       frame(p.socket, "framesent", { type: "play", requestId: SECRET+i, revision: 999999, value: { action: "drive", gas: true } });
-      await p.dom({ event: "pointerdown", stage: "capture", target: "host-next", key: "enter", targetNode: 999999, nextNode: 999999, gasNode: 999999, trusted: true, prevented: false, controllerActive: true, joinErrorVisible: false, nextDisabled: false, gas: true, wordChooserPresent: true });
+      await p.dom({ event: "pointerdown", stage: "capture", target: "host-next", key: "enter", targetNode: 999999, nextNode: 999999, gasNode: 999999, trusted: true, prevented: false, controllerActive: true, joinErrorVisible: false, nextDisabled: false, gas: true, wordChooserPresent: true, nextX: 100000, nextY: -100000, nextWidth: 100000, nextHeight: 100000, x: 99999.999, y: -99999.999, pointerId: 999999, timerVisible: true });
     }
   }
   await finishInteractionEvidence(info);
@@ -145,7 +145,7 @@ test("seats attached at different times share one attempt clock for wire and DOM
     assert.equal(g.wire.find(e => e.type === "state").ms, 300);
     assert.equal(h.dom.find(e => e.event === "click").ms, 300);
     assert.equal(g.dom.find(e => e.wordChooserVisible).ms, 300);
-    assert.equal(data.schemaVersion, 2);
+    assert.equal(data.schemaVersion, 3);
     assert.equal(data.timeBasis, "attempt-relative");
     assert.ok(!JSON.stringify(data).includes(SECRET));
   } finally { await evidence.stop(); }
@@ -160,4 +160,15 @@ test("browser loss across reloads is totaled without counting repeated samples t
   await page.dom({ event: "dom", browserDropped: 2 });
   await finishInteractionEvidence(info);
   assert.equal((await readReport(directory)).pages[0].dropped.browser, 5);
+}));
+
+
+test("bounded numeric geometry and board state survive without arbitrary fields", () => fixture(async ({ page, info, evidence, directory }) => {
+  await evidence.observe(page,"host");page.emit("websocket",page.socket);
+  await page.dom({event:"pointerdown",target:"host-next",nextX:1.23456,nextY:-12.34567,nextWidth:1000000,nextHeight:52.99999,x:SECRET,y:NaN,pointerId:9,timerVisible:true,privateText:SECRET});
+  frame(page.socket,"framereceived",{type:"state",state:{phase:"reveal",pack:{stage:"board-reveal",round:2},revision:15}});
+  await finishInteractionEvidence(info);const data=await readReport(directory),p=data.pages[0],dom=p.dom.find(e=>e.event==="pointerdown");
+  assert.equal(data.schemaVersion,3);assert.equal(dom.nextX,1.235);assert.equal(dom.nextY,-12.346);assert.equal(dom.nextWidth,100000);assert.equal(dom.nextHeight,53);
+  assert.equal(dom.pointerId,9);assert.equal(dom.timerVisible,true);assert.ok(!("x" in dom));assert.ok(!("y" in dom));
+  assert.equal(p.wire.find(e=>e.type==="state").round,2);assert.ok(!JSON.stringify(data).includes(SECRET));
 }));

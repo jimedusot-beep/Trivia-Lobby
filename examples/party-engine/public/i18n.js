@@ -1,5 +1,9 @@
 // Presentation-only English/Spanish text. Authoritative actions and content IDs stay unchanged.
 import { identitySpanish } from "./identity-copy.js";
+import { creatorSpanish } from "./creator-copy.js";
+import { practiceSpanish } from "./practice-copy.js";
+import { learningSpanish } from "./learning-copy.js";
+import { showdownSpanish } from "./show-copy.js";
 export const supportedLanguages = Object.freeze(["en", "es"]);
 const storageKey = "party-display-language:v1";
 let language = "en";
@@ -31,6 +35,10 @@ export function subscribeLocale(listener) {
 }
 const spanishUI = Object.freeze({
   ...identitySpanish,
+  ...creatorSpanish,
+  ...practiceSpanish,
+  ...learningSpanish,
+  ...showdownSpanish,
   "🎮 Game library": "🎮 Biblioteca de juegos",
   "lobby": "sala",
   "countdown": "cuenta regresiva",
@@ -147,6 +155,9 @@ const spanishUI = Object.freeze({
 });
 export function t(value) {
   return language === "es" && typeof value === "string" ? (spanishUI[value] ?? value) : value;
+}
+export function formatText(key, values = {}) {
+  return t(key).replace(/\{(\w+)\}/g, (placeholder, name) => String(values[name] ?? placeholder));
 }
 export function translateStatic(root) {
   if (!root?.querySelectorAll) return;

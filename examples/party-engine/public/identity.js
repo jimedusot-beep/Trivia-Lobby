@@ -21,9 +21,12 @@ if (nav) {
   }
 }
 const partial = document.body.dataset.languageCoverage === "partial";
+const authored = document.body.dataset.languageCoverage === "authored";
 let note;
-if (partial && nav) {
-  note = document.createElement("p"); note.className = "language-content-note"; note.setAttribute("role", "status"); nav.after(note);
+if ((partial || authored) && nav) {
+  note = document.createElement("p"); note.className = "language-content-note";
+  if (partial) note.setAttribute("role", "status");
+  nav.after(note);
 }
 function renderIdentity() {
   document.title = t(originalTitle);
@@ -31,6 +34,10 @@ function renderIdentity() {
   if (partial) {
     const main = document.querySelector("main"); if (main) main.lang = "en";
     if (note) { note.lang = getLocale(); note.hidden = getLocale() !== "es"; note.textContent = t("This tool is currently in English. Your language choice is saved for the game lobby."); }
+  }
+  if (authored) {
+    const main = document.querySelector("main"); if (main) main.lang = getLocale();
+    if (note) { note.lang = getLocale(); note.textContent = t(document.body.dataset.languageNote || "Your quiz content keeps its original wording. Only the editor controls change language."); }
   }
   translateStatic(document);
 }

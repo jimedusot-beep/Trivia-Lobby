@@ -10,47 +10,47 @@
     <script type="module" src="./show.js"></script>
     <script type="module" src="./identity.js"></script>
   </head>
-  <body data-language-coverage="partial" class="public-party">
+  <body data-language-coverage="authored" data-language-note="Your show text stays in its original language. The sample questions are in English; only the editor controls change language." class="public-party public-show">
     <main>
       <nav class="page-nav" aria-label="Main navigation" data-i18n-aria-label="Main navigation">
         <a class="lobby-brand" href="./"><img src="./lobby-spark.svg" alt="" width="46" height="46" /><span class="lobby-wordmark">Trivia <span>Lobby</span></span></a>
-        <div class="page-nav-links"><a href="./">← Pick a Game</a><a href="./create.html">Make a trivia quiz</a></div>
+        <div class="page-nav-links"><a href="./" data-i18n="← Pick a Game">← Pick a Game</a><a href="./create.html" data-i18n="Make a trivia quiz">Make a trivia quiz</a></div>
       </nav>
-      <h1>Your family. Your showdown.</h1>
-      <p>
+      <h1 data-i18n="Your family. Your showdown.">Your family. Your showdown.</h1>
+      <p data-i18n="Make 1–8 team boards and five lightning questions. Each board&#x27;s points add up to 100. Keep a backup: your show saves on this device.">
         Make 1–8 team boards and five lightning questions. Each board's points
         add up to 100. Keep a backup: your show saves on this device.
       </p>
       <p id="show-status" role="status" aria-live="polite">
         Loading your show…
       </p>
-      <label for="show-title">Show title</label
-      ><input id="show-title" maxlength="80" />
-      <h2>Team boards</h2>
+      <label for="show-title" data-i18n="Show title">Show title</label
+      ><input lang="" id="show-title" maxlength="80" />
+      <h2 data-i18n="Team boards">Team boards</h2>
       <div id="show-rounds"></div>
-      <button id="add-board" type="button">Add a board</button>
+      <button id="add-board" type="button" data-i18n="Add a board">Add a board</button>
       <details>
-        <summary>Edit the five lightning questions</summary>
+        <summary data-i18n="Edit the five lightning questions">Edit the five lightning questions</summary>
         <div id="show-final"></div>
       </details>
       <section class="pack-settings">
-        <button id="save-show" type="button">Save on this device</button
-        ><button id="host-show" type="button">Save &amp; host showdown</button
-        ><button id="export-show" type="button">Download JSON backup</button
-        ><label for="import-show"
+        <button id="save-show" type="button" data-i18n="Save on this device">Save on this device</button
+        ><button id="host-show" type="button" data-i18n="Save &amp; host showdown">Save &amp; host showdown</button
+        ><button id="export-show" type="button" data-i18n="Download JSON backup">Download JSON backup</button
+        ><label for="import-show" data-i18n="Import a showdown or Friendly Feud JSON file"
           >Import a showdown or Friendly Feud JSON file</label
         ><input
           id="import-show"
           type="file"
           accept=".json,application/json"
-        /><button id="sample-show" type="button">Load sample show</button>
+        /><button id="sample-show" type="button" data-i18n="Load sample show">Load sample show</button>
       </section>
-      <p>
+      <p data-i18n="Sample points are curated for fun, not the results of a real survey. Use your own questions and content that you have permission to share.">
         Sample points are curated for fun, not the results of a real survey. Use
         your own questions and content that you have permission to share.
       </p>
       <footer>
-        <a href="./sources.html">Game credits, licenses &amp; source code</a>
+        <a href="./sources.html" data-i18n="Game credits, licenses &amp; source code">Game credits, licenses &amp; source code</a>
       </footer>
     </main>
   </body>

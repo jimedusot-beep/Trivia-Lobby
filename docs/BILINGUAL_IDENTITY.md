@@ -6,6 +6,22 @@ joining, play, learning, creation, recovery and results. The public signature is
 Una fiesta.** Keep Trivia Lobby and Sakura Arcade as proper names. Translate the
 invitation, instructions and accessible names around them.
 
+## Current integration draft
+
+The merged identity foundation is retained. The integration draft combines the
+sample, creator and practice stack with the compatible saved-course and Family
+Showdown editor follow-ups. Current verification and held work are recorded in
+[the November 21 integration record](INTEGRATION_VERIFICATION_2026_11_21.md).
+The sections below retain the boundaries of the original delivery slices; their
+historical wording does not claim that later slices are deployed or accepted.
+
+| Surface | Included scope | Remaining boundary |
+| --- | --- | --- |
+| Sample lessons | Three first-party English/Spanish lessons and honest session-only save feedback | Browser-local progress; no automatic cross-device sync |
+| Quiz creator and practice | Localized controls, feedback and known errors | Authored quiz text and export schemas stay literal |
+| Saved courses | Lesson navigation, retries, progress, achievements and backup/error copy | Existing storage and XP rules; no translated authored questions |
+| Family Showdown editor | Editor, validation, import/save/export and host-handoff copy | English sample remains labeled; playable answer adjudication is separate |
+
 ## Product contract
 
 - English and Spanish use equally visible native language choices, without flags.
@@ -44,13 +60,77 @@ language. Canonical catalog entries and engine data remain unchanged.
 The public creator, courses, practice, Family Showdown editor, Solo Test, credits
 and Open Party Lab receive the shared navigation/language identity. Their forms,
 lessons and game content remain partly or wholly English; a Spanish notice makes
-that visible. The React sample lesson also retains its English content boundary.
+that visible. The foundation alone retains an English sample-lesson boundary;
+the separate local follow-up below translates that first-party sample flow.
 Private library/study/account pages are not localized by this first change.
 
 The existing eight-mode starter-content marker is retained, with a clearer
 warning that later rounds can still be English. This is not all-round content
 certification. No authored deck is translated, no answer alias is added, and no
 gameplay rules or room payloads change in this slice.
+
+## Local follow-up: public sample lessons
+
+The separate sample-learning candidate translates all three first-party lessons
+(nine questions), answer choices, explanations, controls, progress, results and
+page title. Switching language during feedback preserves the selected answer and
+correct-answer count. The English lesson data, correct indices, three lesson IDs,
+existing saved-progress key/format and 30-XP-per-completed-lesson policy stay intact.
+Replaying a lesson does not add XP. Saved progress remains browser-local.
+
+If browser storage rejects a write, the page now states that progress is available
+only in the current session and must not call it saved. Reloading can discard
+unsaved progress; lessons remain usable during the current session. Both languages
+receive that explanation. This follow-up does not translate user-authored quizzes,
+private data, public tool forms or remaining game content.
+
+Keep this follow-up distinct from the original foundation patch. It depends on
+the shared locale/identity foundation and needs its own reviewed diff, local
+results and owner-controlled publication/integration. Bilingual human editorial
+and actual-device acceptance remain open.
+
+## Local follow-up: public quiz creator
+
+The separate local creator follow-up translates the public quiz editor's static
+controls, placeholders, saved-list actions, editing/reorder controls, statuses,
+confirmations and known validation/import/storage errors. Required-field messages
+also follow the selected display language. Unknown native diagnostics receive a
+controlled Spanish fallback; their original message remains available when the
+display language is English. Native browser file-picker UI follows the browser.
+
+Language changes update labels without resetting form fields or the pending edit
+index. Authored titles/questions/answers/explanations keep their exact wording,
+even when they equal a first-party translation key. Authored display spans/inputs
+use an unknown-language boundary rather than claiming the interface language is
+their content language. A content note explains the distinction.
+
+The editor keeps existing IndexedDB operations, validators, filenames and export
+schemas. JSON retains imported Razzia timers, points and penalties; the unchanged
+CSV format carries its existing question/answer/correct/explanation columns and
+does not add timer/scoring fields. Technical CSV header names stay canonical.
+Locale-triggered saved-list refreshes ignore stale asynchronous reads, and long
+unbroken authored titles wrap within phone layouts. This follow-up requires the
+two earlier local patches and remains separate for owner review/integration.
+
+## Local follow-up: solo practice
+
+The separate local solo-practice follow-up translates practice controls, progress,
+feedback, results, status and known load/storage failures. Language changes update
+the existing round's labels rather than recreating it: question index, selected
+answer, disabled choices, correct-answer count and completed/replay state remain
+intact. After an answer, status acknowledges it rather than still asking for a
+choice. Authored titles, questions, choices and explanations retain their original
+wording and unknown-language boundaries. The practice content note names practice
+controls explicitly rather than calling the page an editor.
+
+Practice still reads the existing local quiz and scores one correct answer per
+question; imported hosting timers/points/penalties are preserved in the saved quiz
+and do not become timed/scored hosting rules for self-paced practice. Answers are
+not uploaded or added to private learning history. This change does not introduce
+practice checkpoints: reloading still starts a fresh practice run. Existing
+question/next keyboard focus behavior is retained; changing language does not
+force focus back into the question. This follow-up depends on the three preceding
+local patches and requires its own review/integration.
 
 ## Remaining order for item 19
 
@@ -97,3 +177,36 @@ failures, repairs, retries and skips in the accompanying validation report.
 Item 19 stays open until the included end-to-end scope, editorial/device
 acceptance and owner integration are complete. This document and local patch do
 not authorize publication, merge, deployment or settings changes.
+
+## Saved courses in the integration draft
+
+The saved-quiz learning path translates its first-party controls, daily goal,
+progress, retries, achievements, backup and known error copy. Language changes
+update labels without advancing or saving a session, changing answers, awarding
+XP or moving focus away from the language selector. Authored course titles,
+questions, answers and explanations stay literal with unknown-language boundaries.
+
+Course/version hashes, IDs, timezone, unlocks, scoring, retry scheduling, storage
+modules and JSON backup formats are unchanged. Refresh uses existing session
+recovery; unavailable learning storage stays visibly session-only. A language
+change during the final asynchronous save retains the completed summary. Learning
+backups remain plain JSON containing quiz answers and progress, rather than
+encrypted recovery archives.
+
+## Family Showdown editor in the integration draft
+
+The editor translates first-party labels, board/lightning numbering, status,
+confirmations and known validation, storage and import errors. Locale changes
+update copy without rebuilding or reading unfinished inputs. Authored titles,
+questions and answer/points lines remain literal. The existing sample is labeled
+as English and its curated points are not described as survey measurements.
+
+Saved JSON, the Friendly Feud adapter, multipliers, point limits, session handoff
+and server gameplay retain their existing contracts. An unreadable saved show
+keeps its fallback warning through startup instead of replacing it with Ready;
+original stored bytes are preserved until an explicit save. Failed saves keep the
+draft exportable and prevent a false host handoff.
+
+This slice does not implement bilingual playable boards or answer adjudication,
+completed-match rotation, private-account localization, human editorial approval
+or physical-device certification. It adds no dependency or translation service.
