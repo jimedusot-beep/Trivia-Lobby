@@ -1,0 +1,29 @@
+{
+  "method": "Playwright Chromium GitHub runner / fresh browser contexts / local guest server",
+  "samples": [
+    {
+      "responseEndMs": 10.5,
+      "domContentLoadedMs": 240.80000000074506,
+      "loadEventEndMs": 258.69999999925494,
+      "observedConnectedAtMs": 335.8999999985099,
+      "resourceCount": 41
+    },
+    {
+      "responseEndMs": 4.299999997019768,
+      "domContentLoadedMs": 240.09999999776483,
+      "loadEventEndMs": 241.29999999701977,
+      "observedConnectedAtMs": 297.5,
+      "resourceCount": 41
+    },
+    {
+      "responseEndMs": 4.699999999254942,
+      "domContentLoadedMs": 204.80000000074506,
+      "loadEventEndMs": 206.59999999776483,
+      "observedConnectedAtMs": 302.3999999985099,
+      "resourceCount": 41
+    }
+  ],
+  "medianLoadMs": 241.3,
+  "medianObservedSocketReadyMs": 302.4,
+  "warning": "Loopback/browser-polling timings are not live Render or mobile network timings."
+}

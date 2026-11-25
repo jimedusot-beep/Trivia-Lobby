@@ -200,3 +200,19 @@ test("rejected start preserves disconnected participants until a valid match beg
   assert.equal(p.phase, "countdown");
   assert.equal(p.players.size, 3);
 });
+
+test("request deduplication retains a bounded digest instead of the raw action", () => {
+  const p = new Party("ABC234");
+  for (const name of ["One", "Two", "Three"]) p.join(name);
+  p.handle("host", {
+    v: 1,
+    type: "start",
+    requestId: "digest-start-01",
+    matchId: null,
+    revision: 0,
+    value: "quiz",
+  });
+  const [entry] = p.requests.values();
+  assert.match(entry.fingerprint, /^[0-9a-f]{64}$/);
+  assert.ok(JSON.stringify(entry).length < 200);
+});

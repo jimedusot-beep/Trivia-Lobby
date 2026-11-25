@@ -81,11 +81,17 @@ export function attachPartySocket(server, {
     const result = record.queue.then(async () => {
       if (closing || rooms.get(record.party.code) !== record) return;
       await withDeferredDelivery(async () => {
+        const before = { phase: record.party.phase, revision: record.party.revision };
         try { await operation(); }
         catch (error) {
           if (!ws) throw error;
           send(ws, { type: "error", message: error instanceof SyntaxError ? "Invalid JSON." : error.message });
-          if (record.sessions.owns("host", ws) || [...record.sessions.connections()].some(([, socket]) => socket === ws)) publish(record);
+          // A rejected action is local to its sender unless the authoritative
+          // clock advanced before validation failed. Only resync the room when
+          // the server state actually changed, so spam cannot amplify traffic.
+          const changed = record.party.phase !== before.phase || record.party.revision !== before.revision;
+          if (changed && (record.sessions.owns("host", ws) ||
+              [...record.sessions.connections()].some(([, socket]) => socket === ws))) publish(record);
         }
       }, async () => {
         if (!checkpointStore) return;
@@ -196,17 +202,17 @@ export function attachPartySocket(server, {
             const now = Date.now();
             if (isRace) {
               if (now - raceWindowStart >= 1000) { raceWindowStart = now; raceCount = 0; }
-              if (++raceCount > 40) { ws.close(1008, "Racing input limit"); return; }
+              if (++raceCount > 40) { ws.close(1013, "Racing input limit"); return; }
               if (raw.length > 512) throw new Error("Racing controls are too large.");
               acceptRaceInput(record.party, actor, frame);
             } else if (isTap) {
               if (now - tapWindowStart >= 1000) { tapWindowStart = now; tapCount = 0; }
-              if (++tapCount > 18) { ws.close(1008, "Tap input limit"); return; }
+              if (++tapCount > 18) { ws.close(1013, "Tap input limit"); return; }
               if (raw.length > 256) throw new Error("Tap controls are too large.");
               acceptTapInput(record.party, actor, frame);
             } else {
               if (now-trailWindowStart>=1000){trailWindowStart=now;trailCount=0;}
-              if(++trailCount>15){ws.close(1008,"Trail input limit");return;}
+              if(++trailCount>15){ws.close(1013,"Trail input limit");return;}
               if(raw.length>256)throw new Error("Trail controls too large.");
               acceptTrailInput(record.party,actor,frame);
             }

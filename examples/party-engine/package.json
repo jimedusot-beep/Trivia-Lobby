@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/*.test.js",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:split": "playwright test --config=race-split-playwright.config.js"
   },
   "dependencies": {
     "chess.js": "1.4.0",

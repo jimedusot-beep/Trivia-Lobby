@@ -153,31 +153,176 @@ function mountTV(a, root) {
     node("span", driver.name, row, "race-driver-name");
     const position = node("span", "Ready", row, "race-place"); rows.set(driver.number, { row, position });
   }
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const rosterCount = a.state.pack.roster.length;
+  const normalizeDisplay = value => {
+    const match = /^split-(\d+)$/.exec(value || "");
+    return match ? `split-${clamp(Number(match[1]), 1, Math.min(8, rosterCount))}` : value;
+  };
   const viewControls = node("div", undefined, root, "race-view-controls");
   const viewButton = node("button", "Use 2D view", viewControls, "race-view-toggle");
   viewButton.type = "button";
   const viewStatus = node("span", "Loading 3D broadcast view…", viewControls, "race-view-status");
   viewStatus.setAttribute("role", "status");
-  const cameraLabel = node("label", "Race camera ", viewControls, "race-camera-label");
-  const cameraSelect = node("select", undefined, cameraLabel); cameraSelect.disabled = true;
-  cameraSelect.setAttribute("aria-label", "Race camera");
-  for (const [value, name] of [["overview", "Whole track"], ["director", "Race director"]]) {
-    const option = node("option", name, cameraSelect); option.value = value;
+  const displayLabel = node("label", "TV display ", viewControls, "race-camera-label");
+  const displaySelect = node("select", undefined, displayLabel); displaySelect.disabled = true;
+  displaySelect.setAttribute("aria-label", "Race display");
+  const displayOptions = [
+    ["whole", "Whole Track"], ["director", "Race Director"],
+    ...Array.from({ length: 8 }, (_, index) => [`split-${index + 1}`, `${index + 1} player split`]),
+  ];
+  for (const [value, name] of displayOptions) {
+    const option = node("option", name, displaySelect); option.value = value;
+    if (value.startsWith("split-") && (rosterCount > 8 || Number(value.slice(6)) > rosterCount)) option.disabled = true;
   }
-  try { cameraSelect.value = sessionStorage.getItem("party-race-camera") || "overview"; } catch {}
+  const validDisplays = new Set(displayOptions.map(([value]) => value));
+  let savedDisplay = "whole";
+  try {
+    savedDisplay = sessionStorage.getItem("party-race-display") || "";
+    if (!savedDisplay) {
+      const old = sessionStorage.getItem("party-race-camera");
+      savedDisplay = old === "overview" ? "whole" : old || "whole";
+    }
+  } catch {}
+  if (savedDisplay.startsWith("split-") && rosterCount > 8) savedDisplay = "whole";
+  savedDisplay = normalizeDisplay(savedDisplay);
+  displaySelect.value = validDisplays.has(savedDisplay) ? savedDisplay : "whole";
+  const splitRoot = node("div", undefined, screen, "race-split-root");
+  const splitHuds = Array.from({ length: 8 }, (_, index) => {
+    const number = index + 1;
+    const hud = node("div", undefined, splitRoot, "race-split-hud");
+    hud.dataset.player = String(number); hud.hidden = true;
+    hud.setAttribute("role", "group");
+    hud.setAttribute("aria-label", `Camera for player ${number}`);
+    const badge = node("strong", `#${number}`, hud, "race-split-number");
+    badge.style.setProperty("--kart-color", color(number));
+    const rank = node("span", "—", hud, "race-split-rank");
+    const lap = node("span", "Lap —", hud, "race-split-lap");
+    const effect = node("span", "—", hud, "race-split-effect");
+    const item = node("span", "ITEM · PHONE", hud, "race-split-status");
+    return { hud, rank, lap, effect, item, number };
+  });
+  const splitStandings = Array.from({ length: 2 }, (_, index) => {
+    const cell = node("div", undefined, splitRoot, "race-split-standings");
+    cell.dataset.cell = String(index + 7); cell.hidden = true;
+    cell.setAttribute("role", "group");
+    cell.setAttribute("aria-label", "Race standings");
+    node("strong", "Standings", cell, "race-split-standings-title");
+    const list = node("ol", undefined, cell, "race-split-standings-list");
+    return { cell, list, rows: [], key: "" };
+  });
   const minimap = node("canvas", undefined, screen, "race-minimap");
   minimap.width = 240; minimap.height = 144; minimap.hidden = true;
   minimap.setAttribute("role", "img"); minimap.setAttribute("aria-label", "All racers on the full track. Numbered standings are below.");
   const directorBadge = node("span", undefined, screen, "race-director-badge"); directorBadge.hidden = true;
   const mapContext = minimap.getContext("2d");
   const c = canvas.getContext("2d"), background = staticTrack();
-  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   let scene3d = null, disposed = false, request = 0, prefer3d = true;
   try { prefer3d = sessionStorage.getItem("party-race-view") !== "2d"; } catch {}
   function saveView() { try { sessionStorage.setItem("party-race-view", prefer3d ? "3d" : "2d"); } catch {} }
+  const splitCountOf = value => {
+    const match = /^split-(\d+)$/.exec(normalizeDisplay(value));
+    return match ? Number(match[1]) : 0;
+  };
+  const cameraOf = value => splitCountOf(value) ? "split" : value === "director" ? "director" : "overview";
+  const effectiveDisplay = () => reducedMotion.matches || rosterCount > 8
+    ? "whole"
+    : normalizeDisplay(displaySelect.value);
+  let splitLayoutKey = "";
+  function hideSplitUI() {
+    splitLayoutKey = "";
+    for (const hud of splitHuds) hud.hud.hidden = true;
+    for (const standings of splitStandings) standings.cell.hidden = true;
+  }
+  function applySplitRects() {
+    const dataset = scene3d?.canvas.dataset;
+    if (!dataset || dataset.camera !== "split" || !dataset.splitRects) { hideSplitUI(); return; }
+    const key = [dataset.camera, dataset.splitCameras, dataset.splitCanvasWidth,
+      dataset.splitCanvasHeight, dataset.splitRects].join("|");
+    if (key === splitLayoutKey) return;
+    splitLayoutKey = key;
+    let rects = [];
+    try { rects = JSON.parse(dataset.splitRects); } catch {}
+    const count = Number(dataset.splitCameras) || 0;
+    const baseWidth = Number(dataset.splitCanvasWidth) || 1200;
+    const baseHeight = Number(dataset.splitCanvasHeight) || 720;
+    const percent = (value, base) => `${(value / base) * 100}%`;
+    const place = (element, rect) => {
+      element.hidden = !rect;
+      if (!rect) return;
+      element.style.left = percent(rect.x, baseWidth);
+      element.style.top = percent(rect.y, baseHeight);
+      element.style.width = percent(rect.width, baseWidth);
+      element.style.height = percent(rect.height, baseHeight);
+    };
+    splitHuds.forEach((hud, index) => place(hud.hud, index < count ? rects[index] : null));
+    const standingsIndices = count === 7 ? [7, 8] : count === 8 ? [8] : [];
+    splitStandings.forEach((standings, index) => place(standings.cell, rects[standingsIndices[index]]));
+  }
+  const setText = (element, value) => { if (element.textContent !== value) element.textContent = value; };
+  function viewStatusFor(display, count) {
+    return !scene3d ? "2D broadcast view"
+      : reducedMotion.matches ? "Reduced motion · Whole Track"
+      : a.state.pack.roster.length > 8 ? "Nine or more racers · Whole Track"
+      : count ? `Split screen · ${count} cameras · one shared track`
+      : display === "director" ? "Race director · following the leader"
+      : "3D broadcast · all racers on one screen";
+  }
+  function updateSplitHud(frame) {
+    if (!scene3d || scene3d.canvas.dataset.camera !== "split") return;
+    const karts = [...(frame.karts || [])].sort((a, b) => a.rank - b.rank);
+    const byNumber = new Map(karts.map(kart => [kart.number, kart]));
+    for (const hud of splitHuds) {
+      if (hud.hud.hidden) continue;
+      const kart = byNumber.get(hud.number);
+      setText(hud.rank, kart ? (kart.finished ? `${kart.rank} · Finished` : `${kart.rank} / ${karts.length}`) : "—");
+      setText(hud.lap, kart ? `Lap ${kart.lap}/${a.state.pack.laps || 3}` : "Lap —");
+      const effects = kart ? [kart.boost ? "BOOST" : "", kart.shield ? "SHIELD" : "", kart.drift ? `DRIFT ${kart.drift}` : ""].filter(Boolean) : [];
+      setText(hud.effect, effects.join(" · ") || "—");
+      setText(hud.item, "ITEM · PHONE");
+    }
+    const top = karts.slice(0, 8);
+    const standingsKey = top.map(kart => `${kart.number}:${kart.rank}`).join("|");
+    for (const standings of splitStandings) {
+      if (standings.cell.hidden) continue;
+      if (standings.key === standingsKey) continue;
+      standings.key = standingsKey;
+      if (standings.rows.length !== top.length) {
+        standings.rows = top.map(() => document.createElement("li"));
+        standings.list.replaceChildren(...standings.rows);
+      }
+      top.forEach((kart, index) => {
+        const row = standings.rows[index];
+        setText(row, `#${kart.number} · ${kart.rank}`);
+        row.style.setProperty("--kart-color", color(kart.number));
+      });
+    }
+  }
+  function applyDisplay() {
+    const display = effectiveDisplay();
+    const count = splitCountOf(display);
+    displaySelect.disabled = reducedMotion.matches || !scene3d;
+    if (scene3d) {
+      scene3d.setSplitPlayerCount(count);
+      scene3d.setDisplay(cameraOf(display));
+      if (!count) hideSplitUI();
+      scene3d.render(frame, previous, 1, performance.now(), reducedMotion.matches);
+      if (count) applySplitRects();
+      scene3d.canvas.setAttribute("aria-label", count
+        ? `Live 3D split-screen race, ${count}-player view. Player rank, lap and effects are shown in each view.`
+        : display === "director"
+          ? "Live 3D race following the leader. Numbered standings are below."
+          : "Live 3D overhead race track. Player numbers and positions are listed below.");
+    } else hideSplitUI();
+    minimap.hidden = !scene3d || display !== "director" || scene3d.canvas.dataset.camera !== "director";
+    directorBadge.hidden = minimap.hidden;
+    directorBadge.textContent = "Race director · #" + (scene3d?.canvas.dataset.focusNumber || "");
+    setText(viewStatus, viewStatusFor(display, count));
+  }
   function fallback(message = "2D broadcast view") {
-    viewButton.disabled = false; cameraSelect.disabled = true; minimap.hidden = true; directorBadge.hidden = true;
+    viewButton.disabled = false; displaySelect.disabled = true; minimap.hidden = true; directorBadge.hidden = true;
     if (scene3d) { scene3d.canvas.replaceWith(canvas); scene3d.dispose(); scene3d = null; }
+    hideSplitUI();
     canvas.dataset.renderer = "2d";
     viewButton.textContent = "Use 3D view"; viewStatus.textContent = message;
   }
@@ -194,23 +339,29 @@ function mountTV(a, root) {
         fallback("3D graphics interrupted. Racing continues in 2D.");
       } });
       if (disposed || token !== request) { created.dispose(); return; }
-      scene3d = created; created.setCamera(cameraSelect.value); cameraSelect.disabled = reducedMotion.matches;
+      scene3d = created;
       created.canvas.id = "race-track";
       created.canvas.setAttribute("role", "img");
       created.canvas.setAttribute("aria-label", "Live 3D overhead race track. Player numbers and positions are listed below.");
       // The fallback canvas remains available; a graphics failure never reloads a room.
+      created.setSplitPlayerCount(splitCountOf(effectiveDisplay()));
+      created.setDisplay(cameraOf(effectiveDisplay()));
       created.render(frame, previous, 1, performance.now(), reducedMotion.matches);
       canvas.replaceWith(created.canvas);
-      viewButton.textContent = "Use 2D view"; viewStatus.textContent = "3D broadcast · all racers on one screen";
+      viewButton.textContent = "Use 2D view";
+      applyDisplay();
     } catch {
       prefer3d = false;
       fallback("3D is unavailable on this display. Racing continues in 2D.");
     } finally { if (!disposed && token === request) viewButton.disabled = false; }
   }
-  cameraSelect.addEventListener("change", () => {
-    scene3d?.setCamera(cameraSelect.value);
-    try { sessionStorage.setItem("party-race-camera", cameraSelect.value); } catch {}
+  displaySelect.addEventListener("change", () => {
+    displaySelect.value = normalizeDisplay(displaySelect.value);
+    try { sessionStorage.setItem("party-race-display", displaySelect.value); } catch {}
+    applyDisplay();
   });
+  const onMotionChange = () => applyDisplay();
+  reducedMotion.addEventListener?.("change", onMotionChange);
   viewButton.addEventListener("click", () => {
     prefer3d = !scene3d; ++request; saveView();
     if (prefer3d) void start3d(); else fallback();
@@ -223,10 +374,14 @@ function mountTV(a, root) {
     if (scene3d) {
       try {
         scene3d.render(frame, previous, interpolation, performance.now(), reducedMotion.matches);
-        cameraSelect.disabled = reducedMotion.matches;
-        minimap.hidden = scene3d.canvas.dataset.camera !== "director";
+        const display = effectiveDisplay(), count = splitCountOf(display);
+        displaySelect.disabled = reducedMotion.matches;
+        setText(viewStatus, viewStatusFor(display, count));
+        minimap.hidden = display !== "director" || scene3d.canvas.dataset.camera !== "director";
         directorBadge.hidden = minimap.hidden;
         directorBadge.textContent = "Race director · #" + scene3d.canvas.dataset.focusNumber;
+        applySplitRects();
+        updateSplitHud(frame);
         if (!minimap.hidden) {
           mapContext.drawImage(background, 0, 0, 240, 144);
           mapContext.font = "900 12px sans-serif"; mapContext.textAlign = "center";
@@ -264,7 +419,11 @@ function mountTV(a, root) {
     caption.textContent = a.state.hostConnected ? "Look for your number. Hold drift in a corner, then release for a boost." : "Host reconnecting. The server keeps the race moving.";
   };
   animation = requestAnimationFrame(draw);
-  a.cleanup = () => { disposed = true; ++request; cancelAnimationFrame(animation); scene3d?.dispose(); scene3d = null; };
+  a.cleanup = () => {
+    disposed = true; ++request; cancelAnimationFrame(animation);
+    reducedMotion.removeEventListener?.("change", onMotionChange);
+    scene3d?.dispose(); scene3d = null; hideSplitUI();
+  };
   canvas.dataset.renderer = "2d";
   if (prefer3d) void start3d(); else fallback();
 }

@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./browser-specs",
+  // The split-layout sampler runs against a long-lived heat in its own config;
+  // excluding it here avoids an authoritative 60s heat ending mid-sampling.
+  testIgnore: /race-split\.spec\.js$/,
   timeout: 60000,
   workers: 1,
   forbidOnly: !!process.env.CI,
